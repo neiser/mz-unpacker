@@ -201,7 +201,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 	nTrbData.resize(nTrbDataWords); // adjust vector size to accommodate all TRB data words
 	HldFile->read((char*)&nTrbData[0],nTrbDataBytes); // read TRB data from HLD file
 	nSubEventSize += HldFile->gcount(); // increase number of bytes read from HLD file
-	if(HldFile->gcount() != nTrbDataBytes){ // check amount of bytes actually read from HLD file
+	if((size_t)HldFile->gcount() != nTrbDataBytes){ // check amount of bytes actually read from HLD file
 		cerr << "Error reading subevent TRB data from HLD file!" << endl;
 		return (kFALSE);
 	}
