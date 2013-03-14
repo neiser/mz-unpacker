@@ -36,8 +36,8 @@ public:
 	TTrbHit() { Init(); };
 	//TTrbHit(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel, UInt_t nUserSubEvtId, UInt_t nUserEdge, UInt_t nUserCoarseTime, UInt_t nUserFineTime, Bool_t bUserIsRefChannel, Bool_t bUserVerboseMode=kFALSE); // constructor
 	~TTrbHit(); // destructor
-	void Clear(Option_t *option);
-	void Print() const; // print hit information to terminal
+	void Clear(Option_t* option);
+	virtual void Print(Option_t* option=NULL) const; // print hit information to terminal
 	void Set(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel, UInt_t nUserSubEvtId, UInt_t nUserTdcErrCode, UInt_t nUserEdge, UInt_t nUserCoarseTime, UInt_t nUserFineTime, Bool_t bUserIsRefChannel); // set hit information
 	void SetCalibratedTime(Double_t fUserTime) { fTime = fUserTime; bIsCalibrated = kTRUE; };
 	void SetVerboseMode(Bool_t bUserVerboseMode) { bVerboseMode = bUserVerboseMode; };

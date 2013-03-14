@@ -62,7 +62,7 @@ void THldEvent::PrintHeader(){
 	cout << "++++++++++++++++++++++++" << endl;
 }
 
-Bool_t THldEvent::Read(){
+Bool_t THldEvent::ReadIt(){
 	if(SubEventData!=NULL)
 		delete SubEventData;
 	if(!ReadHeader()){ // read HLD Event header information

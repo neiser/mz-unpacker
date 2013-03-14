@@ -46,7 +46,7 @@ public:
 	const HLD_HEADER* GetEvtHeader() const { return (&EventHeader); };
 	size_t GetHeaderSize() const { return (sizeof(HLD_HEADER)); };
 	void PrintHeader();
-	Bool_t Read();
+	Bool_t ReadIt();
 	/* some magic ROOT stuff... */
 	ClassDef(THldEvent,1);
 };

@@ -71,15 +71,20 @@ Bool_t TTrbUnpacker::CreateTree(){
 	return (!OutputTree->IsZombie());
 }
 
-UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset){ // decode HLD raw data
+UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode HLD raw data
 	TClonesArray Hits;
 	Hits.SetClass("TTrbHit",1000); // declare that TTrbHits are being stored in the TClonesArray
 	UInt_t nDecodedEvents = 0; // counter of decoded events
 	RewindFile(); // set get pointer to beginning of HLD file
-	if(nUserOffset>nEvtIndex.size()-1) // user offset outside invent index range
-		return (0);
+	if(nUserOffset>nEvtIndex.size()) {// user offset outside invent index range
+		cerr << "Offset exceeds number of events" << endl;
+		return 0;
+	}
+	if(nUserEvents==0)
+		nUserEvents=nEvtIndex.size()-nUserOffset;
 	InputHldFile.seekg(nEvtIndex.at(nUserOffset),ios::beg); // set file get pointer to first event
 	Bool_t bLogUnpacking = OpenLogFile(); // open log file
+	(void)bLogUnpacking;
 	//if(bLogUnpacking)
 	//	WriteSettingsToLog();
 	//PrintTrbAddresses(bLogUnpacking);
@@ -93,12 +98,12 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset){ // decode H
 		return (0);
 	}
 	TTrbEventData *CurrentEventData = new TTrbEventData(Hits);
-	TBranch* TrbEvtBranch = OutputTree->Branch("event","TTrbEventData",&CurrentEventData);
+	OutputTree->Branch("event","TTrbEventData",&CurrentEventData);
 	THldEvent ThisEvent(&InputHldFile,&TrbSettings,&Hits,bVerboseMode,bSkipSubEvents);
 	for(UInt_t i=0; i<nUserEvents; i++){
 		//cout << i << endl;
 		Hits.Clear("C"); // clear TRB hits array
-		if(!ThisEvent.Read()){
+		if(!ThisEvent.ReadIt()){
 			break;
 		}
 		CurrentEventData->Fill(ThisEvent);
@@ -128,7 +133,7 @@ void TTrbUnpacker::IndexEvents(){
 	THldEvent DummyEvent(&InputHldFile,&TrbSettings,NULL,kFALSE,kTRUE); // skip subevent decoding part
 	while(InputHldFile.good()){ // begin of loop over HLD file
 		Int_t nTempEvtIndex = InputHldFile.tellg();
-		if(!DummyEvent.Read()){
+		if(!DummyEvent.ReadIt()){
 			break;
 		}
 		nEvtIndex.push_back(nTempEvtIndex); // put file get pointer position into vector, index is event number
@@ -136,6 +141,8 @@ void TTrbUnpacker::IndexEvents(){
 	} // end of loop over HLD file
 	InputHldFile.clear(); // clear EOF and other ifstream failbits
 	RewindFile(); //  set file get pointer to beginning of HLD file
+	if(bVerboseMode)
+		cout << "Found " << nEvtIndex.size() << " events in HLD file" << endl;
 }
 
 void TTrbUnpacker::Init(){ // initialise unpacker

@@ -22,6 +22,7 @@ TTrbHit::~TTrbHit(){ // destructor
 }
 
 void TTrbHit::Clear(Option_t *option) {
+	(void)option;
 	Init();
 }
 
@@ -39,7 +40,8 @@ void TTrbHit::Init(){ // initialise variables etc
 	bVerboseMode	= kFALSE;
 }
 
-void TTrbHit::Print() const { // print hit information to terminal
+void TTrbHit::Print(Option_t* option) const { // print hit information to terminal
+	(void)option;
 	cout << "+++ TRB HIT Data +++" << endl;
 	cout << "TRB Address: " << hex << nTrbAddress << dec << endl;
 	cout << "TDC Channel: " << nTdcChannel << endl;
