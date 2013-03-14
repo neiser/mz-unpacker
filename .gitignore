@@ -1,3 +1,11 @@
+# data should not be tracked...
+data/
+
+# ACLiC generated files
+*_cpp.d
+*_h.d
+*_C.d
+
 # Compiled Object files
 *.slo
 *.lo

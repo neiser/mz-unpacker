@@ -1,0 +1,52 @@
++++ README for Mainz Unpacker ROOT Class +++
++ V0.1, 12/11/2012
++ M. Hoek, hoek@uni-mainz.de
++
+
++ This unpacker is intended for TRBv3 TDC HLD file decoding
+
+++++++++++++++++++++++
++ TRBv3 HLD Unpacker +
+++++++++++++++++++++++
++ Building libraries
+root[0] .x BuildTrbUnpacker.cpp
+
++ Run Unpacker
+root[1] TTrbUnpacker a(HLD_filename, "8c00", "c030|c050|c090|c080",1,kTRUE)
+# note: the kTRUE in the function call switches the verbose mode on
+root[2] a.Decode(N)
+# this should print the decoded data on the screen; at the moment the Unpacker will only look at the first N events;
+# Unpacker also creates a very basic RooT Tree now;
+# please switch of verbose mode when decoding many events
+
++++++++++++++++++++++++++
++ TRBv3 TDC Calibration +
++++++++++++++++++++++++++
++ Building libraries
+root[0] .x BuildTrbCalibration.cpp
+
++ Run Calibration
+root[1] TTrbCalibration a(RooT_filename,Calibration_type=0,Min_Statistics=10000,VerboseMode=kFALSE)
+root[2] a.DoTdcCalibration()
+This produces two RooT files: one with calibration graphs and another with the calibrated TRB data;
+
++++++++++++++++++++++++
++ TRBv3 Data Analysis +
++++++++++++++++++++++++
++ Building libraries
+root[0] .x BuildTrbAnalysis.cpp
+root[1] TTrbAnalysis a(RooT_filename,"c030|c050|c090|c080",VerboseMode=kFALSE)
+root[2] a.Analyse(Output_filename)
+
+
+
++++++++++++++++++++++++
++ TRBv3 Event Display +
++++++++++++++++++++++++
++ Building libraries
+root[0] .x BuildEventDisplay.cpp
+root[1] TTrbEventDisplay a(Setup_Filename,"",Data_Filename)
+root[2] a.ShowReadoutMap(); // this shows the readout mapping
+root[3] a.ShowPixelMap(); // this shows the pixel mapping
+root[4] a.Show(i); // shows one event
+root[5] a.Show(i,j); // shows accumulated pattern for events i to j

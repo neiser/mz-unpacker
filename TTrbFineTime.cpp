@@ -1,0 +1,167 @@
+#include "TTrbFineTime.h"
+
+ClassImp(TTrbFineTime);
+
+TTrbFineTime::TTrbFineTime() :
+		TObject(),
+		bVerboseMode(kFALSE),
+		bCalibrationIsValid(kFALSE),
+		bTableIsComputed(kFALSE),
+		nMinEntries(MIN_STATS),
+		nCalibrationType(0),
+		nTdcAddress(0x0),
+		nTdcChannel(-1){ // standard constructor
+	SetChannelName(kTRUE);
+	Init();
+}
+
+TTrbFineTime::TTrbFineTime(const TTrbFineTime &a): TObject(a){ // copy constructor
+	// this copy constructor is need for some STL containers and algorithms
+	bVerboseMode		= a.bVerboseMode;
+	bCalibrationIsValid = a.bCalibrationIsValid;
+	bTableIsComputed	= a.bTableIsComputed;
+	fClockCycle			= a.fClockCycle;
+	nCalibrationType	= a.nCalibrationType;
+	nMinEntries			= a.nMinEntries;
+	nTdcAddress			= a.nTdcAddress;
+	nTdcChannel			= a.nTdcChannel;
+	cChannelName.str(a.cChannelName.str());
+	hFineTimeDistribution = a.hFineTimeDistribution;
+	CalibrationTable	= a.CalibrationTable;
+}
+
+TTrbFineTime::~TTrbFineTime(){ // standard destructor
+
+}
+
+void TTrbFineTime::AnalyseHistogram(){
+	nLowerEdgeBin = hFineTimeDistribution.FindFirstBinAbove(fBinThreshold);
+	nUpperEdgeBin = hFineTimeDistribution.FindLastBinAbove(fBinThreshold);
+}
+
+void TTrbFineTime::CalibrationMode0(){ // compute calibration table using simple method
+	if(!CalibrationTable.empty()) // check if calibration table map is empty
+		CalibrationTable.clear(); // clear map contents
+	Double_t fWidth = hFineTimeDistribution.GetBinCenter(nUpperEdgeBin) - hFineTimeDistribution.GetBinCenter(nLowerEdgeBin); // compute width of fine time distribution
+	if(fWidth<=fMinWidth){ // check if width is too narrow
+		bCalibrationIsValid = kFALSE;
+		bTableIsComputed	= kFALSE;
+		return;
+	}
+	Double_t fSlope = fClockCycle/fWidth; // compute slope based on clock cycle length and width of fine time distribution
+	cout << "TDC address " << hex << nTdcAddress << dec << " " << nTdcChannel << endl;
+	cout << fSlope << endl;
+	for(Int_t nCurrentTdcBin=nLowerEdgeBin; nCurrentTdcBin<(nUpperEdgeBin+1); ++nCurrentTdcBin){ // begin of loop over all TDC fine time bins
+		Double_t fBinValue = (nCurrentTdcBin-nLowerEdgeBin) * fSlope; // compute timing value based on slope
+		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
+		CalibrationTable.insert(make_pair(nBinIndex,fBinValue));
+	} // end of loop over all TDC fine time bins
+	bCalibrationIsValid = kTRUE;
+	bTableIsComputed	= kTRUE;
+	if(bVerboseMode)
+		cout << cChannelName.str() << " - Calibration successful! " << CalibrationTable.size() << endl;
+}
+
+void TTrbFineTime::CalibrationMode1(){ // compute calibration table using advanced method
+	if(!CalibrationTable.empty()) // check if calibration table map is empty
+		CalibrationTable.clear(); // clear map contents
+	// compute bin widths
+	Double_t fTotalEntries	= hFineTimeDistribution.GetEntries();
+	Double_t fBinValue		= 0.0;
+	Double_t fBinWidthOld	= 0.0;
+	cout << "TDC address " << hex << nTdcAddress << dec << " " << nTdcChannel << endl;
+	for(Int_t nCurrentTdcBin=nLowerEdgeBin; nCurrentTdcBin<(nUpperEdgeBin+1); ++nCurrentTdcBin){ // begin of loop over all TDC fine time bins
+		Double_t fBinWidth = hFineTimeDistribution.GetBinContent(nCurrentTdcBin)/fTotalEntries * fClockCycle;
+		cout << fBinWidth << endl;
+		if(fabs(fBinWidth)<1.0e-6) // skip empty bins
+			continue;
+		fBinValue += 0.5*fBinWidthOld + 0.5*fBinWidth;
+		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
+		cout << nBinIndex << " , " << fBinValue << endl;
+		CalibrationTable.insert(make_pair(nBinIndex,fBinValue));
+		fBinWidthOld = fBinWidth;
+	} // end of loop over all TDC fine time bins
+	bCalibrationIsValid = kTRUE;
+	bTableIsComputed	= kTRUE;
+	if(bVerboseMode)
+		cout << cChannelName.str() << " - Calibration successful! " << CalibrationTable.size() << endl;
+}
+
+void TTrbFineTime::ComputeCalibrationTable(){ // compute calibration constants
+	AnalyseHistogram(); // extract basic quantities of fine time distribution from histogram
+	if((Int_t)hFineTimeDistribution.GetEntries()<nMinEntries){ // check if enough entries in fine time distribution to attempt calibration
+		bCalibrationIsValid = kFALSE;
+		bTableIsComputed	= kTRUE;
+		return;
+	}
+	switch(nCalibrationType){
+		case 0: // simple calibration based only on total width of fine time distribution
+			CalibrationMode0();
+			break;
+		case 1: // advanced calibration taking fine time bin width variations into account
+			CalibrationMode1();
+			break;
+		default: // if get here a wrong calibration type has been specified
+			bCalibrationIsValid = kFALSE;
+			bTableIsComputed	= kFALSE;
+	}
+}
+
+Double_t TTrbFineTime::GetCalibratedTime(UInt_t nUserFineTime) const{
+	std::map< UInt_t,Double_t >::const_iterator Index = CalibrationTable.find(nUserFineTime);
+	if(Index==CalibrationTable.end())
+		return (-1.0);
+	else
+		return Index->second;
+}
+
+void TTrbFineTime::Init(){ // initialise object
+	CalibrationTable.clear(); // clear calibration table;
+	InitHistogram(); // initialise fine time histogram
+	fMinWidth = 0.0; // minimum fine time distribution width
+	fClockCycle = CLOCK_CYCLE_LENGTH;
+}
+
+void TTrbFineTime::InitHistogram(){
+	//hFineTimeDistribution.SetName(cChannelName.str().c_str());
+	hFineTimeDistribution.SetBins(FINE_TIME_BINS,-0.5,FINE_TIME_BINS-0.5);
+}
+
+void TTrbFineTime::PrintSettings() const{
+	cout << "+++ TRB Fine Time Calibration Settings +++" << endl;
+	cout << "Calibration type:\t" << nCalibrationType << endl;
+	cout << "Min entries:\t" << nMinEntries << endl;
+	cout << "TDC Address:\t" << hex << nTdcAddress << dec << endl;
+	cout << "TDC Channel:\t" << nTdcChannel << endl;
+	cout << "Histogram name:\t" << cChannelName.str() << endl;
+}
+
+void TTrbFineTime::PrintStatus() const{
+	cout << "+++ TRB Fine Time Calibration Status +++" << endl;
+	cout << hex << nTdcAddress << dec << " - " << nTdcChannel << endl;
+	cout << "Length of calibration table:\t" << CalibrationTable.size() << endl;
+}
+
+void TTrbFineTime::SetChannelAddress(std::pair< UInt_t, UInt_t > UserAddress){ // set TDC channel address
+	nTdcAddress = (Int_t)UserAddress.first;
+	nTdcChannel = (Int_t)UserAddress.second;
+	SetChannelName(kFALSE);
+}
+
+void TTrbFineTime::SetChannelAddress( UInt_t nUserTdcAddress, UInt_t nUserTdcChannel){ // set TDC channel address
+	SetChannelAddress(make_pair(nUserTdcAddress,nUserTdcChannel));
+}
+
+void TTrbFineTime::SetChannelName(Bool_t bSetRandom){ // set channel name based on TDC address and TDC channel ID
+	cChannelName.clear(); // clear any error flags
+	cChannelName.str(""); // clear string content
+	if(bSetRandom){ // if random channel is required
+		cChannelName.str(RandomString(8));
+	}
+	else{ // if TDC address and channel ID are known
+		cChannelName << "hTdc_" << hex << nTdcAddress << dec << "_Chan_" << nTdcChannel;
+	}
+	hFineTimeDistribution.SetName(cChannelName.str().c_str());
+	if(bVerboseMode)
+		cout << cChannelName.str() << endl;
+}
