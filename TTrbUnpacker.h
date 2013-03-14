@@ -59,6 +59,7 @@ private:
 	void SetRootFilename(); // set file name of output RooT file
 	Bool_t SetSubEventId(string cUserSubEventId); // set ID of subevent being decoded (TRBv3: 0x8c00)
 	Int_t SetTrbAddresses(string cUserTrbAddresses); // set TRB addresses being unpacked, address delimeter is '|'
+	//Int_t SetTrbAddressesFromFile(string cUserAddressFilename); // set TRB addresses being unpacked, addresses are stored in text file one address per line
 	//void WriteSettingsToLog();
 protected:
 	string cHldFilename; // HLD file name as provided by the user
