@@ -243,19 +243,67 @@ Bool_t TTrbUnpacker::SetSubEventId(string cUserSubEventId){
 }
 
 Int_t TTrbUnpacker::SetTrbAddresses(string cUserTrbAddresses){
-	if(cUserTrbAddresses.empty()){
-		if(bVerboseMode)
-			cout << "TRB address string is empty!" << endl;
-		return 0;
-	}
-	cTrbAddresses = LineParser(cUserTrbAddresses,'|',bVerboseMode);
+	ifstream UserInputFile(cUserTrbAddresses.c_str(),ifstream::in);
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode); 
+		switch (tokens.size()) {
+			case 1: 
+				cTrbAddresses.push_back(tokens.at(0));
+				break;
+			default:
+				continue; // do nothing
+		}
+	} // end loop over input file
+	UserInputFile.close();
 	if(bVerboseMode){
 		cout << cTrbAddresses.size() << " TRB addresses decoded." << endl;
 	}
 	TrbSettings.nTrbAddress.resize(cTrbAddresses.size());
 	transform(cTrbAddresses.begin(),cTrbAddresses.end(),TrbSettings.nTrbAddress.begin(),HexStringToInt);
-	return (cTrbAddresses.size());
+	return(cTrbAddresses.size());
+	// +++ old version below +++
+	//if(cUserTrbAddresses.empty()){
+	//	if(bVerboseMode)
+	//		cout << "TRB address string is empty!" << endl;
+	//	return 0;
+	//}
+	//cTrbAddresses = LineParser(cUserTrbAddresses,'|',bVerboseMode);
+	//if(bVerboseMode){
+	//	cout << cTrbAddresses.size() << " TRB addresses decoded." << endl;
+	//}
+	//TrbSettings.nTrbAddress.resize(cTrbAddresses.size());
+	//transform(cTrbAddresses.begin(),cTrbAddresses.end(),TrbSettings.nTrbAddress.begin(),HexStringToInt);
+	//return(cTrbAddresses.size());
 }
+
+//Int_t TTrbUnpacker::SetTrbAddressesFromFile( string cUserAddressFilename ){
+//	ifstream UserInputFile(cUserAddressFilename.c_str(),ifstream::in);
+//	while(UserInputFile.good()){ // start loop over input file
+//		string cCurrentLine;
+//		getline(UserInputFile,cCurrentLine); // get line from input file
+//		if(cCurrentLine.empty()) // skip empty lines
+//			continue;
+//		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode); 
+//		switch (tokens.size()) {
+//			case 1: 
+//				cTrbAddresses.push_back(tokens.at(0));
+//				break;
+//			default:
+//				continue; // do nothing
+//		}
+//	} // end loop over input file
+//	UserInputFile.close();
+//	if(bVerboseMode){
+//		cout << cTrbAddresses.size() << " TRB addresses decoded." << endl;
+//	}
+//	TrbSettings.nTrbAddress.resize(cTrbAddresses.size());
+//	transform(cTrbAddresses.begin(),cTrbAddresses.end(),TrbSettings.nTrbAddress.begin(),HexStringToInt);
+//	return(cTrbAddresses.size());
+//}
 
 //void TTrbUnpacker::WriteSettingsToLog(){
 //	clog << "+++++++++++++++++++++++++++++++" << endl;
