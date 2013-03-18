@@ -1,8 +1,8 @@
 //////////////////////////////////////////////////////////
 // This class has been automatically generated on
-// Fri Dec 07 12:06:49 2012 by ROOT version 5.34/00
+// Mon Mar 18 12:00:00 2013 by ROOT version 5.32/02
 // from TTree T/UMainz TRB HLD Data
-// found on file: D:/Work/Programing/ROOT/TRB/xx12194190740.hld.root
+// found on file: ep-1.hld.root
 //////////////////////////////////////////////////////////
 
 #ifndef TTrbDataTree_h
@@ -13,9 +13,7 @@
 #include <TFile.h>
 
 // Header file for the classes stored in the TTree if any.
-#include "TTrbEventData.h"
 #include <TObject.h>
-#include "TTrbHit.h"
 
 // Fixed size dimensions of array or collections stored in the TTree if any.
 const Int_t kMaxHits = 1000;
@@ -53,6 +51,7 @@ public :
    UInt_t          Hits_nSubEvtId[kMaxHits];   //[Hits_]
    UInt_t          Hits_nTdcErrCode[kMaxHits];   //[Hits_]
    UInt_t          Hits_nSignalEdge[kMaxHits];   //[Hits_]
+   UInt_t          Hits_nEpochCounter[kMaxHits];   //[Hits_]
    UInt_t          Hits_nCoarseTime[kMaxHits];   //[Hits_]
    UInt_t          Hits_nFineTime[kMaxHits];   //[Hits_]
    Double_t        Hits_fTime[kMaxHits];   //[Hits_]
@@ -87,6 +86,7 @@ public :
    TBranch        *b_Hits_nSubEvtId;   //!
    TBranch        *b_Hits_nTdcErrCode;   //!
    TBranch        *b_Hits_nSignalEdge;   //!
+   TBranch        *b_Hits_nEpochCounter;   //!
    TBranch        *b_Hits_nCoarseTime;   //!
    TBranch        *b_Hits_nFineTime;   //!
    TBranch        *b_Hits_fTime;   //!
@@ -113,9 +113,9 @@ TTrbDataTree::TTrbDataTree(TTree *tree) : fChain(0)
 // if parameter tree is not specified (or zero), connect the file
 // used to generate this class and read the Tree.
    if (tree == 0) {
-      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("D:/Work/Programing/ROOT/TRB/xx12194190740.hld.root");
+      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("ep-1.hld.root");
       if (!f || !f->IsOpen()) {
-         f = new TFile("D:/Work/Programing/ROOT/TRB/xx12194190740.hld.root");
+         f = new TFile("ep-1.hld.root");
       }
       f->GetObject("T",tree);
 
@@ -190,6 +190,7 @@ void TTrbDataTree::Init(TTree *tree)
    fChain->SetBranchAddress("Hits.nSubEvtId", Hits_nSubEvtId, &b_Hits_nSubEvtId);
    fChain->SetBranchAddress("Hits.nTdcErrCode", Hits_nTdcErrCode, &b_Hits_nTdcErrCode);
    fChain->SetBranchAddress("Hits.nSignalEdge", Hits_nSignalEdge, &b_Hits_nSignalEdge);
+   fChain->SetBranchAddress("Hits.nEpochCounter", Hits_nEpochCounter, &b_Hits_nEpochCounter);
    fChain->SetBranchAddress("Hits.nCoarseTime", Hits_nCoarseTime, &b_Hits_nCoarseTime);
    fChain->SetBranchAddress("Hits.nFineTime", Hits_nFineTime, &b_Hits_nFineTime);
    fChain->SetBranchAddress("Hits.fTime", Hits_fTime, &b_Hits_fTime);

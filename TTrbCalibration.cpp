@@ -48,7 +48,11 @@ void TTrbCalibration::ApplyTdcCalibration(){
 		for(Int_t nHitIndex=0; nHitIndex<TrbData->Hits_; nHitIndex++){ // begin of loop over hits
 			// copy existing hit data
 			TTrbHit* CurrentHit = (TTrbHit*)TdcHits.ConstructedAt(nHitIndex); // create new TTrbHit in TclonesArray Hits
-			CurrentHit->Set(TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex],TrbData->Hits_nSubEvtId[nHitIndex],TrbData->Hits_nTdcErrCode[nHitIndex],TrbData->Hits_nSignalEdge[nHitIndex],TrbData->Hits_nCoarseTime[nHitIndex],TrbData->Hits_nFineTime[nHitIndex],TrbData->Hits_bIsRefChannel[nHitIndex]);
+			CurrentHit->Set(TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex],
+			                TrbData->Hits_nSubEvtId[nHitIndex],TrbData->Hits_nTdcErrCode[nHitIndex],
+			                TrbData->Hits_nSignalEdge[nHitIndex],TrbData->Hits_nEpochCounter[nHitIndex],
+			                TrbData->Hits_nCoarseTime[nHitIndex],
+			                TrbData->Hits_nFineTime[nHitIndex],TrbData->Hits_bIsRefChannel[nHitIndex]);
 			Double_t fHitTime = -1.0;
 			std::pair< UInt_t,UInt_t > TdcChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); // extract TDC channel address
 			std::map< std::pair< UInt_t,UInt_t >,TTrbFineTime >::const_iterator FindTdcChannel = ChannelCalibrations.find(TdcChanAddress); // find channel address in calibration map
