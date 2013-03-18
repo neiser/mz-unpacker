@@ -26,6 +26,7 @@ protected:
 	UInt_t nSubEvtId;
 	UInt_t nTdcErrCode;
 	UInt_t nSignalEdge;
+	UInt_t nEpochCounter;
 	UInt_t nCoarseTime;
 	UInt_t nFineTime;
 	Double_t fTime; // this needs to be a Double_t
@@ -38,7 +39,8 @@ public:
 	~TTrbHit(); // destructor
 	void Clear(Option_t* option);
 	virtual void Print(Option_t* option=NULL) const; // print hit information to terminal
-	void Set(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel, UInt_t nUserSubEvtId, UInt_t nUserTdcErrCode, UInt_t nUserEdge, UInt_t nUserCoarseTime, UInt_t nUserFineTime, Bool_t bUserIsRefChannel); // set hit information
+	void Set(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel, UInt_t nUserSubEvtId, UInt_t nUserTdcErrCode, UInt_t nUserEdge,
+	         UInt_t nUserEpochCounter, UInt_t nUserCoarseTime, UInt_t nUserFineTime, Bool_t bUserIsRefChannel); // set hit information
 	void SetCalibratedTime(Double_t fUserTime) { fTime = fUserTime; bIsCalibrated = kTRUE; };
 	void SetVerboseMode(Bool_t bUserVerboseMode) { bVerboseMode = bUserVerboseMode; };
 

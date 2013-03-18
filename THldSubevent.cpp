@@ -60,7 +60,7 @@ void THldSubEvent::DecodeBaseEventSize(){
 
 Bool_t THldSubEvent::DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, TDC_HEADER& TdcHeader){
 	ClearTdcHeader(TdcHeader);
-	if( ((*DataWord>>29) & 0x7) != TDC_HEADER_MARKER) { // check 3 bits reserved for TDC header marker
+	if(((*DataWord>>29) & 0x7) != TDC_HEADER_MARKER) { // check 3 bits reserved for TDC header marker
 		return (kFALSE);
 	}
 	TdcHeader.nRandomBits	= (*DataWord>>16) & 0xFF;
@@ -75,23 +75,61 @@ Bool_t THldSubEvent::DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWor
 
 Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
                                    UInt_t nUserTrbAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
-	if((*DataWord>>31) != 1) { // check time data marker
-		// this might be an epoch counter event
+	
+
+	// first check if word is EPOCH or DEBUG
+	UInt_t FirstThreeBits =  (*DataWord>>29) & 0x7;
+
+	// we simply put the EPOCH counter into a static variable,
+	// since the next word should be a TIMEDATA event in which the TrbHit
+	// is generated including the EPOCH counter
+	// static variable is initialized with 0
+	
+	static UInt_t nTdcEpochCounterPreviousWord; 
+	// copy into local variable and clear static one to ensure that
+	// epoch counter is zero as default
+	UInt_t nTdcEpochCounter = nTdcEpochCounterPreviousWord; 
+	nTdcEpochCounterPreviousWord = 0;	
+	if(FirstThreeBits == TDC_EPOCH_MARKER) {
 		if(bVerboseMode)
-			cout << "This is not a TDC data word! " << hex << *DataWord << ", " << nUserTrbAddress
+			cout << "Found EPOCH word:  " << hex << *DataWord << ", " << nUserTrbAddress
 			     <<	" , " << dec << nTdcHits << endl;
-		return (kFALSE);
+		// lowest 28bits represent epoch counter
+		nTdcEpochCounterPreviousWord = *DataWord & 0xFFFFFFF;
+		return kFALSE;
+	}	
+	
+	// check for DEBUG, we don't use this info at the moment
+	if(FirstThreeBits == TDC_DEBUG_MARKER) {
+		if(bVerboseMode)
+			cout << "Found DEBUG word:  " << hex << *DataWord << ", " << nUserTrbAddress
+			     <<	" , " << dec << nTdcHits << endl;
+		return kFALSE;
 	}
+
+	
+	
+	// now we expect a TIMEDATA word...if not, we don't know :)
+	if((*DataWord>>31) != 1) { // check time data marker i.e. MSB==1
+		if(bVerboseMode)
+			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << *DataWord << ", " << nUserTrbAddress
+			     <<	" , " << dec << nTdcHits << endl;
+		
+		return kFALSE;
+	}
+	
 	UInt_t nTdcChannelNo	= (*DataWord>>22) & 0x7F; // TDC channel number is represented by 7 bits
-	Bool_t bIsRefChannel	= (nTdcChannelNo==TrbSettings->nRefChannel)? kTRUE : kFALSE;
+	Bool_t bIsRefChannel	= (nTdcChannelNo==TrbSettings->nRefChannel) ? kTRUE : kFALSE;
 	UInt_t nTdcFineTime		= (*DataWord>>12) & 0x3FF; // TDC fine time is represented by 10 bits
 	UInt_t nTdcEdge			= (*DataWord>>11) & 0x1; // TDC edge indicator: 1->rising edge, 0->falling edge
 	UInt_t nTdcCoarseTime	= *DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
 	TTrbHit* CurrentHit = (TTrbHit*)Hits->ConstructedAt(nTdcHits); // create new TTrbHit in TclonesArray Hits
 	CurrentHit->SetVerboseMode(bVerboseMode);
 	CurrentHit->Set(nUserTrbAddress,nTdcChannelNo,TdcHeader.nRandomBits,TdcHeader.nErrorBits,
-	                nTdcEdge,nTdcCoarseTime,nTdcFineTime,bIsRefChannel);
-	return (kTRUE);
+	                nTdcEdge,nTdcEpochCounter,nTdcCoarseTime,nTdcFineTime,bIsRefChannel);
+	
+	//cout << "Found TIMEDATA word:  " <<hex << *DataWord << dec << ", channel " << nTdcChannelNo << endl;
+	return kTRUE;
 }
 
 
