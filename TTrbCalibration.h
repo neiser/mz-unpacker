@@ -43,33 +43,22 @@ struct TDC_CAL_STATS { // structure for storing TDC calibration statistics
 	Double_t fWidth;
 };
 
-struct TDC_CAL_DATA {
-	TH1D* hFineTime; // TDC channel fine time distribution
-	TGraph* grCalibrationTable; // graphical representation of calibration table
-	Bool_t bCalibrationIsValid; // flag indication validity of calibration
-	std::vector<Double_t> fCalibrationTable; // vector containing calibrated bin timestamps (index is bin centre)
-	TDC_CAL_STATS ChannelStats;
-};
 
 // +++ class definition +++
 class TTrbCalibration : public TObject{
 private:
 	TFile *CalibrationOutfile;
 	TTrbDataTree *TrbData;
-	map<pair< UInt_t, UInt_t >, TDC_CAL_DATA > TdcCalibrationData; // map containing the fine time calibration data; the key is a pair of the TDC address and the TDC channel number
 	map<pair<UInt_t, UInt_t>, TTrbFineTime> ChannelCalibrations;
 	map<UInt_t, TTrbFineTime> ReferenceCalibrations; // calibration of reference channels to be used if channel's own calibration fails, TDC address is used as key, always use simple calibration method
 	map<UInt_t, vector< Double_t > > TdcRefCalibration; // map containing fine time calibration of reference channels (alwyas using the simple model based on the width of the fine time distribution)
 	map<UInt_t,UInt_t> TdcRefChannels; // TDC reference channel IDs (one per FPGA)
 	void ApplyTdcCalibration(); // apply TDC calibration to data
-	void ClearFineTimeMap(); // clear fine time map
 	Bool_t CreateTree();
-	void DeleteCalibrationPlots(); // delete all calibration hostograms and graphs
 	void FillCalibrationTable(); // compute calibration look-up table
 	void FillFineTimeHistograms(); // fill fine time histograms
 	void FillReferenceCalibrationTables(); // compute calibration look-up tables for reference channels
 	void Init(); // initialise calibration object
-	void InitCalibrationData(TDC_CAL_DATA& ChannelCalibration); // initialise calibration data
 	Bool_t OpenRootFile();
 	Bool_t OpenTrbTree(string cUserDataFilename); // open HLD data TTree
 	static void PrintStatus(std::pair< std::pair< UInt_t,UInt_t >,TTrbFineTime > CurrentEntry){
@@ -98,7 +87,7 @@ public:
 	void DoTdcCalibration(); // run TDC fine time calibration
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from calibration
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel)
-	UInt_t GetNChannels() const { return ((UInt_t)TdcCalibrationData.size()); }; // get number of TDC channels 
+	UInt_t GetNChannels() const { return ((UInt_t)ReferenceCalibrations.size()); }; // get number of TDC channels 
 	UInt_t GetNExclChannels() const { return ((UInt_t)ExcludedChannels.size()); };
 	UInt_t GetNRefChannels() const { return ((UInt_t)TdcRefChannels.size()); }; // get number of reference channels
 	void PrintExcludedChannels() const;
