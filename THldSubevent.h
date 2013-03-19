@@ -31,6 +31,8 @@
 	BIT 2 -> No TDC header found
 	BIT 3 -> No TDC data available
 	BIT 4 -> Wrong TDC data word (header word duplicated)
+	BIT 5 -> Skipping to many data words in TRB payload
+	BIT 6 -> No TCS trailer found
 */
 
 /* +++ WORK TO DO +++
@@ -43,7 +45,7 @@ class THldSubEvent : public TObject{
 	friend class TTrbEventData;
 	friend class TTrbUnpacker;
 	friend void ClearTdcHeader(TDC_HEADER& TdcHeader);
-private:
+ private:
 	ifstream* HldFile;
 	Bool_t CheckTrbAddress(UInt_t nUserTrbAddress); // check decoded TRB address against user provided list
 	void DecodeBaseEventSize();
@@ -57,7 +59,7 @@ private:
 	Bool_t ReadTrbData(); // read TRB TDC data words
 	void SwapHeaderWords(); // swap bytes of header words from big Endian to little Endian
 	void SwapTrailerWords(); // swap bytes of trailer words from big Endian to little Endian
-protected:
+ protected:
 	const TRB_SETUP* TrbSettings; // pointer to structure containing setup information of the TRB system
 	SUB_HEADER SubEventHeader; // structure for storing HLD subevent header information
 	SUB_TRAILER SubEventTrailer; // structure for storing HLD subevent trailer information
@@ -74,6 +76,8 @@ protected:
 	std::vector<UInt_t> nTrbData; // vector containing TRBv3 data words, excluding header and trailer information
 	TClonesArray* Hits;
 	UInt_t nTdcHits; // number of TDC hits in subevent
+	UInt_t nTdcEpochCounter; // used to store the current Epoch counter
+	Int_t nTdcLastChannelNo;  // used to store the last channel number, -1 if there's no last channel
 public:
 	THldSubEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TClonesArray* UserArray, Bool_t bUserVerboseMode=kFALSE); // constructor
 	~THldSubEvent(); // destructor
@@ -83,6 +87,7 @@ public:
 	UInt_t GetNTdcHits() const { return (nTdcHits); };
 	void PrintHeader(); 
 	void PrintTrailer();
+	void PrintTrbData();
 	void SetVerboseMode(Bool_t bUserVerboseMode) { bVerboseMode = bUserVerboseMode; };
 	/* some magic ROOT stuff... */
 	ClassDef(THldSubEvent,1);

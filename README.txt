@@ -12,8 +12,12 @@
 root[0] .x BuildTrbUnpacker.cpp
 
 + Run Unpacker
-root[1] TTrbUnpacker a(HLD_filename, "8c00", "TRB_Addresses_test.txt", 1, kTRUE)
+root[1] TTrbUnpacker a(HLD_filename, "8c00", "0002", "TRB_Addresses_test.txt", 1, kTRUE)
+# first hex number: subevent id
+# second hex number: TRB address of trigger control system
+# also provide a more or less complete list of endpoint addresses of TDCs in TRB_Addresses_test.txt 
 # note: the last kTRUE in the function call switches the verbose mode on
+
 root[2] a.Decode(N)
 # this should print the decoded data on the screen; 
 # at the moment the Unpacker will only look at the first N events;
@@ -21,6 +25,8 @@ root[2] a.Decode(N)
 # An offset (=skip specified number of events) can be provided as a second argument
 # Unpacker also creates a very basic RooT Tree now;
 # please switch off verbose mode when decoding many events (otherwise it takes ages)
+
+
 
 +++++++++++++++++++++++++
 + TRBv3 TDC Calibration +

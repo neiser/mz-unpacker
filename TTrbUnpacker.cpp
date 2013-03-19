@@ -2,7 +2,8 @@
 
 ClassImp(TTrbUnpacker);
 
-TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserTrbAddresses, UInt_t nUserRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
+TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTrbAddresses,
+                           UInt_t nUserRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
 	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
 		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
 		exit (-1);
@@ -19,9 +20,12 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, stri
 		cerr << "No subevent ID provided!" << endl;
 		exit (-1);
 	}
+	if(!SetCtsAddress(cUserCtsAddress)){
+		cerr << "No Central Trigger System address provided!" << endl;
+		exit (-1);
+	}
 	if(SetTrbAddresses(cUserTrbAddresses)<1){ // setting addresses of TRB boards, need at least 1 address
 		cerr << "Error decoding TRB addresses!" << endl;
-		CloseHldFile(); // close HLD file
 		exit (-1);
 	}
 	if(!SetRefChannel(nUserRefChannel)){
@@ -191,6 +195,11 @@ void TTrbUnpacker::PrintSubEventId(){
 	cout << "Sub event ID is: " << hex << TrbSettings.nSubEventId << dec << endl;
 }
 
+void TTrbUnpacker::PrintCtsAddress(){
+	cout << "Trigger Control System (TCS) is at 0x" << hex << TrbSettings.nSubEventId << dec << endl;
+}
+
+
 void TTrbUnpacker::PrintTrbAddresses(Bool_t bWriteToLog){
 	streambuf *backup;
 	if(bWriteToLog){
@@ -216,6 +225,7 @@ void TTrbUnpacker::PrintTrbRefChannel(){
 
 void TTrbUnpacker::PrintUnpackerSettings(){
 	PrintSubEventId();
+	PrintCtsAddress();
 	PrintTrbRefChannel();
 	PrintTrbAddresses();
 }
@@ -249,6 +259,14 @@ Bool_t TTrbUnpacker::SetSubEventId(string cUserSubEventId){
 	return (kTRUE);
 }
 
+Bool_t TTrbUnpacker::SetCtsAddress(string cUserCtsAddress){
+	if(cUserCtsAddress.empty())
+		return (kFALSE);
+	TrbSettings.nCtsAddress = HexStringToInt(cUserCtsAddress);
+	return (kTRUE);
+}
+
+
 Int_t TTrbUnpacker::SetTrbAddresses(string cUserTrbAddresses){
 	ifstream UserInputFile(cUserTrbAddresses.c_str(),ifstream::in);
 	while(UserInputFile.good()){ // start loop over input file
@@ -272,45 +290,8 @@ Int_t TTrbUnpacker::SetTrbAddresses(string cUserTrbAddresses){
 	TrbSettings.nTrbAddress.resize(cTrbAddresses.size());
 	transform(cTrbAddresses.begin(),cTrbAddresses.end(),TrbSettings.nTrbAddress.begin(),HexStringToInt);
 	return(cTrbAddresses.size());
-	// +++ old version below +++
-	//if(cUserTrbAddresses.empty()){
-	//	if(bVerboseMode)
-	//		cout << "TRB address string is empty!" << endl;
-	//	return 0;
-	//}
-	//cTrbAddresses = LineParser(cUserTrbAddresses,'|',bVerboseMode);
-	//if(bVerboseMode){
-	//	cout << cTrbAddresses.size() << " TRB addresses decoded." << endl;
-	//}
-	//TrbSettings.nTrbAddress.resize(cTrbAddresses.size());
-	//transform(cTrbAddresses.begin(),cTrbAddresses.end(),TrbSettings.nTrbAddress.begin(),HexStringToInt);
-	//return(cTrbAddresses.size());
 }
 
-//Int_t TTrbUnpacker::SetTrbAddressesFromFile( string cUserAddressFilename ){
-//	ifstream UserInputFile(cUserAddressFilename.c_str(),ifstream::in);
-//	while(UserInputFile.good()){ // start loop over input file
-//		string cCurrentLine;
-//		getline(UserInputFile,cCurrentLine); // get line from input file
-//		if(cCurrentLine.empty()) // skip empty lines
-//			continue;
-//		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode); 
-//		switch (tokens.size()) {
-//			case 1: 
-//				cTrbAddresses.push_back(tokens.at(0));
-//				break;
-//			default:
-//				continue; // do nothing
-//		}
-//	} // end loop over input file
-//	UserInputFile.close();
-//	if(bVerboseMode){
-//		cout << cTrbAddresses.size() << " TRB addresses decoded." << endl;
-//	}
-//	TrbSettings.nTrbAddress.resize(cTrbAddresses.size());
-//	transform(cTrbAddresses.begin(),cTrbAddresses.end(),TrbSettings.nTrbAddress.begin(),HexStringToInt);
-//	return(cTrbAddresses.size());
-//}
 
 //void TTrbUnpacker::WriteSettingsToLog(){
 //	clog << "+++++++++++++++++++++++++++++++" << endl;

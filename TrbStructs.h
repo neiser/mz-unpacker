@@ -5,6 +5,7 @@ struct TRB_SETUP{
 	UInt_t nSubEventId; // subevent ID (should be 0x8c00)
 	UInt_t nRefChannel; // TRBv3 TDC reference channel
 	std::vector<UInt_t> nTrbAddress; // vector of TRBv3 board addresses
+	UInt_t nCtsAddress; // TRB address of Central Trigger System (TCS), should be 0x0002
 };
 
 struct HLD_HEADER { // HLD header description
@@ -26,11 +27,6 @@ struct SUB_HEADER{
 };
 
 struct SUB_TRAILER{
-	UInt_t nCtsHeader;
-	UInt_t nCtsWord1;
-	UInt_t nCtsWord2;
-	UInt_t nCtsWord3;
-	UInt_t nCtsWord4;
 	UInt_t nSebHeader;
 	UInt_t nSebError; // this is the subevent builder error code (must be 0x00000001 otherwise event is corrupted)
 };

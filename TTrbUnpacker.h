@@ -24,9 +24,6 @@
 #define NO_OF_TRB_BOARDS 4
 #define TREE_AUTOSAVE 300000000 // set to 300 MBytes
 
-//namespace {
-//
-//}
 
 /* +++ WORK TO DO +++
 - detailed error handling
@@ -58,8 +55,8 @@ private:
 	Bool_t SetRefChannel(UInt_t nUserRefChannel); // set TRB reference channel, usually 0 or 1
 	void SetRootFilename(); // set file name of output RooT file
 	Bool_t SetSubEventId(string cUserSubEventId); // set ID of subevent being decoded (TRBv3: 0x8c00)
+	Bool_t SetCtsAddress(string cUserCtsAddress); // set TRB Address of Central Trigger System (TRBv3: 0x0002)
 	Int_t SetTrbAddresses(string cUserTrbAddresses); // set TRB addresses being unpacked, address delimeter is '|'
-	//Int_t SetTrbAddressesFromFile(string cUserAddressFilename); // set TRB addresses being unpacked, addresses are stored in text file one address per line
 	//void WriteSettingsToLog();
 protected:
 	string cHldFilename; // HLD file name as provided by the user
@@ -72,12 +69,14 @@ protected:
 	Bool_t bVerboseMode;
 	
 public:
-	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserTrbAddresses, UInt_t nUserRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
+	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTrbAddresses,
+	             UInt_t nUserRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file
 	Int_t GetEntryPositon(UInt_t nUserEvtIndex) const { return (nEvtIndex.at(nUserEvtIndex)); };
 	UInt_t GetHldEntries() const { return ((UInt_t)nEvtIndex.size()); }; // return size of event index vector
 	void PrintSubEventId();
+	void PrintCtsAddress();
 	void PrintTrbAddresses(Bool_t bWriteToLog=kFALSE);
 	void PrintTrbRefChannel();
 	void PrintUnpackerSettings();
