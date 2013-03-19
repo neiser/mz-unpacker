@@ -41,6 +41,7 @@ private:
 	void Init(); // initialise object
 	void InitHistogram(); // initialise fine time histogram
 	void SetChannelName(Bool_t bSetRandom); // set channel name based on TDC address and TDC channel ID
+	void SetHistogramNames(); // set histogram names
 protected:
 	Bool_t bVerboseMode; // flag controlling verbose mode
 	Bool_t bCalibrationIsValid; // flag indicating validity of calibration for this channel
@@ -56,6 +57,7 @@ protected:
 	Int_t nTdcChannel; // TDC channel ID (range is 0->33)
 	stringstream cChannelName; // name of readout channel
 	TH1D hFineTimeDistribution; // histogram containing fine time data
+	TH1D hBinWidth; // histogram containing distribution of fine time bin widths
 	std::map< UInt_t,Double_t > CalibrationTable; // map containing calibration constants (value) for each fine time bin (index)
 public:
 	TTrbFineTime(); // standard constructor
@@ -82,6 +84,7 @@ public:
 	void SetCycleLength(Double_t fUserCycleLength) { fClockCycle = fabs(fUserCycleLength); }; // set clock cycle length in ns
 	void SetStatLimit(Int_t nUserStatLimit) { nMinEntries=nUserStatLimit; }; // set minimum number of events in fine time histogram required to attempt calibration
 	void SetVerboseMode(Bool_t bUserVerboseMode) { bVerboseMode=bUserVerboseMode; }; // set verbose mode
+	void WriteHistograms() const; // write histograms to current directory
 	ClassDef(TTrbFineTime,1);
 };
 

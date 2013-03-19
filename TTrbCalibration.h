@@ -100,7 +100,8 @@ public:
 	//};
 	static void WriteHistogram(std::pair< std::pair< UInt_t,UInt_t >,TTrbFineTime > CurrentEntry) { 
 		//cout << "########## Writing histogram..." << endl;
-		CurrentEntry.second.GetHistogram().Write(); // write fine time histograms to current file
+		//CurrentEntry.second.GetHistogram().Write(); // write fine time histograms to current file
+		CurrentEntry.second.WriteHistograms(); // write fine time calibration histograms to current file
 	}; // write histogram from map to file (using for_each algorithm
 	/* some magic ROOT stuff... */
 	ClassDef(TTrbCalibration,1);
