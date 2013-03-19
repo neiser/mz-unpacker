@@ -3,19 +3,19 @@
 ClassImp(TTrbFineTime);
 
 TTrbFineTime::TTrbFineTime() :
-		TObject(),
+	TObject(),
 		bVerboseMode(kFALSE),
 		bCalibrationIsValid(kFALSE),
 		bTableIsComputed(kFALSE),
-		nMinEntries(MIN_STATS),
 		nCalibrationType(0),
-		nTdcAddress(0x0),
+	nMinEntries(MIN_STATS),
+	nTdcAddress(0x0),
 		nTdcChannel(-1){ // standard constructor
 	SetChannelName(kTRUE);
 	Init();
 }
 
-TTrbFineTime::TTrbFineTime(const TTrbFineTime &a): TObject(a){ // copy constructor
+TTrbFineTime::TTrbFineTime(const TTrbFineTime &a) : TObject(a) { // copy constructor
 	// this copy constructor is need for some STL containers and algorithms
 	bVerboseMode		= a.bVerboseMode;
 	bCalibrationIsValid = a.bCalibrationIsValid;
@@ -123,6 +123,7 @@ void TTrbFineTime::Init(){ // initialise object
 }
 
 void TTrbFineTime::InitHistogram(){
+	
 	//hFineTimeDistribution.SetName(cChannelName.str().c_str());
 	hFineTimeDistribution.SetBins(FINE_TIME_BINS,-0.5,FINE_TIME_BINS-0.5);
 }

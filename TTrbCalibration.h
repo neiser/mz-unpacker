@@ -56,15 +56,13 @@ class TTrbCalibration : public TObject{
 private:
 	TFile *CalibrationOutfile;
 	TTrbDataTree *TrbData;
-	std::map< std::pair< UInt_t, UInt_t >, TDC_CAL_DATA > TdcCalibrationData; // map containing the fine time calibration data; the key is a pair of the TDC address and the TDC channel number
-	std::map< std::pair< UInt_t, UInt_t >, TTrbFineTime > ChannelCalibrations;
-	std::map< UInt_t, TTrbFineTime > ReferenceCalibrations; // calibration of reference channels to be used if channel's own calibration fails, TDC address is used as key, always use simple calibration method
-	std::map< UInt_t,std::vector< Double_t > > TdcRefCalibration; // map containing fine time calibration of reference channels (alwyas using the simple model based on the width of the fine time distribution)
-	std::map< UInt_t,UInt_t > TdcRefChannels; // TDC reference channel IDs (one per FPGA)
+	map<pair< UInt_t, UInt_t >, TDC_CAL_DATA > TdcCalibrationData; // map containing the fine time calibration data; the key is a pair of the TDC address and the TDC channel number
+	map<pair<UInt_t, UInt_t>, TTrbFineTime> ChannelCalibrations;
+	map<UInt_t, TTrbFineTime> ReferenceCalibrations; // calibration of reference channels to be used if channel's own calibration fails, TDC address is used as key, always use simple calibration method
+	map<UInt_t, vector< Double_t > > TdcRefCalibration; // map containing fine time calibration of reference channels (alwyas using the simple model based on the width of the fine time distribution)
+	map<UInt_t,UInt_t> TdcRefChannels; // TDC reference channel IDs (one per FPGA)
 	void ApplyTdcCalibration(); // apply TDC calibration to data
 	void ClearFineTimeMap(); // clear fine time map
-	TGraph* CreateCalibrationTable(UInt_t nTdcAddress, UInt_t nTdcChannel); // create a new fine time histogram
-	TH1D* CreateFineTimeHistogram(UInt_t nTdcAddress, UInt_t nTdcChannel); // create a new fine time histogram
 	Bool_t CreateTree();
 	void DeleteCalibrationPlots(); // delete all calibration hostograms and graphs
 	void FillCalibrationTable(); // compute calibration look-up table
@@ -96,7 +94,7 @@ protected:
 public:
 	TTrbCalibration(string cUserDataFilename, Int_t nUserCalibrationType=0, UInt_t nUserLimit=MIN_STATS, Bool_t bUserVerboseMode=kFALSE); // constructor
 	~TTrbCalibration(); // destructor
-	/* some magic ROOT stuff... */
+
 	void DoTdcCalibration(); // run TDC fine time calibration
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from calibration
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel)
@@ -112,9 +110,10 @@ public:
 	//	CurrentEntry.second.grCalibrationTable->Write(); // write calibration table graphs to current file
 	//};
 	static void WriteHistogram(std::pair< std::pair< UInt_t,UInt_t >,TTrbFineTime > CurrentEntry) { 
+		//cout << "########## Writing histogram..." << endl;
 		CurrentEntry.second.GetHistogram().Write(); // write fine time histograms to current file
 	}; // write histogram from map to file (using for_each algorithm
-
+	/* some magic ROOT stuff... */
 	ClassDef(TTrbCalibration,1);
 };
 

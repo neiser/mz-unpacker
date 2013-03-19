@@ -223,6 +223,7 @@ Int_t TTrbDataTree::Cut(Long64_t entry)
 // This function may be called from Loop.
 // returns  1 if entry is accepted.
 // returns -1 otherwise.
-   return 1;
+	(void)entry; // suppress -Wunused-parameter
+	return 1;
 }
 #endif // #ifdef TTrbDataTree_cxx

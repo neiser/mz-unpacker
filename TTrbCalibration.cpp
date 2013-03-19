@@ -14,8 +14,7 @@ TTrbCalibration::TTrbCalibration(string cUserDataFilename, Int_t nUserCalibratio
 	}
 }
 
-TTrbCalibration::~TTrbCalibration(){
-	// MH|19/02/2013> ROOT causes segmentation fault when exiting after calibration! Need ot check this
+TTrbCalibration::~TTrbCalibration() {
 	delete TrbData;
 	delete CalibrationOutfile;
 	//if(!TdcCalibrationData.empty())
@@ -25,13 +24,15 @@ TTrbCalibration::~TTrbCalibration(){
 void TTrbCalibration::ApplyTdcCalibration(){
 	cout << "Creating TClonesArray..." << endl;
 	TClonesArray TdcHits;
-	TdcHits.SetClass("TTrbHit",1000); // declare that TTrbHits are being stored in the TClonesArray
+	TdcHits.SetClass("TTrbHit", 1000); // declare that TTrbHits are being stored in the TClonesArray
 	cout << "Opening output RooT file..." << endl;
 	OpenRootFile();
 	cout << "Creating TTree..." << endl;
 	CreateTree();
 	TTrbEventData *CurrentEventData = new TTrbEventData(TdcHits);
-	TBranch* TrbEvtBranch = OutputTree->Branch("event","TTrbEventData",&CurrentEventData);
+	//TBranch* TrbEvtBranch =
+	OutputTree->Branch("event","TTrbEventData",&CurrentEventData);
+	
 	cout << "Looping over events..." << endl;
 	for(Long64_t nEntryIndex=0; nEntryIndex<nEventsMax; nEntryIndex++){ // begin of loop over events
 		if(bVerboseMode)
@@ -70,46 +71,29 @@ void TTrbCalibration::ApplyTdcCalibration(){
 			}
 		} // end of loop over hits
 		OutputTree->Fill();
-	} // end of loop over events
+		} // end of loop over events
 	cout << "Writing Tree to disk..." << endl;
 	OutputRootFile = OutputTree->GetCurrentFile();
 	OutputRootFile->Write();
 	cout << "Cleaning up after decoding..." << endl;
-	cout << "Deleting Tree..." << hex << OutputTree << dec << endl;
+	if(bVerboseMode)
+		cout << "Deleting Tree..." << hex << OutputTree << dec << endl;
 	delete OutputTree;
 	OutputTree = NULL;
-	cout << "Deleting RooT file..." << endl;
+	if(bVerboseMode)
+		cout << "Deleting RooT file..." << endl;
 	delete OutputRootFile;
 	OutputRootFile = NULL;
-	cout << "Deleting Event Object..." << endl;
+	if(bVerboseMode)
+		cout << "Deleting Event Object..." << endl;
 	delete CurrentEventData;
 	TdcHits.Clear();
-	cout << "Returning to terminal..." << endl;
+	if(bVerboseMode)
+		cout << "Returning to terminal..." << endl;
 }
 
 void TTrbCalibration::ClearFineTimeMap(){
 	TdcCalibrationData.clear(); // clear map containing TDC fine time histograms
-}
-
-TGraph* TTrbCalibration::CreateCalibrationTable(UInt_t nTdcAddress, UInt_t nTdcChannel){
-	stringstream cGraphName;
-	stringstream cGraphTitle;
-	cGraphName << "grTdcChan_" << hex << nTdcAddress << dec << "_" << nTdcChannel;
-	cGraphTitle << "TDC Calibration Table - Channel " << hex << nTdcAddress << dec << "_" << nTdcChannel;
-	TGraph* grCalibrationTable = new TGraph(1);
-	grCalibrationTable->SetName(cGraphName.str().c_str());
-	grCalibrationTable->SetTitle(cGraphTitle.str().c_str());
-	return (grCalibrationTable);
-}
-
-TH1D* TTrbCalibration::CreateFineTimeHistogram(UInt_t nTdcAddress, UInt_t nTdcChannel){
-	stringstream cHistogramName;
-	stringstream cHistogramTitle;
-	cHistogramName << "hTdcChan_" << hex << nTdcAddress << dec << "_" << nTdcChannel;
-	cHistogramTitle << "TDC Fine Time - Channel " << hex << nTdcAddress << dec << "_" << nTdcChannel;
-	//cout << cHistogramName.str() << " " << cHistogramTitle.str() << endl;
-	TH1D* hTdcFineTime = new TH1D(cHistogramName.str().c_str(),cHistogramTitle.str().c_str(),FINE_TIME_BINS,-0.5,FINE_TIME_BINS-0.5);
-	return (hTdcFineTime);
 }
 
 Bool_t TTrbCalibration::CreateTree(){
@@ -130,21 +114,24 @@ void TTrbCalibration::DeleteCalibrationPlots(){
 }
 
 void TTrbCalibration::DoTdcCalibration(){
-	ClearFineTimeMap(); // clear map containing TDC fine time histograms
-	cout << "Filling Fine Time Histograms..." << endl;
-	if(bVerboseMode)
-		cout << "Max Events: " << nEventsMax << endl;
+	// tell ROOT that we manage TH1D memory management by ourselves
+	// this solves the segfault when quitting ROOT (on Linux)
+	TH1D::AddDirectory(kFALSE);
+
+	ClearFineTimeMap(); // clear map containing TDC fine time histograms	
+	cout << "Starting TDC Calibration, " << "max Events: " << nEventsMax << endl;
 	for(Long64_t nEntryIndex=0; nEntryIndex<nEventsMax; ++nEntryIndex){ // begin of loop over events
 		if(TrbData->GetEntry(nEntryIndex)<1) // check if entry exists and is valid
 			continue; // skip rest of loop
 		if(TrbData->Hits_>0){ // check if there are any TDC hits in this event
-			//if(bVerboseMode)
-			//	cout << "Event ID: " << nEntryIndex << endl;
+			if(bVerboseMode)
+				cout << "Event ID: " << nEntryIndex << endl;
 			FillFineTimeHistograms(); // fill fine time histograms
 		}
 	} // end of loop over events
-	cout << ChannelCalibrations.size() << endl;
-	if(bVerboseMode){
+	if(bVerboseMode)
+		cout << "Number of Calibration Channels: " << ChannelCalibrations.size() << endl;
+	if(bVerboseMode) {
 		PrintRefChannels(); // print addresses of found reference channels
 	}
 	cout << "Filling calibration tables..." << endl;
@@ -154,7 +141,10 @@ void TTrbCalibration::DoTdcCalibration(){
 	WriteToFile(); // write TDC fine time histograms to file
 	// after all that we need to loop over data again and generate calibrated timestamps 
 	cout << "Applying calibration..." << endl;
-	ApplyTdcCalibration(); // aplly TDC calibration to raw data
+	ApplyTdcCalibration(); // apply TDC calibration to raw data
+	
+	// switch back to standard memory management (i.e. managed by ROOT)
+	TH1D::AddDirectory(kTRUE);
 }
 
 Bool_t TTrbCalibration::ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
@@ -223,7 +213,8 @@ void TTrbCalibration::FillReferenceCalibrationTables(){
 			continue; // skip rest of loop, however this should never happen (so I need an error flag here)
 		ReferenceCalibrations.insert(make_pair(CopyRefChannel->first,CopyThisChannel->second));
 	}
-	cout << ReferenceCalibrations.size() << endl;
+	if(bVerboseMode)
+		cout << "Number of Reference Calibrations: " << ReferenceCalibrations.size() << endl;
 	if(ReferenceCalibrations.empty()){
 		return;
 	}
@@ -240,11 +231,12 @@ void TTrbCalibration::FillFineTimeHistograms(){
 	if(bVerboseMode)
 		cout << "Looping over hits in event..." << endl;
 	for(Int_t nHitIndex=0; nHitIndex<TrbData->Hits_; nHitIndex++){ // begin of loop over hits in this event
-		std::pair< UInt_t,UInt_t > ChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); // create address pair consisting of FPGA address and TDC channel ID
+		// create address pair consisting of FPGA address and TDC channel ID
+		pair<UInt_t,UInt_t> ChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); 
 		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),ChanAddress)!=ExcludedChannels.end())
 			continue; // skip creation as this channel has been excluded
-		//if(bVerboseMode)
-		//	cout << "Channel " << hex << ChanAddress.first << dec << " " << ChanAddress.second << endl;
+		if(bVerboseMode)
+			cout << "Channel " << hex << ChanAddress.first << dec << " " << ChanAddress.second << endl;
 		// check for reference channels
 		if(TrbData->Hits_bIsRefChannel[nHitIndex]){
 			TdcRefChannels.insert(ChanAddress); // try inserting channel into reference channel map (since it is a map, no duplicates are allowed)
@@ -257,8 +249,8 @@ void TTrbCalibration::FillFineTimeHistograms(){
 			temp.SetVerboseMode(bVerboseMode);
 			temp.SetChannelAddress(ChanAddress);
 			if(bVerboseMode)
-				cout << "Inserting temporaray fine time object into map..." << endl;
-			pair<std::map< std::pair< UInt_t,UInt_t >,TTrbFineTime >::iterator,bool> insert = ChannelCalibrations.insert(make_pair(ChanAddress,temp));
+				cout << "Inserting temporary fine time object into map..." << endl;
+			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert = ChannelCalibrations.insert(make_pair(ChanAddress,temp));
 			ChannelRegistered = insert.first;
 		}
 		if(bVerboseMode)
@@ -320,13 +312,16 @@ void TTrbCalibration::PrintExcludedChannels() const {
 }
 
 void TTrbCalibration::PrintRefChannels() const {
+		
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+ TRBv3 TDC Reference Channel List +" << endl;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++){
+	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++) {
 		cout << hex << MapIndex->first << dec << " " << MapIndex->second << " " << TdcCalibrationData.find(*MapIndex)->second.hFineTime->GetEntries() << endl;
+		//cout << hex << MapIndex->first << dec << " " << MapIndex->second << endl;
 	}
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
+	
 }
 
 void TTrbCalibration::WriteToFile(){
