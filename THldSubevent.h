@@ -21,9 +21,9 @@
 #define NO_ERR_BITS 8
 #define SEB_ERROR_CODE 0x00000001
 #define TRB_HEADER_MARKER 0xC0
-#define TDC_HEADER_MARKER 0b001
-#define TDC_EPOCH_MARKER  0b011
-#define TDC_DEBUG_MARKER  0b010
+#define TDC_HEADER_MARKER 1 // 0b001, |MH> binary definitions work with gcc but not with VC++
+#define TDC_EPOCH_MARKER  3 // 0b011
+#define TDC_DEBUG_MARKER  2 // 0b010
 
 /* +++ ERROR BITS DEFINITION +++
 	BIT 0 -> No global TRB header found
