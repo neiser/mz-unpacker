@@ -92,9 +92,6 @@ void TTrbCalibration::ApplyTdcCalibration(){
 		cout << "Returning to terminal..." << endl;
 }
 
-void TTrbCalibration::ClearFineTimeMap(){
-	TdcCalibrationData.clear(); // clear map containing TDC fine time histograms
-}
 
 Bool_t TTrbCalibration::CreateTree(){
 	if(OutputTree!=NULL){
@@ -106,19 +103,12 @@ Bool_t TTrbCalibration::CreateTree(){
 	return (!OutputTree->IsZombie());
 }
 
-void TTrbCalibration::DeleteCalibrationPlots(){
-	for(std::map< std::pair< UInt_t,UInt_t >,TDC_CAL_DATA >::iterator CurrentChannel=TdcCalibrationData.begin(); CurrentChannel!=TdcCalibrationData.end(); CurrentChannel++){
-		delete CurrentChannel->second.hFineTime; // this doesn't work
-		delete CurrentChannel->second.grCalibrationTable; // and this doesn't work either!
-	}
-}
 
 void TTrbCalibration::DoTdcCalibration(){
 	// tell ROOT that we manage TH1D memory management by ourselves
 	// this solves the segfault when quitting ROOT (on Linux)
 	TH1D::AddDirectory(kFALSE);
 
-	ClearFineTimeMap(); // clear map containing TDC fine time histograms	
 	cout << "Starting TDC Calibration, " << "max Events: " << nEventsMax << endl;
 	for(Long64_t nEntryIndex=0; nEntryIndex<nEventsMax; ++nEntryIndex){ // begin of loop over events
 		if(TrbData->GetEntry(nEntryIndex)<1) // check if entry exists and is valid
@@ -131,12 +121,12 @@ void TTrbCalibration::DoTdcCalibration(){
 	} // end of loop over events
 	if(bVerboseMode)
 		cout << "Number of Calibration Channels: " << ChannelCalibrations.size() << endl;
-	if(bVerboseMode) {
-		PrintRefChannels(); // print addresses of found reference channels
-	}
 	cout << "Filling calibration tables..." << endl;
 	FillReferenceCalibrationTables(); // fill reference channel calibration tables first
 	FillCalibrationTable(); // fill TDC channel calibration tables
+	if(bVerboseMode) 
+		PrintRefChannels(); // print addresses of found reference channels
+	
 	cout << "Writing calibration tables to disk..." << endl;
 	WriteToFile(); // write TDC fine time histograms to file
 	// after all that we need to loop over data again and generate calibrated timestamps 
@@ -207,7 +197,7 @@ void TTrbCalibration::FillReferenceCalibrationTables(){
 	if(TdcRefChannels.empty())
 		return;
 	std::map< std::pair< UInt_t, UInt_t >, TTrbFineTime >::const_iterator CopyThisChannel;
-	for(std::map< UInt_t,UInt_t >::const_iterator CopyRefChannel=TdcRefChannels.begin(); CopyRefChannel!=TdcRefChannels.end(); ++CopyRefChannel){
+	for(std::map< UInt_t,UInt_t >::const_iterator CopyRefChannel=TdcRefChannels.begin(); CopyRefChannel!=TdcRefChannels.end(); ++CopyRefChannel) {
 		CopyThisChannel = ChannelCalibrations.find(make_pair(CopyRefChannel->first,CopyRefChannel->second));
 		if(CopyThisChannel==ChannelCalibrations.end())
 			continue; // skip rest of loop, however this should never happen (so I need an error flag here)
@@ -261,7 +251,6 @@ void TTrbCalibration::FillFineTimeHistograms(){
 
 void TTrbCalibration::Init(){
 	TrbData = NULL; // initialise pointer to data tree
-	ClearFineTimeMap(); // clear map containing TDC fine time histograms
 	TdcRefChannels.clear(); // clear reference channels ID map
 	ExcludedChannels.clear();
 	fBinThreshold = 0.0; // set bin threshold to 0
@@ -273,12 +262,6 @@ void TTrbCalibration::Init(){
 	nEventsMax = 0;
 }
 
-void TTrbCalibration::InitCalibrationData(TDC_CAL_DATA& ChannelCalibration){
-	ChannelCalibration.hFineTime			= NULL;
-	ChannelCalibration.bCalibrationIsValid	= kFALSE;
-	ChannelCalibration.fCalibrationTable.clear();
-	ChannelCalibration.grCalibrationTable	= NULL;
-}
 
 Bool_t TTrbCalibration::OpenRootFile(){
 	if(OutputRootFile!=NULL)
@@ -316,10 +299,8 @@ void TTrbCalibration::PrintRefChannels() const {
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+ TRBv3 TDC Reference Channel List +" << endl;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++) {
-		cout << hex << MapIndex->first << dec << " " << MapIndex->second << " " << TdcCalibrationData.find(*MapIndex)->second.hFineTime->GetEntries() << endl;
-		//cout << hex << MapIndex->first << dec << " " << MapIndex->second << endl;
-	}
+	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++) 
+		cout << hex << MapIndex->first << dec << " " << MapIndex->second << " " << ReferenceCalibrations.find(MapIndex->first)->second.GetEntries() << endl;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
 	
 }

@@ -26,6 +26,7 @@ TTrbFineTime::TTrbFineTime(const TTrbFineTime &a) : TObject(a) { // copy constru
 	nTdcAddress			= a.nTdcAddress;
 	nTdcChannel			= a.nTdcChannel;
 	cChannelName.str(a.cChannelName.str());
+	
 	hFineTimeDistribution = a.hFineTimeDistribution;
 	CalibrationTable	= a.CalibrationTable;
 }
