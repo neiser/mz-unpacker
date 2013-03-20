@@ -285,7 +285,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 						cout << "Found CTS readout packet, skipping it" << endl;
 					CurrentDataWord += nTrbWords+1;
 					bFoundCtsPacket = kTRUE;
-					continue;
+					continue; // skip rest of loop, should bring us to the end of the loop
 				}
 				// else: We cannot skip all "unknown" TRB endpoints since the events might
 				// be encapsulated in exactly such an event (this depends on the TRB hub topology!) 

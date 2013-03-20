@@ -38,6 +38,7 @@ private:
 	void AnalyseHistogram(); // extract information from fine time histogram needed during calibration
 	void CalibrationMode0(); // compute calibration table using simple method
 	void CalibrationMode1(); // compute calibration table using advanced method
+	void FillCalibrationGraph(); // fill calibration table graph
 	void Init(); // initialise object
 	void InitHistogram(); // initialise fine time histogram
 	void SetChannelName(Bool_t bSetRandom); // set channel name based on TDC address and TDC channel ID
@@ -58,6 +59,7 @@ protected:
 	stringstream cChannelName; // name of readout channel
 	TH1D hFineTimeDistribution; // histogram containing fine time data
 	TH1D hBinWidth; // histogram containing distribution of fine time bin widths
+	TGraph grCalibrationTable; // graph showing the calibration correlation
 	std::map< UInt_t,Double_t > CalibrationTable; // map containing calibration constants (value) for each fine time bin (index)
 public:
 	TTrbFineTime(); // standard constructor
