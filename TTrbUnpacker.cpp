@@ -196,7 +196,7 @@ void TTrbUnpacker::PrintSubEventId(){
 }
 
 void TTrbUnpacker::PrintCtsAddress(){
-	cout << "Trigger Control System (TCS) is at 0x" << hex << TrbSettings.nSubEventId << dec << endl;
+	cout << "Trigger Control System (TCS) is at 0x" << hex << TrbSettings.nCtsAddress << dec << endl;
 }
 
 

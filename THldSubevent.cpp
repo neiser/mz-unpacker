@@ -268,11 +268,11 @@ Bool_t THldSubEvent::ReadTrbData() {
 		if(nTdcWords==0) {
 			// look for DataWord with matching TrbAddress
 			nTrbAddress = *CurrentDataWord & 0xFFFF;
-			nTrbWords = *CurrentDataWord>>16;
+			nTrbWords	= *CurrentDataWord>>16;
 			if(nTrbWords<=SubEventHeader.nSize) {
 				if(CheckTrbAddress(nTrbAddress)) {
 					// we recognized it as an TDC endpoint (might still be wrong...)
-					nTdcWords = nTrbWords;
+					nTdcWords	= nTrbWords;
 					nTdcAddress = nTrbAddress;
 					if(bVerboseMode)
 						cout << "TDC Endpoint found at 0x" << setfill('0') << setw(4)
@@ -280,7 +280,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 				}
 				else if(nTrbAddress==TrbSettings->nCtsAddress) {
 					// this information is not used at the moment,
-					// so we skip payload it to exclude misidentifaction as an endpoint word
+					// so we skip payload to exclude misidentifaction as an endpoint word
 					if(bVerboseMode)
 						cout << "Found CTS readout packet, skipping it" << endl;
 					CurrentDataWord += nTrbWords+1;
@@ -296,7 +296,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 			// At beginning, we expect a TDC Header
 			if(!DecodeTdcHeader(CurrentDataWord, TdcHeader)) {
 				ErrorCode.set(2);
-				cerr << "ERROR in Subevent " << SubEventHeader.nTrigger <<": TDC Header " <<hex<<*CurrentDataWord<<dec<< " invalid, start searching again ("<< nTdcWords << " words)" << endl;
+				cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger << ": TDC Header " <<*CurrentDataWord << dec << " invalid, start searching again ("<< nTdcWords << " words)" << endl;
 				// Let's see if it's a word with an interesting address
 				// we cannot really rely on nTdcWords to skip this payload...
 				nTdcWords = 0;				
