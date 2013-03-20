@@ -58,15 +58,22 @@ void TTrbCalibration::ApplyTdcCalibration(){
 			std::pair< UInt_t,UInt_t > TdcChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); // extract TDC channel address
 			std::map< std::pair< UInt_t,UInt_t >,TTrbFineTime >::const_iterator FindTdcChannel = ChannelCalibrations.find(TdcChanAddress); // find channel address in calibration map
 			if(FindTdcChannel!=ChannelCalibrations.end()){ // check if channel is calibrated
-				if(FindTdcChannel->second.IsCalibrated()){ // channel calibration is valid
-					fHitTime = TrbData->Hits_nCoarseTime[nHitIndex] * CLOCK_CYCLE_LENGTH - FindTdcChannel->second.GetCalibratedTime(TrbData->Hits_nFineTime[nHitIndex]);
+				// first calculate time roughly, including epoch counter, which counts the overflows of coarse time
+				// we don't use << binary operator due to overflow
+				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2,COARSE_TIME_BITS) 
+				                                              + TrbData->Hits_nCoarseTime[nHitIndex]);
+				// Have a look, which calibration for the fine time we use...
+				// Any yes, fine time needs to be SUBTRACTED, see TDC documentation!
+				if(FindTdcChannel->second.IsCalibrated()) { // channel calibration is valid, then use it
+					fHitTime = fHitTimeCoarse - FindTdcChannel->second.GetCalibratedTime(TrbData->Hits_nFineTime[nHitIndex]);
 				}
-				else{ // need to use substitute calibration
+				else{ // need to use substitute calibration from reference channel on same FPGA/TRB endpoint
 					std::map< UInt_t, TTrbFineTime >::const_iterator SubIndex = ReferenceCalibrations.find(TrbData->Hits_nTrbAddress[nHitIndex]);
 					if(SubIndex!=ReferenceCalibrations.end()){
-						fHitTime = TrbData->Hits_nCoarseTime[nHitIndex] * CLOCK_CYCLE_LENGTH - SubIndex->second.GetCalibratedTime(TrbData->Hits_nFineTime[nHitIndex]);
+						fHitTime = fHitTimeCoarse - SubIndex->second.GetCalibratedTime(TrbData->Hits_nFineTime[nHitIndex]);
 					}
 				}
+				// fHitTime could be -1 if no calibration could be found
 				CurrentHit->SetCalibratedTime(fHitTime); // add calibrated time to hit information
 			}
 		} // end of loop over hits
@@ -109,7 +116,10 @@ void TTrbCalibration::DoTdcCalibration(){
 	// this solves the segfault when quitting ROOT (on Linux)
 	TH1D::AddDirectory(kFALSE);
 
-	cout << "Starting TDC Calibration, " << "max Events: " << nEventsMax << endl;
+	cout << "Starting TDC Calibration..." << endl;
+	cout << "Working on \"" << cInputFilename << "\"..." << endl;
+	cout << "Max Events: " << nEventsMax << endl;
+
 	for(Long64_t nEntryIndex=0; nEntryIndex<nEventsMax; ++nEntryIndex){ // begin of loop over events
 		if(TrbData->GetEntry(nEntryIndex)<1) // check if entry exists and is valid
 			continue; // skip rest of loop

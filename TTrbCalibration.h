@@ -32,6 +32,8 @@
 
 #define CLOCK_CYCLE_LENGTH 5.0 // clock cycle length in ns
 
+#define COARSE_TIME_BITS 11 // number of bits of coarse time
+
 #define TREE_AUTOSAVE 300000000 // set to 300 MBytes
 
 #define MIN_STATS 10000 // minimum number of entries in fine time histogram for a valid calibration (this is a guide only)
