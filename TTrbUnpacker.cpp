@@ -32,6 +32,7 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, stri
 		cerr << "Error decoding TDC addresses from file " << cUserTdcAddressesFile << endl;
 		exit (-1);
 	}
+	CheckHubTdcAddresses(); // Check if HUBs and endpoints are consistent
 	if(!SetTdcRefChannel(nUserTdcRefChannel)){
 		cerr << "Error setting TDC reference channel!" << endl;
 	}
@@ -341,6 +342,23 @@ Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 	TrbSettings.nTdcAddress.resize(cTdcAddresses.size());
 	transform(cTdcAddresses.begin(),cTdcAddresses.end(),TrbSettings.nTdcAddress.begin(),HexStringToInt);
 	return(cTdcAddresses.size());
+}
+
+void TTrbUnpacker::CheckHubTdcAddresses() {
+	// we should find a matching hub address (regarding upper 28 bits)
+	// for each TDC endpoint. If we don't, print a WARNING!
+	for(unsigned i=0; i<TrbSettings.nTdcAddress.size(); i++) {
+		UInt_t TdcAddressUpper28bits = TrbSettings.nTdcAddress[i] & 0xFFF0;
+		Bool_t foundIt = kFALSE;
+		for(unsigned j=0; j<TrbSettings.nHubAddress.size(); j++) {
+			UInt_t hubAddress = TrbSettings.nHubAddress[j];
+			if(hubAddress == TdcAddressUpper28bits)
+				foundIt = kTRUE;
+		}
+		if(!foundIt)
+			cout << "WARNING: TDC endpoint address " << hex << TrbSettings.nTdcAddress[i]
+			     <<" not fitting to HUB addresses list (forgot to add Hub address?)" << endl;
+	}
 }
 
 

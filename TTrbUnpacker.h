@@ -58,6 +58,7 @@ private:
 	Bool_t SetCtsAddress(string cUserCtsAddress); // set TRB Address of Central Trigger System (TRBv3: 0x0002)
 	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
 	Int_t SetHubAddresses(string cUserHubAddressesFile); // set HUB addresses using list in file
+	void CheckHubTdcAddresses();
 	//void WriteSettingsToLog();
 protected:
 	string cHldFilename; // HLD file name as provided by the user
