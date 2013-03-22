@@ -2,7 +2,7 @@
 
 ClassImp(TTrbUnpacker);
 
-TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTdcAddressesFile,
+TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
                            UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
 	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
 		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
@@ -22,6 +22,10 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, stri
 	}
 	if(!SetCtsAddress(cUserCtsAddress)){
 		cerr << "No Central Trigger System address provided!" << endl;
+		exit (-1);
+	}
+	if(!cUserHubAddressesFile.empty() && SetHubAddresses(cUserHubAddressesFile)<0) { // setting addresses of HUB TRB boards, can be empty! 
+		cerr << "Error decoding Hub addresses from file " << cUserHubAddressesFile << endl;
 		exit (-1);
 	}
 	if(SetTdcAddresses(cUserTdcAddressesFile)<1) { // setting addresses of TRB boards with TDC, need at least 1 address
@@ -200,6 +204,26 @@ void TTrbUnpacker::PrintCtsAddress(){
 }
 
 
+void TTrbUnpacker::PrintHubAddresses(Bool_t bWriteToLog){
+	streambuf *backup;
+	if(bWriteToLog){
+		backup = cout.rdbuf();
+		cout.rdbuf(LogFile.rdbuf());
+	}
+	std::vector<string>::const_iterator CurrentHubString;
+	CurrentHubString = cHubAddresses.begin();
+	std::vector<UInt_t>::const_iterator CurrentHubUInt;
+	CurrentHubUInt = TrbSettings.nHubAddress.begin();
+	cout << "+++ HUB addresses: " << endl;
+	for(;CurrentHubString!=cHubAddresses.end(); CurrentHubString++, CurrentHubUInt++){
+		cout << *CurrentHubString << ", " << hex << *CurrentHubUInt << ", " << dec << *CurrentHubUInt << endl;
+	}	
+	if(bWriteToLog){
+		cout.rdbuf(backup);
+		backup = NULL;
+	}
+}
+
 void TTrbUnpacker::PrintTdcAddresses(Bool_t bWriteToLog){
 	streambuf *backup;
 	if(bWriteToLog){
@@ -210,6 +234,7 @@ void TTrbUnpacker::PrintTdcAddresses(Bool_t bWriteToLog){
 	CurrentTdcString = cTdcAddresses.begin();
 	std::vector<UInt_t>::const_iterator CurrentTdcUInt;
 	CurrentTdcUInt = TrbSettings.nTdcAddress.begin();
+	cout << "+++ TDC addresses: " << endl;
 	for(;CurrentTdcString!=cTdcAddresses.end(); CurrentTdcString++,CurrentTdcUInt++){
 		cout << *CurrentTdcString << ", " << hex << *CurrentTdcUInt << ", " << dec << *CurrentTdcUInt << endl;
 	}
@@ -226,8 +251,9 @@ void TTrbUnpacker::PrintTdcRefChannel(){
 void TTrbUnpacker::PrintUnpackerSettings(){
 	PrintSubEventId();
 	PrintCtsAddress();
-	PrintTdcRefChannel();
+	PrintHubAddresses();
 	PrintTdcAddresses();
+	PrintTdcRefChannel();
 }
 
 void TTrbUnpacker::SetLogFilename(){
@@ -264,6 +290,31 @@ Bool_t TTrbUnpacker::SetCtsAddress(string cUserCtsAddress){
 		return (kFALSE);
 	TrbSettings.nCtsAddress = HexStringToInt(cUserCtsAddress);
 	return (kTRUE);
+}
+
+Int_t TTrbUnpacker::SetHubAddresses(string cUserHubAddressesFile){
+	ifstream UserInputFile(cUserHubAddressesFile.c_str(),ifstream::in);
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode); 
+		switch (tokens.size()) {
+			case 1: 
+				cHubAddresses.push_back(tokens.at(0));
+				break;
+			default:
+				continue; // do nothing => ignore line
+		}
+	} // end loop over input file
+	UserInputFile.close();
+	if(bVerboseMode){
+		cout << cHubAddresses.size() << " HUB addresses decoded." << endl;
+	}
+	TrbSettings.nHubAddress.resize(cHubAddresses.size());
+	transform(cHubAddresses.begin(),cHubAddresses.end(),TrbSettings.nHubAddress.begin(),HexStringToInt);
+	return(cHubAddresses.size());
 }
 
 

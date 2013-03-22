@@ -57,11 +57,13 @@ private:
 	Bool_t SetSubEventId(string cUserSubEventId); // set ID of subevent being decoded (TRBv3: 0x8c00)
 	Bool_t SetCtsAddress(string cUserCtsAddress); // set TRB Address of Central Trigger System (TRBv3: 0x0002)
 	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
+	Int_t SetHubAddresses(string cUserHubAddressesFile); // set HUB addresses using list in file
 	//void WriteSettingsToLog();
 protected:
 	string cHldFilename; // HLD file name as provided by the user
 	string cLogFilename; // log file name derived from HLD file name
 	string cRootFilename; // ROOT file name derived from HLD file name
+	std::vector<string> cHubAddresses; // vector containing HUB addresses as strings
 	std::vector<string> cTdcAddresses; // vector containing TDC addresses as strings
 	std::vector<Int_t> nEvtIndex; // vector containing raw file positions of events
 	TRB_SETUP TrbSettings;
@@ -69,7 +71,7 @@ protected:
 	Bool_t bVerboseMode;
 	
 public:
-	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTdcAddressesFile,
+	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
 	             UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file
@@ -77,6 +79,7 @@ public:
 	UInt_t GetHldEntries() const { return ((UInt_t)nEvtIndex.size()); }; // return size of event index vector
 	void PrintSubEventId();
 	void PrintCtsAddress();
+	void PrintHubAddresses(Bool_t bWriteToLog=kFALSE);
 	void PrintTdcAddresses(Bool_t bWriteToLog=kFALSE);
 	void PrintTdcRefChannel();
 	void PrintUnpackerSettings();
