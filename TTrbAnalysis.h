@@ -22,7 +22,6 @@
 #include "TTrbDataTree.h"
 
 // +++ define constants +++
-#define N_TRB_TDC 4 // number of TDCs per TRB board
 #define N_TDC_CHAN 32 // number of TDC channels
 #define TDC_CHAN_OFFSET 2 // TDC channel index offset (first two channels are reserved for reference time)
 
@@ -47,7 +46,7 @@ private:
 	void Init();
 	Bool_t OpenTrbTree(string cUserDataFilename);
 	Bool_t SetRefTimestamps();
-	Int_t SetTrbAddresses(string cUserTrbAddresses); // set TRB addresses, address delimeter is '|'
+	Int_t SetTrbAddresses(string cUserTdcAddressesFile); // set TRB addresses using text file as input
 protected:
 	TTrbDataTree *TrbData; // pointer to TRB data tree
 	// run control level variables
@@ -55,13 +54,13 @@ protected:
 	// data and setup level variables
 	Int_t nEventsMax; // max number of events in data file
 	Int_t nMaxTdcChannel; // maximum TDC channel ID
-	Int_t nTrbBoards; // number of TRB board addresses defined by user input
-	Int_t nTrbTdcs; // number of TDCs in this configuration
+	Int_t nTrbEndpoints; // number of TRB board addresses defined by user input
 	// event level information for analysis
 	Bool_t bAllRefChanValid; // flag indicating that all reference channel signals are found
 	Int_t nEvtMultHits; // number of channels with multiple hits in event
 public:
-	TTrbAnalysis(string cUserDataFilename, string cUserTrbAddresses, Bool_t bUserVerboseMode=kFALSE); // constructor
+	TTrbAnalysis(string cUserDataFilename, string cUserTdcAddressesFile, Bool_t bUserVerboseMode=kFALSE); // constructor
+	//string cUserTdcAddressesFile
 	~TTrbAnalysis(); // destructor
 	void Analyse(string cUserAnalysisFilename); // analysis routine
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from calibration
@@ -70,8 +69,7 @@ public:
 	std::map< Int_t,Double_t >* GetLeadingEdge() { return (&TdcLeadingEdges); }; // get timestamps of leading edges, no multiple hits!
 	Int_t GetNEvents() const { return (nEventsMax); };
 	Int_t GetNExclChannels() const { return ((Int_t)ExcludedChannels.size()); };
-	Int_t GetNTdcs() const { return (nTrbTdcs); };
-	Int_t GetNTrb() const { return (nTrbBoards); };
+	Int_t GetNTrb() const { return (nTrbEndpoints); };
 	std::map< Int_t,Double_t >* GetToT() { return (&TimeOverThreshold); };
 	void PrintExcludedChannels() const;
 	void PrintRefTimestamps() const;

@@ -2,13 +2,12 @@
 
 ClassImp(TTrbAnalysis);
 
-TTrbAnalysis::TTrbAnalysis(string cUserDataFilename, string cUserTrbAddresses, Bool_t bUserVerboseMode){
+TTrbAnalysis::TTrbAnalysis(string cUserDataFilename, string cUserTdcAddressesFile, Bool_t bUserVerboseMode){
 	bVerboseMode = bUserVerboseMode; // set verbose mode flag according to user input
 	Init(); // initialise variables
-	nTrbBoards	= SetTrbAddresses(cUserTrbAddresses); // decode TRB board addresses provided by user
-	if(nTrbBoards<1) // no TRB boards defined
+	nTrbEndpoints	= SetTrbAddresses(cUserTdcAddressesFile); // decode TRB board addresses provided by user
+	if(nTrbEndpoints<1) // no TRB boards defined
 		exit (-1);
-	nTrbTdcs = nTrbBoards * N_TRB_TDC;
 	if(!OpenTrbTree(cUserDataFilename)) // check if we can open TRB data tree
 		exit (-1);
 }
@@ -157,12 +156,12 @@ void TTrbAnalysis::ClearEventMaps(){
 Int_t TTrbAnalysis::ComputeTdcChanId(UInt_t nTrbAddress, UInt_t nTdcChannel){
 	// compute uinque channel index based on FPGA address and TDC channel number
 	std::map<UInt_t,UInt_t>::const_iterator TrbIndex;
-	TrbIndex = TrbAddresses.find((nTrbAddress&0xFFF0));
+	TrbIndex = TrbAddresses.find(nTrbAddress);
 	if(TrbIndex==TrbAddresses.end()) // check if TRB address is present in user list
 		return (-1);
-	UInt_t nTdcIndex = nTrbAddress&0xF;
+	//UInt_t nTdcIndex = nTrbAddress&0xF;
 	//cout << nTrbAddress << " , " << TrbIndex->second << " , " << nTdcIndex << endl;
-	Int_t nUniqueId = (nTdcChannel-TDC_CHAN_OFFSET) + (nTdcIndex-1) * N_TDC_CHAN + TrbIndex->second * N_TRB_TDC * N_TDC_CHAN;
+	Int_t nUniqueId = (nTdcChannel-TDC_CHAN_OFFSET) + TrbIndex->second * N_TDC_CHAN;
 	return (nUniqueId);
 }
 
@@ -262,7 +261,7 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			CurrentTdcHit--;
 			continue; // skip rest of loop
 		}
-		if((CurrentTdcHit->first % 2)!=0){ // channel number not even, skip this entry
+		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET) % 2)!=0){ // channel number not even, skip this entry
 			continue; // skip rest of loop
 		}
 		// adjust for reference time
@@ -322,7 +321,7 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 			++nMultipleHits;
 			continue; // skip rest of loop
 		}
-		if((CurrentTdcHit->first % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
+		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET) % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
 			++CurrentTdcHit;
 			continue; // skip rest of loop
 		}
@@ -347,8 +346,7 @@ void TTrbAnalysis::Init(){
 	// intialise setup specific variables
 	nEventsMax		= -1; // number of events in data set
 	nMaxTdcChannel	= 0; // unique index of last channel
-	nTrbBoards		= 0; // number of TRB boards in setup
-	nTrbTdcs		= 0; // number of TDCs in setup
+	nTrbEndpoints	= 0; // number of TRB boards in setup
 	// initialise event level variables
 	bAllRefChanValid = kFALSE;
 	nEvtMultHits	= 0; // number of channels with multiple hits
@@ -440,32 +438,47 @@ Bool_t TTrbAnalysis::SetRefTimestamps(){
 			continue; // skip rest of loop
 		TdcRefTimes.insert(make_pair(TrbData->Hits_nTrbAddress[i],i)); // fill TDC address and array index into map
 	}
-	if(TdcRefTimes.size()!=TrbAddresses.size()*N_TRB_TDC)
+	if(TdcRefTimes.size()!=TrbAddresses.size())
 		return (kFALSE);
 	return (kTRUE);
 }
 
 
-Int_t TTrbAnalysis::SetTrbAddresses(string cUserTrbAddresses){ 
+Int_t TTrbAnalysis::SetTrbAddresses(string cUserTdcAddressesFile){ 
 	// set TRB addresses, address delimeter is '|'
-	if(cUserTrbAddresses.empty()){ // check if TRB address string is empty
+	if(cUserTdcAddressesFile.empty()){ // check if TRB address string is empty
 		if(bVerboseMode)
 			cout << "TRB address string is empty!" << endl;
 		return 0;
 	}
-	std::vector<string> cDecodedTrbAddresses; // vector containing TRB addresses as strings
-	cDecodedTrbAddresses = LineParser(cUserTrbAddresses,'|',bVerboseMode); 
-	UInt_t nBoardIndex = 0;
-	pair< std::map< UInt_t,UInt_t >::iterator,bool > InsertSuccess;
-	for(std::vector<string>::const_iterator CurrentBoard=cDecodedTrbAddresses.begin(); CurrentBoard!=cDecodedTrbAddresses.end(); CurrentBoard++){
-		InsertSuccess = TrbAddresses.insert(make_pair(HexStringToInt(*CurrentBoard),nBoardIndex));
-		if(InsertSuccess.second) // check if TRB address has been added to map
-			nBoardIndex++; // increment board index
+	ifstream UserInputFile(cUserTdcAddressesFile.c_str(),ifstream::in); // open text file containing TRB endpoint addresses
+	if(!UserInputFile.is_open()){ // check if opening text file was successful
+		cerr << "Could not open TRB addresses file " << cUserTdcAddressesFile << endl;
+		return (0);
 	}
-	nMaxTdcChannel = N_TRB_TDC * N_TDC_CHAN * (Int_t)TrbAddresses.size();
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode);
+		UInt_t nBoardIndex;
+		switch (tokens.size()) {
+			case 1: // we only expect one address per line
+				//cTdcAddresses.push_back(tokens.at(0));
+				nBoardIndex = (Int_t)distance(TrbAddresses.begin(),TrbAddresses.end());
+				TrbAddresses.insert(make_pair(HexStringToInt(tokens.at(0)),nBoardIndex));
+				break;
+			default: // anything with more than one token per line will be ignored!
+				continue; // do nothing
+		}
+	} // end loop over input file
+	UserInputFile.close(); // close text file
 	if(bVerboseMode){
+		cout << TrbAddresses.size() << " TDC endpoint addresses decoded." << endl;
 		PrintTrbAddresses();
 	}
+	nMaxTdcChannel = (Int_t)TrbAddresses.size() * N_TDC_CHAN;
 	return (TrbAddresses.size());
 }
 
@@ -473,14 +486,12 @@ void TTrbAnalysis::WriteTdcMapping(string cUserMappingFile) {
 	if(cUserMappingFile.empty())
 		return;
 	ofstream MappingFileOut(cUserMappingFile.c_str()); // open text file for writing mapping scheme
-	for(std::map<UInt_t,UInt_t>::const_iterator CurTrbBoard=TrbAddresses.begin(); CurTrbBoard!=TrbAddresses.end(); ++CurTrbBoard){ // begin loop over TRB board addresses
-		for(Int_t nTdcIndex=1; nTdcIndex<(N_TRB_TDC+1); nTdcIndex++){ // begin loop over TDCs
-			UInt_t nTrbAddress = CurTrbBoard->first + (UInt_t)nTdcIndex;
-			for(Int_t i=TDC_CHAN_OFFSET; i<(N_TDC_CHAN+TDC_CHAN_OFFSET); ++i){ // begin loop over TDC channels
-				Int_t nTdcChanId = ComputeTdcChanId(nTrbAddress,(UInt_t)i);
-				MappingFileOut << hex << nTrbAddress << dec << "\t" << i << "\t" << nTdcChanId << endl;
-			} // end of loop over TDC channels
-		} // end of loop over TDCs
+	for(std::map<UInt_t,UInt_t>::const_iterator CurTrbBoard=TrbAddresses.begin(); CurTrbBoard!=TrbAddresses.end(); ++CurTrbBoard){ // begin loop over TRB endpoint addresses
+		//UInt_t nTrbAddress = CurTrbBoard->first + (UInt_t)nTdcIndex;
+		for(Int_t i=TDC_CHAN_OFFSET; i<(N_TDC_CHAN+TDC_CHAN_OFFSET); ++i){ // begin loop over TDC channels
+			Int_t nTdcChanId = ComputeTdcChanId(CurTrbBoard->first,(UInt_t)i);
+			MappingFileOut << hex << CurTrbBoard->first << dec << "\t" << i << "\t" << nTdcChanId << endl;
+		} // end of loop over TDC channels
 	} // end of loop over TRB board addresses
 	MappingFileOut.close();
 }
