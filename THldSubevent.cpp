@@ -19,7 +19,11 @@ THldSubEvent::~THldSubEvent(){ // destructor
 	//delete TrbHits;
 }
 
-Bool_t THldSubEvent::CheckTdcAddress(UInt_t nUserTdcAddress){
+Bool_t THldSubEvent::CheckHubAddress(UInt_t& nUserHubAddress){
+	return ( find(TrbSettings->nHubAddress.begin(),TrbSettings->nHubAddress.end(),nUserHubAddress) != TrbSettings->nHubAddress.end());
+}
+
+Bool_t THldSubEvent::CheckTdcAddress(UInt_t& nUserTdcAddress){
 	return ( find(TrbSettings->nTdcAddress.begin(),TrbSettings->nTdcAddress.end(),nUserTdcAddress) != TrbSettings->nTdcAddress.end());
 }
 
@@ -34,8 +38,9 @@ Bool_t THldSubEvent::Decode(){ // decode subevent
 		cout << "Subevent: Reading TRBv3 data..." << endl;
 
 	if(!ReadTrbData()){
-		cout << "ERROR parsing the following TRBv3 data (CHECK THIS!):" << endl;
-		PrintTrbData();
+		cout << "ERROR parsing the following TRBv3 data (CHECK THIS!)" << endl;
+		if(bVerboseMode)
+			PrintTrbData();
 		// still try reading the trailer of the subevent
 		ReadTrailer();			
 		return (kFALSE);
@@ -61,13 +66,13 @@ void THldSubEvent::DecodeBaseEventSize(){
 	nBaseEventSize = 1 << ((SubEventHeader.nDecoding >> 16) & 0xFF);
 }
 
-Bool_t THldSubEvent::DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, TDC_HEADER& TdcHeader){
+Bool_t THldSubEvent::DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader){
 	ClearTdcHeader(TdcHeader);
-	if(((*DataWord>>29) & 0x7) != TDC_HEADER_MARKER) { // check 3 bits reserved for TDC header marker
+	if(((DataWord>>29) & 0x7) != TDC_HEADER_MARKER) { // check 3 bits reserved for TDC header marker
 		return (kFALSE);
 	}
-	TdcHeader.nRandomBits	= (*DataWord>>16) & 0xFF;
-	TdcHeader.nErrorBits	= *DataWord & 0xFFFF;
+	TdcHeader.nRandomBits	= (DataWord>>16) & 0xFF;
+	TdcHeader.nErrorBits	= DataWord & 0xFFFF;
 	if(bVerboseMode){
 		cout << "TDC Header word found!" << endl;
 		cout << "TDC Error Code is " << hex << TdcHeader.nErrorBits << dec << endl;
@@ -76,19 +81,18 @@ Bool_t THldSubEvent::DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWor
 	return (kTRUE);
 }
 
-Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
-                                   UInt_t nUserTdcAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
+Bool_t THldSubEvent::DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
 
 	// first check if word is EPOCH or DEBUG
-	UInt_t FirstThreeBits =  (*DataWord>>29) & 0x7;
+	UInt_t FirstThreeBits =  (DataWord>>29) & 0x7;
 
 	// put the EPOCH number into the SubEvent's member
 	if(FirstThreeBits == TDC_EPOCH_MARKER) {
 		if(bVerboseMode)
-			cout << "Found EPOCH word:  " << hex << *DataWord << ", " << nUserTdcAddress
+			cout << "Found EPOCH word:  " << hex << DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		// lowest 28bits represent epoch counter
-		nTdcEpochCounter = *DataWord & 0xFFFFFFF;
+		nTdcEpochCounter = DataWord & 0xFFFFFFF;
 		// this indicates that we found an EPOCH counter 
 		nTdcLastChannelNo = -2;
 		return kFALSE;
@@ -97,21 +101,21 @@ Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
 	// check for DEBUG, we don't use this info at the moment
 	if(FirstThreeBits == TDC_DEBUG_MARKER) {
 		if(bVerboseMode)
-			cout << "Found DEBUG word:  " << hex << *DataWord << ", " << nUserTdcAddress
+			cout << "Found DEBUG word:  " << hex << DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		return kFALSE;
 	}
 	
 	// now we expect a TIMEDATA word...if not, we don't know :)
-	if((*DataWord>>31) != 1) { // check time data marker i.e. MSB==1
+	if((DataWord>>31) != 1) { // check time data marker i.e. MSB==1
 		if(bVerboseMode)
-			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << *DataWord << ", " << nUserTdcAddress
+			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		
 		return kFALSE;
 	}
 	
-	UInt_t nTdcChannelNo	= (*DataWord>>22) & 0x7F; // TDC channel number is represented by 7 bits
+	UInt_t nTdcChannelNo	= (DataWord>>22) & 0x7F; // TDC channel number is represented by 7 bits
 	// check here if we need to reset the EPOCH counter
 	if(nTdcLastChannelNo>=0 && (Int_t)nTdcChannelNo != nTdcLastChannelNo) {
 		if(bVerboseMode)
@@ -120,15 +124,15 @@ Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
 	}
 
 	Bool_t bIsRefChannel	= (nTdcChannelNo==TrbSettings->nTdcRefChannel) ? kTRUE : kFALSE;
-	UInt_t nTdcFineTime		= (*DataWord>>12) & 0x3FF; // TDC fine time is represented by 10 bits
-	UInt_t nTdcEdge			= (*DataWord>>11) & 0x1; // TDC edge indicator: 1->rising edge, 0->falling edge
-	UInt_t nTdcCoarseTime	= *DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
+	UInt_t nTdcFineTime		= (DataWord>>12) & 0x3FF; // TDC fine time is represented by 10 bits
+	UInt_t nTdcEdge			= (DataWord>>11) & 0x1; // TDC edge indicator: 1->rising edge, 0->falling edge
+	UInt_t nTdcCoarseTime	= DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
 	TTrbHit* CurrentHit = (TTrbHit*)Hits->ConstructedAt(nTdcHits); // create new TTrbHit in TclonesArray Hits
 	CurrentHit->SetVerboseMode(bVerboseMode);
 	CurrentHit->Set(nUserTdcAddress,nTdcChannelNo,TdcHeader.nRandomBits,TdcHeader.nErrorBits,
 	                nTdcEdge,nTdcEpochCounter,nTdcCoarseTime,nTdcFineTime,bIsRefChannel);
 	if(bVerboseMode)
-		cout << "Found TIMEDATA word:  " <<hex << *DataWord << dec << ", channel " << nTdcChannelNo
+		cout << "Found TIMEDATA word:  " <<hex << DataWord << dec << ", channel " << nTdcChannelNo
 		     << " Epoch:" << nTdcEpochCounter  << " last: " << nTdcLastChannelNo << endl;
 	nTdcLastChannelNo = (Int_t)nTdcChannelNo;
 	return kTRUE;
@@ -237,7 +241,7 @@ Bool_t THldSubEvent::ReadTrailer() { // read subevent trailer information
 	return (kTRUE);
 }
 
-Bool_t THldSubEvent::ReadTrbData() {
+Bool_t THldSubEvent::ReadTrbData() {	
 	size_t nTrbDataBytes = nDataBytes - sizeof(SUB_TRAILER); // compute number of TRB data bytes to read
 	size_t nTrbDataWords = nTrbDataBytes/sizeof(UInt_t); // compute number of TRB data words to read
 	if(bVerboseMode)
@@ -262,33 +266,53 @@ Bool_t THldSubEvent::ReadTrbData() {
 	
 	TDC_HEADER TdcHeader;
 	
-	std::vector<UInt_t>::iterator CurrentDataWord=nTrbData.begin();
-
-	while(CurrentDataWord<nTrbData.end()){ // loop over all TRB data and decode TDC hits
-		if(nTdcWords==0) {
+	//std::vector<UInt_t>::iterator CurrentDataWord=nTrbData.begin();
+	unsigned i=0;
+	for(i=0;i<nTrbData.size();i++){ // loop over all TRB data and decode TDC hits
+		
+		UInt_t CurrentDataWord = nTrbData[i]; 
+		if(bVerboseMode)
+			cout << "i=" <<i<<" Data: "<<setfill('0') << setw(8)<<hex<<CurrentDataWord<<endl;
+		if(nTdcWords==0) {			
 			// look for DataWord with matching TrbAddress
-			nTrbAddress = *CurrentDataWord & 0xFFFF;
-			nTrbWords	= *CurrentDataWord>>16;
-			if(nTrbWords<=SubEventHeader.nSize) {
-				if(CheckTdcAddress(nTrbAddress)) {
-					// we recognized it as an TDC endpoint (might still be wrong...)
-					nTdcWords	= nTrbWords;
-					nTdcAddress = nTrbAddress;
-					if(bVerboseMode)
-						cout << "TDC Endpoint found at 0x" << setfill('0') << setw(4)
-						     << hex << nTdcAddress << dec << ", Payload " << nTdcWords << endl;
-				}
-				else if(nTrbAddress==TrbSettings->nCtsAddress) {
-					// this information is not used at the moment,
-					// so we skip payload to exclude misidentifaction as an endpoint word
-					if(bVerboseMode)
-						cout << "Found CTS readout packet, skipping it" << endl;
-					CurrentDataWord += nTrbWords+1;
-					bFoundCtsPacket = kTRUE;
-					continue; // skip rest of loop, should bring us to the end of the loop
-				}
-				// else: We cannot skip all "unknown" TRB endpoints since the events might
-				// be encapsulated in exactly such an event (this depends on the TRB hub topology!) 
+			nTrbAddress = CurrentDataWord & 0xFFFF;
+			nTrbWords	= CurrentDataWord>>16;
+		
+			if(CheckHubAddress(nTrbAddress)) {
+				// we found a interesting hub, we simply do nothing but
+				// to go one level deeper in the topology
+				// a consistency check could verify if nTrbWords extracted now
+				// will fit to the words of the following subsubevent
+				// (but it's complicated since you don't know the depth of the topology tree) 
+				if(bVerboseMode)
+					cout << "Known HUB found at 0x" << setfill('0') << setw(4)
+					     << hex << nTrbAddress << dec << ", Subsubevent size " << nTrbWords << endl;
+	
+			}
+			else if(CheckTdcAddress(nTrbAddress)) {
+				// we recognized it as an TDC endpoint (might still be wrong...)
+				nTdcWords	= nTrbWords;
+				nTdcAddress = nTrbAddress;
+				if(bVerboseMode)
+					cout << "TDC Endpoint found at 0x" << setfill('0') << setw(4)
+					     << hex << nTdcAddress << dec << ", Payload " << nTdcWords << endl;
+			}
+			else if(nTrbAddress==TrbSettings->nCtsAddress) {
+				// this information is not used at the moment,
+				// so we skip payload to exclude misidentifaction as an endpoint word
+				if(bVerboseMode)
+					cout << "Found CTS readout packet, skipping it (" << nTrbWords << " words)" << endl;
+				i += nTrbWords;
+				bFoundCtsPacket = kTRUE;
+				continue; // skip rest of loop, should bring us to the end of the loop
+			}
+			else {
+				// this doesn't seem to be interesting data, so skip it
+				if(bVerboseMode)
+					cout << "Found uninteresting data at 0x" << setfill('0') << setw(4)
+					     << hex << nTrbAddress << dec << " (not HUB, not TDC, not CTS), skipping it ("  << nTrbWords << " words)" << endl;
+				i += nTrbWords;
+				continue;
 			}
 			
 		}
@@ -296,12 +320,13 @@ Bool_t THldSubEvent::ReadTrbData() {
 			// At beginning, we expect a TDC Header
 			if(!DecodeTdcHeader(CurrentDataWord, TdcHeader)) {
 				ErrorCode.set(2);
-				cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger << ": TDC Header " <<*CurrentDataWord << dec << " invalid, start searching again ("<< nTdcWords << " words)" << endl;
-				// Let's see if it's a word with an interesting address
-				// we cannot really rely on nTdcWords to skip this payload...
+				cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger << ": TDC Header "
+				     << CurrentDataWord << dec << " invalid, skipping payload ("<< nTdcWords << " words)" << endl;
+				i += nTdcWords-1;
 				nTdcWords = 0;				
 				continue;
 			}
+			// successfully parsed Tdc Header
 			nTdcWords--;
 		}
 		else {
@@ -316,24 +341,21 @@ Bool_t THldSubEvent::ReadTrbData() {
 			}
 		}
 		
-		CurrentDataWord++; // go to next data word
 	} // end of loop over all TRB data
 
 	
 	
-	if(CurrentDataWord!=nTrbData.end()) {
-		cerr << "ERROR in Subevent " << SubEventHeader.nTrigger <<": Skipping too many words " << endl;
+	if(i != nTrbData.size()) {
+		cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": Skipped too many words: "<<dec <<i<<" "<<nTrbData.size() << endl;
 		ErrorCode.set(5);	
-		return (kFALSE);
 	}
 
 	if(!bFoundCtsPacket) {
-		cerr << "ERROR in Subevent " << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
+		cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
 		ErrorCode.set(6);
-		return kFALSE;
 	}
-
-	return (kTRUE);
+	
+	return ErrorCode.any() ? kFALSE : kTRUE;
 }
 
 

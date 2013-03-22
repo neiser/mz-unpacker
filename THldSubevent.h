@@ -47,12 +47,12 @@ class THldSubEvent : public TObject{
 	friend void ClearTdcHeader(TDC_HEADER& TdcHeader);
  private:
 	ifstream* HldFile;
-	Bool_t CheckTdcAddress(UInt_t nUserTdcAddress); // check decoded TRB address against user provided list
+	Bool_t CheckHubAddress(UInt_t& nUserHubAddress); // check decoded HUB address against user provided list
+	Bool_t CheckTdcAddress(UInt_t& nUserTdcAddress); // check decoded TDC address against user provided list
 	void DecodeBaseEventSize();
 	//Bool_t DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, UInt_t& nTdcRandomBits, UInt_t& nTdcErrorCode);
-	Bool_t DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, TDC_HEADER& TdcHeader);
-	Bool_t DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord, UInt_t nUserTdcAddress, TDC_HEADER& TdcHeader);
-	Bool_t DecodeTrbHeader(std::vector<UInt_t>::const_iterator DataWord, UInt_t& nTdcAddress, size_t& nTrbWords);
+	Bool_t DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader);
+	Bool_t DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader);
 	void Init(); // initialise variables etc.
 	Bool_t ReadHeader(); // read subevent header words
 	Bool_t ReadTrailer(); // read subevent trailer words

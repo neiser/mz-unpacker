@@ -345,6 +345,8 @@ Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 }
 
 void TTrbUnpacker::CheckHubTdcAddresses() {
+	if(TrbSettings.nHubAddress.empty())
+		return;
 	// we should find a matching hub address (regarding upper 28 bits)
 	// for each TDC endpoint. If we don't, print a WARNING!
 	for(unsigned i=0; i<TrbSettings.nTdcAddress.size(); i++) {
