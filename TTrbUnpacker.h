@@ -52,10 +52,7 @@ private:
 	void RewindFile() { InputHldFile.seekg(0,ios::beg); }; // set file get pointer to beginning of HLD file
 	void SetHldFilename(string cUserFilename) { cHldFilename=cUserFilename; };
 	void SetLogFilename();
-	Bool_t SetTdcRefChannel(UInt_t nUserTdcRefChannel); // set TRB reference channel, usually 0 or 1
 	void SetRootFilename(); // set file name of output RooT file
-	Bool_t SetSubEventId(string cUserSubEventId); // set ID of subevent being decoded (TRBv3: 0x8c00)
-	Bool_t SetCtsAddress(string cUserCtsAddress); // set TRB Address of Central Trigger System (TRBv3: 0x0002)
 	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
 	Int_t SetHubAddresses(string cUserHubAddressesFile); // set HUB addresses using list in file
 	void CheckHubTdcAddresses();
@@ -72,7 +69,7 @@ protected:
 	Bool_t bVerboseMode;
 	
 public:
-	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
+	TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
 	             UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file

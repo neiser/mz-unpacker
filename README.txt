@@ -12,7 +12,7 @@
 root[0] .x BuildTrbUnpacker.cpp
 
 + Run Unpacker
-root[1] TTrbUnpacker a(HLD_filename, "8c00", "0002", "HUB_Addresses_test.txt", "TDC_Addresses_test.txt", 1, kTRUE)
+root[1] TTrbUnpacker a(HLD_filename, 0x8c00, 0x0002, "HUB_Addresses_test.txt", "TDC_Addresses_test.txt", 1, kTRUE)
 # first hex number: subevent id
 # second hex number: TRB address of trigger control system
 # also provide a more or less complete list of endpoint addresses of TDCs in TDC_Addresses_test.txt

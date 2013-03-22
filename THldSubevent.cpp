@@ -38,7 +38,7 @@ Bool_t THldSubEvent::Decode(){ // decode subevent
 		cout << "Subevent: Reading TRBv3 data..." << endl;
 
 	if(!ReadTrbData()){
-		cout << "ERROR parsing the following TRBv3 data (CHECK THIS!)" << endl;
+		cout << "ERROR parsing the TRBv3 data (CHECK THIS!)" << endl;
 		if(bVerboseMode)
 			PrintTrbData();
 		// still try reading the trailer of the subevent
@@ -266,7 +266,6 @@ Bool_t THldSubEvent::ReadTrbData() {
 	
 	TDC_HEADER TdcHeader;
 	
-	//std::vector<UInt_t>::iterator CurrentDataWord=nTrbData.begin();
 	unsigned i=0;
 	for(i=0;i<nTrbData.size();i++){ // loop over all TRB data and decode TDC hits
 		

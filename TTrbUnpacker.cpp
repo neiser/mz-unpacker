@@ -2,7 +2,8 @@
 
 ClassImp(TTrbUnpacker);
 
-TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
+TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress,
+                           string cUserHubAddressesFile, string cUserTdcAddressesFile,
                            UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
 	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
 		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
@@ -16,14 +17,11 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, stri
 		cerr << "Error open HLD file " << cHldFilename << " !" << endl;
 		exit (-1);
 	}
-	if(!SetSubEventId(cUserSubEventId)){
-		cerr << "No subevent ID provided!" << endl;
-		exit (-1);
-	}
-	if(!SetCtsAddress(cUserCtsAddress)){
-		cerr << "No Central Trigger System address provided!" << endl;
-		exit (-1);
-	}
+
+	TrbSettings.nSubEventId = cUserSubEventId;
+	TrbSettings.nCtsAddress = cUserCtsAddress;
+	
+	
 	if(!cUserHubAddressesFile.empty() && SetHubAddresses(cUserHubAddressesFile)<0) { // setting addresses of HUB TRB boards, can be empty! 
 		cerr << "Error decoding Hub addresses from file " << cUserHubAddressesFile << endl;
 		exit (-1);
@@ -33,9 +31,9 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, stri
 		exit (-1);
 	}
 	CheckHubTdcAddresses(); // Check if HUBs and endpoints are consistent
-	if(!SetTdcRefChannel(nUserTdcRefChannel)){
-		cerr << "Error setting TDC reference channel!" << endl;
-	}
+
+	TrbSettings.nTdcRefChannel = nUserTdcRefChannel;
+	
 	if(bVerboseMode)
 		PrintUnpackerSettings();
 	SetRootFilename(); // set RooT output filename
@@ -263,14 +261,6 @@ void TTrbUnpacker::SetLogFilename(){
 		cout << "Logfile name set to: " << cLogFilename << endl;
 }
 
-Bool_t TTrbUnpacker::SetTdcRefChannel(UInt_t nUserTdcRefChannel){
-	/* 
-		implement allowed range of reference channels here
-	*/
-	TrbSettings.nTdcRefChannel = nUserTdcRefChannel;
-	return (kTRUE);
-}
-
 void TTrbUnpacker::SetRootFilename(){
 	cRootFilename = cHldFilename;
 	cRootFilename.erase(std::remove_if(cRootFilename.begin(),cRootFilename.end(),::isspace),cRootFilename.end()); // remove any white spaces from ROOT file name
@@ -279,19 +269,6 @@ void TTrbUnpacker::SetRootFilename(){
 		cout << "RooT file name set to: " << cRootFilename << endl;
 }
 
-Bool_t TTrbUnpacker::SetSubEventId(string cUserSubEventId){
-	if(cUserSubEventId.empty())
-		return (kFALSE);
-	TrbSettings.nSubEventId = HexStringToInt(cUserSubEventId);
-	return (kTRUE);
-}
-
-Bool_t TTrbUnpacker::SetCtsAddress(string cUserCtsAddress){
-	if(cUserCtsAddress.empty())
-		return (kFALSE);
-	TrbSettings.nCtsAddress = HexStringToInt(cUserCtsAddress);
-	return (kTRUE);
-}
 
 Int_t TTrbUnpacker::SetHubAddresses(string cUserHubAddressesFile){
 	ifstream UserInputFile(cUserHubAddressesFile.c_str(),ifstream::in);
