@@ -3,7 +3,7 @@
 ClassImp(TTrbUnpacker);
 
 TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTdcAddressesFile,
-                           UInt_t nUserRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
+                           UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
 	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
 		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
 		exit (-1);
@@ -28,8 +28,8 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, stri
 		cerr << "Error decoding TDC addresses from file " << cUserTdcAddressesFile << endl;
 		exit (-1);
 	}
-	if(!SetRefChannel(nUserRefChannel)){
-		cerr << "Error setting TRB reference channel!" << endl;
+	if(!SetTdcRefChannel(nUserTdcRefChannel)){
+		cerr << "Error setting TDC reference channel!" << endl;
 	}
 	if(bVerboseMode)
 		PrintUnpackerSettings();
@@ -157,7 +157,7 @@ void TTrbUnpacker::Init(){ // initialise unpacker
 	cTdcAddresses.clear();
 	cTdcAddresses.reserve(NO_OF_TDC_ADDRESSES);
 	TrbSettings.nSubEventId = 0; // set subevent ID to 0 (should be 0x8C00 for TRBv3)
-	TrbSettings.nRefChannel = 0; // set TRB reference channel to 0
+	TrbSettings.nTdcRefChannel = 0; // set TDC reference channel to 0
 	TrbSettings.nTdcAddress.clear();
 	TrbSettings.nTdcAddress.reserve(NO_OF_TDC_ADDRESSES);
 
@@ -219,14 +219,14 @@ void TTrbUnpacker::PrintTdcAddresses(Bool_t bWriteToLog){
 	}
 }
 
-void TTrbUnpacker::PrintTrbRefChannel(){
-	cout << "TRB reference channel set to: " << TrbSettings.nRefChannel << endl;
+void TTrbUnpacker::PrintTdcRefChannel(){
+	cout << "TDC reference channel set to: " << TrbSettings.nTdcRefChannel << endl;
 }
 
 void TTrbUnpacker::PrintUnpackerSettings(){
 	PrintSubEventId();
 	PrintCtsAddress();
-	PrintTrbRefChannel();
+	PrintTdcRefChannel();
 	PrintTdcAddresses();
 }
 
@@ -236,11 +236,11 @@ void TTrbUnpacker::SetLogFilename(){
 		cout << "Logfile name set to: " << cLogFilename << endl;
 }
 
-Bool_t TTrbUnpacker::SetRefChannel(UInt_t nUserRefChannel){
+Bool_t TTrbUnpacker::SetTdcRefChannel(UInt_t nUserTdcRefChannel){
 	/* 
 		implement allowed range of reference channels here
 	*/
-	TrbSettings.nRefChannel = nUserRefChannel;
+	TrbSettings.nTdcRefChannel = nUserTdcRefChannel;
 	return (kTRUE);
 }
 
@@ -298,7 +298,7 @@ Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 //	clog << "+++ TRBv3 Unpacker Settings +++" << endl;
 //	clog << "+++++++++++++++++++++++++++++++" << endl;
 //	clog << "Subevent ID: " << TrbSettings.nSubEventId << dec << endl;
-//	clog << "Reference Channel ID: " << TrbSettings.nRefChannel << endl;
+//	clog << "Reference Channel ID: " << TrbSettings.nTdcRefChannel << endl;
 //	clog << "TRB board addresses:" <<  endl;
 //	for(std::vector<UInt_t>::const_iterator CurrentTrbUInt=TrbSettings.nTdcAddress.begin(); CurrentTrbUInt!=TrbSettings.nTdcAddress.end(); CurrentTrbUInt++){
 //		clog << hex << *CurrentTrbUInt << dec << endl;

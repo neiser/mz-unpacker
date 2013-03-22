@@ -52,7 +52,7 @@ private:
 	void RewindFile() { InputHldFile.seekg(0,ios::beg); }; // set file get pointer to beginning of HLD file
 	void SetHldFilename(string cUserFilename) { cHldFilename=cUserFilename; };
 	void SetLogFilename();
-	Bool_t SetRefChannel(UInt_t nUserRefChannel); // set TRB reference channel, usually 0 or 1
+	Bool_t SetTdcRefChannel(UInt_t nUserTdcRefChannel); // set TRB reference channel, usually 0 or 1
 	void SetRootFilename(); // set file name of output RooT file
 	Bool_t SetSubEventId(string cUserSubEventId); // set ID of subevent being decoded (TRBv3: 0x8c00)
 	Bool_t SetCtsAddress(string cUserCtsAddress); // set TRB Address of Central Trigger System (TRBv3: 0x0002)
@@ -70,7 +70,7 @@ protected:
 	
 public:
 	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTdcAddressesFile,
-	             UInt_t nUserRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
+	             UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file
 	Int_t GetEntryPositon(UInt_t nUserEvtIndex) const { return (nEvtIndex.at(nUserEvtIndex)); };
@@ -78,7 +78,7 @@ public:
 	void PrintSubEventId();
 	void PrintCtsAddress();
 	void PrintTdcAddresses(Bool_t bWriteToLog=kFALSE);
-	void PrintTrbRefChannel();
+	void PrintTdcRefChannel();
 	void PrintUnpackerSettings();
 	/* some magic ROOT stuff... */
 	ClassDef(TTrbUnpacker,1);
