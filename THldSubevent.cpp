@@ -19,8 +19,8 @@ THldSubEvent::~THldSubEvent(){ // destructor
 	//delete TrbHits;
 }
 
-Bool_t THldSubEvent::CheckTrbAddress(UInt_t nUserTrbAddress){
-	return ( find(TrbSettings->nTrbAddress.begin(),TrbSettings->nTrbAddress.end(),nUserTrbAddress) != TrbSettings->nTrbAddress.end());
+Bool_t THldSubEvent::CheckTdcAddress(UInt_t nUserTdcAddress){
+	return ( find(TrbSettings->nTdcAddress.begin(),TrbSettings->nTdcAddress.end(),nUserTdcAddress) != TrbSettings->nTdcAddress.end());
 }
 
 Bool_t THldSubEvent::Decode(){ // decode subevent
@@ -77,7 +77,7 @@ Bool_t THldSubEvent::DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWor
 }
 
 Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
-                                   UInt_t nUserTrbAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
+                                   UInt_t nUserTdcAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
 
 	// first check if word is EPOCH or DEBUG
 	UInt_t FirstThreeBits =  (*DataWord>>29) & 0x7;
@@ -85,7 +85,7 @@ Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
 	// put the EPOCH number into the SubEvent's member
 	if(FirstThreeBits == TDC_EPOCH_MARKER) {
 		if(bVerboseMode)
-			cout << "Found EPOCH word:  " << hex << *DataWord << ", " << nUserTrbAddress
+			cout << "Found EPOCH word:  " << hex << *DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		// lowest 28bits represent epoch counter
 		nTdcEpochCounter = *DataWord & 0xFFFFFFF;
@@ -97,7 +97,7 @@ Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
 	// check for DEBUG, we don't use this info at the moment
 	if(FirstThreeBits == TDC_DEBUG_MARKER) {
 		if(bVerboseMode)
-			cout << "Found DEBUG word:  " << hex << *DataWord << ", " << nUserTrbAddress
+			cout << "Found DEBUG word:  " << hex << *DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		return kFALSE;
 	}
@@ -105,7 +105,7 @@ Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
 	// now we expect a TIMEDATA word...if not, we don't know :)
 	if((*DataWord>>31) != 1) { // check time data marker i.e. MSB==1
 		if(bVerboseMode)
-			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << *DataWord << ", " << nUserTrbAddress
+			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << *DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		
 		return kFALSE;
@@ -125,7 +125,7 @@ Bool_t THldSubEvent::DecodeTdcWord(std::vector<UInt_t>::const_iterator DataWord,
 	UInt_t nTdcCoarseTime	= *DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
 	TTrbHit* CurrentHit = (TTrbHit*)Hits->ConstructedAt(nTdcHits); // create new TTrbHit in TclonesArray Hits
 	CurrentHit->SetVerboseMode(bVerboseMode);
-	CurrentHit->Set(nUserTrbAddress,nTdcChannelNo,TdcHeader.nRandomBits,TdcHeader.nErrorBits,
+	CurrentHit->Set(nUserTdcAddress,nTdcChannelNo,TdcHeader.nRandomBits,TdcHeader.nErrorBits,
 	                nTdcEdge,nTdcEpochCounter,nTdcCoarseTime,nTdcFineTime,bIsRefChannel);
 	if(bVerboseMode)
 		cout << "Found TIMEDATA word:  " <<hex << *DataWord << dec << ", channel " << nTdcChannelNo
@@ -270,7 +270,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 			nTrbAddress = *CurrentDataWord & 0xFFFF;
 			nTrbWords	= *CurrentDataWord>>16;
 			if(nTrbWords<=SubEventHeader.nSize) {
-				if(CheckTrbAddress(nTrbAddress)) {
+				if(CheckTdcAddress(nTrbAddress)) {
 					// we recognized it as an TDC endpoint (might still be wrong...)
 					nTdcWords	= nTrbWords;
 					nTdcAddress = nTrbAddress;

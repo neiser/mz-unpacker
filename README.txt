@@ -12,10 +12,10 @@
 root[0] .x BuildTrbUnpacker.cpp
 
 + Run Unpacker
-root[1] TTrbUnpacker a(HLD_filename, "8c00", "0002", "TRB_Addresses_test.txt", 1, kTRUE)
+root[1] TTrbUnpacker a(HLD_filename, "8c00", "0002", "TDC_Addresses_test.txt", 1, kTRUE)
 # first hex number: subevent id
 # second hex number: TRB address of trigger control system
-# also provide a more or less complete list of endpoint addresses of TDCs in TRB_Addresses_test.txt 
+# also provide a more or less complete list of endpoint addresses of TDCs in TDC_Addresses_test.txt 
 # note: the last kTRUE in the function call switches the verbose mode on
 
 root[2] a.Decode(N)

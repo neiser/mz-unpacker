@@ -4,7 +4,7 @@
 struct TRB_SETUP{
 	UInt_t nSubEventId; // subevent ID (should be 0x8c00)
 	UInt_t nRefChannel; // TRBv3 TDC reference channel
-	std::vector<UInt_t> nTrbAddress; // vector of TRBv3 board addresses
+	std::vector<UInt_t> nTdcAddress; // vector of TRBv3 addresses of TDC endpoints
 	UInt_t nCtsAddress; // TRB address of Central Trigger System (TCS), should be 0x0002
 };
 

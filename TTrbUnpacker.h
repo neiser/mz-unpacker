@@ -21,7 +21,7 @@
 #include "TTrbHit.h"
 
 #define SIZE_OF_DATAWORD 4
-#define NO_OF_TRB_BOARDS 4
+#define NO_OF_TDC_ADDRESSES 16
 #define TREE_AUTOSAVE 300000000 // set to 300 MBytes
 
 
@@ -56,20 +56,20 @@ private:
 	void SetRootFilename(); // set file name of output RooT file
 	Bool_t SetSubEventId(string cUserSubEventId); // set ID of subevent being decoded (TRBv3: 0x8c00)
 	Bool_t SetCtsAddress(string cUserCtsAddress); // set TRB Address of Central Trigger System (TRBv3: 0x0002)
-	Int_t SetTrbAddresses(string cUserTrbAddresses); // set TRB addresses being unpacked, address delimeter is '|'
+	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
 	//void WriteSettingsToLog();
 protected:
 	string cHldFilename; // HLD file name as provided by the user
 	string cLogFilename; // log file name derived from HLD file name
 	string cRootFilename; // ROOT file name derived from HLD file name
-	std::vector<string> cTrbAddresses; // vector containing TRB addresses as strings
+	std::vector<string> cTdcAddresses; // vector containing TDC addresses as strings
 	std::vector<Int_t> nEvtIndex; // vector containing raw file positions of events
 	TRB_SETUP TrbSettings;
 	Bool_t bSkipSubEvents;
 	Bool_t bVerboseMode;
 	
 public:
-	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTrbAddresses,
+	TTrbUnpacker(string cUserHldFilename, string cUserSubEventId, string cUserCtsAddress, string cUserTdcAddressesFile,
 	             UInt_t nUserRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file
@@ -77,7 +77,7 @@ public:
 	UInt_t GetHldEntries() const { return ((UInt_t)nEvtIndex.size()); }; // return size of event index vector
 	void PrintSubEventId();
 	void PrintCtsAddress();
-	void PrintTrbAddresses(Bool_t bWriteToLog=kFALSE);
+	void PrintTdcAddresses(Bool_t bWriteToLog=kFALSE);
 	void PrintTrbRefChannel();
 	void PrintUnpackerSettings();
 	/* some magic ROOT stuff... */
