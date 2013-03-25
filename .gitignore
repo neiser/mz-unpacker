@@ -1,5 +1,6 @@
-# data should not be tracked...
+# data and personal macros should not be tracked...
 data/
+macros/
 
 # ACLiC generated files
 *_cpp.d
