@@ -321,7 +321,7 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 			++nMultipleHits;
 			continue; // skip rest of loop
 		}
-		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET) % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
+		if(((CurrentTdcHit->first) % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
 			++CurrentTdcHit;
 			continue; // skip rest of loop
 		}
