@@ -47,16 +47,3 @@ This produces two RooT files: one with calibration graphs and another with the c
 root[0] .x BuildTrbAnalysis.cpp
 root[1] TTrbAnalysis a(RooT_filename,"TDC_Addresses_test.txt",VerboseMode=kFALSE)
 root[2] a.Analyse(Output_filename)
-
-
-
-+++++++++++++++++++++++
-+ TRBv3 Event Display +
-+++++++++++++++++++++++
-+ Building libraries
-root[0] .x BuildEventDisplay.cpp
-root[1] TTrbEventDisplay a(Setup_Filename,"",Data_Filename)
-root[2] a.ShowReadoutMap(); // this shows the readout mapping
-root[3] a.ShowPixelMap(); // this shows the pixel mapping
-root[4] a.Show(i); // shows one event
-root[5] a.Show(i,j); // shows accumulated pattern for events i to j
