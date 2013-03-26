@@ -16,11 +16,11 @@ root[1] TTrbUnpacker a(HLD_filename, 0x8c00, 0x0002, "HUB_Addresses_test.txt", "
 # first hex number: subevent id
 # second hex number: TRB address of trigger control system
 # also provide a more or less complete list of endpoint addresses of TDCs in TDC_Addresses_test.txt
-# and specify the HUB TRB addresses if your readout topology has some (provide empty string "" if you have no hubs) 
+# and specify the HUB TRB addresses if your readout topology has some (provide empty string "" if you have no hubs)
 # note: the last kTRUE in the function call switches the verbose mode on
 
 root[2] a.Decode(N)
-# this should print the decoded data on the screen; 
+# this should print the decoded data on the screen;
 # at the moment the Unpacker will only look at the first N events;
 # Provide N=0 to unpack all (remaining) events in the file
 # An offset (=skip specified number of events) can be provided as a second argument
@@ -45,7 +45,7 @@ This produces two RooT files: one with calibration graphs and another with the c
 +++++++++++++++++++++++
 + Building libraries
 root[0] .x BuildTrbAnalysis.cpp
-root[1] TTrbAnalysis a(RooT_filename,"c030|c050|c090|c080",VerboseMode=kFALSE)
+root[1] TTrbAnalysis a(RooT_filename,"TDC_Addresses_test.txt",VerboseMode=kFALSE)
 root[2] a.Analyse(Output_filename)
 
 
