@@ -1,8 +1,0 @@
-# Setup for DIRC Test Experiment in Mainz, July 2012
-# Matthias Hoek
-# v1 (22/11/2012)
-# PMT_Name Columns Rows Pitch_X Pitch_Y Setup_File X Y Angle
-MCP-PMT_1 8 8 6.5 6.5 XP85012_n1_Mainz_Mapping.txt -116.75 172.75 0.0
-MCP-PMT_2 8 8 6.5 6.5 XP85012_n2_Mainz_Mapping.txt -116.75 30.75 0.0
-MCP-PMT_3 8 8 6.5 6.5 XP85012_n3_Mainz_Mapping.txt -116.75 -109.25 0.0
-MCP-PMT_4 8 8 6.5 6.5 XP85012_n4_Mainz_Mapping.txt 82.25 172.25 0.0
