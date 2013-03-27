@@ -48,8 +48,18 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
 		GetEntry(i);
-		if(TrbData->nSubEvtDecError!=0) // check if there were any problems during conversion
+
+		if(TrbData->nSubEvtDecError!=0) { // check if there were any problems during conversion
+			if(bVerboseMode)
+				cout << "Skipped: " << TrbData->nSubEvtDecError << endl;
 			continue; // skip rest of loop
+		}
+		if(bVerboseMode) {
+			cout << "Analyzing event " << i << endl;
+			PrintTdcHits();
+			PrintRefTimestamps();
+			PrintTdcLeadingEdges();
+		}
 		++nEvtCntDecErr; // increment counter
 		if(!CheckRandomBits())
 			continue;
@@ -296,6 +306,9 @@ Int_t TTrbAnalysis::GetEntry(Long64_t nEntryIndex){
 	Int_t nEntrySize = TrbData->GetEntry(nEntryIndex); // retrieve data from tree
 	if(nEntrySize<1) // if entry is invalid return now
 		return (nEntrySize);
+	// if(bVerboseMode)
+	// 	cout << "Getting entry " << nEntryIndex << "..."<< nEntrySize << endl;
+
 	bAllRefChanValid = SetRefTimestamps(); // extract reference timestamps
 	FillTdcHits(); // fill all TDC hits into multimap, reference channels are excluded
 	if(!TdcHits.empty()){ // if there are any TDC hits, do basic analysis tasks
@@ -315,6 +328,8 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 		return (nMultipleHits);
 	std::multimap< UInt_t,Int_t >::const_iterator CurrentTdcHit=TdcHits.begin();
 	while(CurrentTdcHit!=TdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
+		// TdcHits->first is the uniqueId of the channel
+		// TdcHits->second index in the TrbData->Hits_ array
 		Int_t nMultiplicity = (Int_t) TdcHits.count(CurrentTdcHit->first);
 		if(bSkipMultiHits && nMultiplicity>1){ // check if multiple hits occur
 			CurrentTdcHit = TdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
@@ -336,7 +351,8 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 		}
 		++CurrentTdcHit; // increment iterator
 	}
-	//cout << PixelHits.size() << endl;
+	if(bVerboseMode)
+		cout << "Found " << PixelHits.size() << " hit matches." << endl;
 	return (nMultipleHits);
 }
 
@@ -371,6 +387,8 @@ Bool_t TTrbAnalysis::OpenTrbTree(string cUserDataFilename){
 	TTree *TrbTree = (TTree*)TrbTreeFile->Get("T");
 	TrbData = new TTrbDataTree(TrbTree);
 	nEventsMax = (Int_t)TrbData->fChain->GetEntriesFast();
+	if(bVerboseMode)
+		cout << "TrbTree opened with " << nEventsMax << " entries" << endl;
 	return (kTRUE);
 }
 
@@ -403,7 +421,7 @@ void TTrbAnalysis::PrintTdcHits() const {
 	cout << "++++++++++++++++++++" << endl;
 	for(std::multimap< UInt_t,Int_t >::const_iterator CurIndex=TdcHits.begin(); CurIndex!=TdcHits.end(); CurIndex++){
 		if(TrbData->Hits_bIsCalibrated[CurIndex->second])
-			cout << CurIndex->first << " , " << TrbData->Hits_fTime[CurIndex->second] << endl;
+			cout << CurIndex->first << " , " << std::setprecision(10) << TrbData->Hits_fTime[CurIndex->second] << " ns" << endl;
 		else
 			cout << CurIndex->first << " , " << TrbData->Hits_nCoarseTime[CurIndex->second] << " , " << TrbData->Hits_nFineTime[CurIndex->second] << endl;
 	}
