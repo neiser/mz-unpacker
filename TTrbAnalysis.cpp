@@ -272,7 +272,7 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			CurrentTdcHit--;
 			continue; // skip rest of loop
 		}
-		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET) % 2)!=0){ // channel number not even, skip this entry
+		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET+TDC_SWAP_RISING_FALLING) % 2)!=0){ // channel number not even, skip this entry
 			continue; // skip rest of loop
 		}
 		// adjust for reference time
@@ -294,6 +294,11 @@ void TTrbAnalysis::FillTimeOverThreshold(){
 		return;
 	for(std::map< Int_t,Int_t >::const_iterator CurrentHit=PixelHits.begin(); CurrentHit!=PixelHits.end(); ++CurrentHit){ // begin of loop over matched hits
 		Double_t fTempHitWidth = TrbData->Hits_fTime[CurrentHit->second] - TrbData->Hits_fTime[CurrentHit->first];
+		// Undo the swapping if desired
+		if(TDC_SWAP_RISING_FALLING==1)
+			fTempHitWidth = -fTempHitWidth;
+		if(bVerboseMode)
+			cout << "Time from leading to trailing edge: " << fTempHitWidth << endl;
 		Int_t nTempChanId = ComputeTdcChanId(TrbData->Hits_nTrbAddress[CurrentHit->first],TrbData->Hits_nTdcChannel[CurrentHit->first]);
 		if(nTempChanId<0)
 			continue;
