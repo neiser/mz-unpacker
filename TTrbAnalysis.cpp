@@ -66,7 +66,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 			hTdcHitTimingPeak.Fill(Hit->second);
 		}
 		std::vector< std::pair< Double_t,Int_t > > fEvtTiming = ComputeEventTiming();
-		if(fEvtTiming.size()>1){
+		if(fEvtTiming.size()>0){
 			for(std::vector< std::pair< Double_t,Int_t > >::const_iterator it=fEvtTiming.begin(); it!=fEvtTiming.end(); ++it){
 				hTdcEventTiming.Fill(it->first);
 				hTdcEvtTimingChanDist.Fill(it->first,(Double_t)it->second);
