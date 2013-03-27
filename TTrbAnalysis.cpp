@@ -188,7 +188,7 @@ std::vector< std::pair< Double_t,Int_t > > TTrbAnalysis::ComputeEventTiming(){
 			if(itA==itB) // ignore same entries
 				continue;
 			Int_t nChannelDiff = abs(itA->first - itB->first);
-			Double_t fTimeDiff = fabs(itA->second - itB->second); // compute absolute timing difference
+			Double_t fTimeDiff = itA->second - itB->second; // compute timing difference
 			fTimingDifference.push_back(make_pair(fTimeDiff,nChannelDiff)); // insert timing difference into vector
 		} // end of loop B over all leading edge timestamps
 	} // end of loop A over all leading edge timestamps
