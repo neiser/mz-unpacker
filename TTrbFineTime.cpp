@@ -46,11 +46,17 @@ void TTrbFineTime::CalibrationMode0(){ // compute calibration table using simple
 	if(!CalibrationTable.empty()) // check if calibration table map is empty
 		CalibrationTable.clear(); // clear map contents
 	Double_t fWidth = hFineTimeDistribution.GetBinCenter(nUpperEdgeBin) - hFineTimeDistribution.GetBinCenter(nLowerEdgeBin); // compute width of fine time distribution
+	if(bVerboseMode)
+		cout << "Checking Finetime Histogram Width: " << fWidth << " <= " << fMinWidth << "? ";
 	if(fWidth<=fMinWidth){ // check if width is too narrow
+		if(bVerboseMode)
+			cout << "YES! Skipping." << endl;
 		bCalibrationIsValid = kFALSE;
 		bTableIsComputed	= kFALSE;
 		return;
 	}
+	if(bVerboseMode)
+		cout << "No, that's ok." << endl;
 	Double_t fSlope = fClockCycle/fWidth; // compute slope based on clock cycle length and width of fine time distribution
 	//cout << "TDC address " << hex << nTdcAddress << dec << " " << nTdcChannel << endl;
 	//cout << fSlope << endl;
@@ -96,10 +102,14 @@ void TTrbFineTime::CalibrationMode1(){ // compute calibration table using advanc
 void TTrbFineTime::ComputeCalibrationTable(){ // compute calibration constants
 	AnalyseHistogram(); // extract basic quantities of fine time distribution from histogram
 	if((Int_t)hFineTimeDistribution.GetEntries()<nMinEntries){ // check if enough entries in fine time distribution to attempt calibration
+		if(bVerboseMode)
+			cout << "Skipping, not enough entries in FineTime histogram: "
+			     << hFineTimeDistribution.GetEntries() << " < " << nMinEntries  << endl;
 		bCalibrationIsValid = kFALSE;
 		bTableIsComputed	= kTRUE;
 		return;
 	}
+
 	switch(nCalibrationType){
 		case 0: // simple calibration based only on total width of fine time distribution
 			CalibrationMode0();

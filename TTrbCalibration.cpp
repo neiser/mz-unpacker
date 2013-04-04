@@ -32,8 +32,8 @@ void TTrbCalibration::ApplyTdcCalibration(){
 	TTrbEventData *CurrentEventData = new TTrbEventData(TdcHits);
 	//TBranch* TrbEvtBranch =
 	OutputTree->Branch("event","TTrbEventData",&CurrentEventData);
-	
-	cout << "Looping over events..." << endl;
+
+	cout << "Looping over " << nEventsMax << " events..." << endl;
 	for(Long64_t nEntryIndex=0; nEntryIndex<nEventsMax; nEntryIndex++){ // begin of loop over events
 		if(bVerboseMode)
 			cout << "Event Index " << nEntryIndex << endl;
@@ -236,7 +236,7 @@ void TTrbCalibration::FillFineTimeHistograms(){
 		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),ChanAddress)!=ExcludedChannels.end())
 			continue; // skip creation as this channel has been excluded
 		if(bVerboseMode)
-			cout << "Channel " << hex << ChanAddress.first << dec << " " << ChanAddress.second << endl;
+			cout << "Channel @ 0x" << hex << ChanAddress.first << dec << " No " << ChanAddress.second << endl;
 		// check for reference channels
 		if(TrbData->Hits_bIsRefChannel[nHitIndex]){
 			TdcRefChannels.insert(ChanAddress); // try inserting channel into reference channel map (since it is a map, no duplicates are allowed)
