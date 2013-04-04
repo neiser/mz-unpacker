@@ -60,7 +60,7 @@ void TTrbCalibration::ApplyTdcCalibration(){
 			if(FindTdcChannel!=ChannelCalibrations.end()){ // check if channel is calibrated
 				// first calculate time roughly, including epoch counter, which counts the overflows of coarse time
 				// we don't use << binary operator due to overflow
-				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2,COARSE_TIME_BITS) 
+				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2,COARSE_TIME_BITS)
 				                                              + TrbData->Hits_nCoarseTime[nHitIndex]);
 				// Have a look, which calibration for the fine time we use...
 				// Any yes, fine time needs to be SUBTRACTED, see TDC documentation!
@@ -134,15 +134,15 @@ void TTrbCalibration::DoTdcCalibration(){
 	cout << "Filling calibration tables..." << endl;
 	FillReferenceCalibrationTables(); // fill reference channel calibration tables first
 	FillCalibrationTable(); // fill TDC channel calibration tables
-	if(bVerboseMode) 
+	if(bVerboseMode)
 		PrintRefChannels(); // print addresses of found reference channels
-	
+
 	cout << "Writing calibration tables to disk..." << endl;
 	WriteToFile(); // write TDC fine time histograms to file
-	// after all that we need to loop over data again and generate calibrated timestamps 
+	// after all that we need to loop over data again and generate calibrated timestamps
 	cout << "Applying calibration..." << endl;
 	ApplyTdcCalibration(); // apply TDC calibration to raw data
-	
+
 	// switch back to standard memory management (i.e. managed by ROOT)
 	TH1D::AddDirectory(kTRUE);
 }
@@ -232,7 +232,7 @@ void TTrbCalibration::FillFineTimeHistograms(){
 		cout << "Looping over hits in event..." << endl;
 	for(Int_t nHitIndex=0; nHitIndex<TrbData->Hits_; nHitIndex++){ // begin of loop over hits in this event
 		// create address pair consisting of FPGA address and TDC channel ID
-		pair<UInt_t,UInt_t> ChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); 
+		pair<UInt_t,UInt_t> ChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]);
 		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),ChanAddress)!=ExcludedChannels.end())
 			continue; // skip creation as this channel has been excluded
 		if(bVerboseMode)
@@ -250,7 +250,8 @@ void TTrbCalibration::FillFineTimeHistograms(){
 			temp.SetChannelAddress(ChanAddress);
 			if(bVerboseMode)
 				cout << "Inserting temporary fine time object into map..." << endl;
-			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert = ChannelCalibrations.insert(make_pair(ChanAddress,temp));
+			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert =
+				ChannelCalibrations.insert(make_pair(ChanAddress,temp));
 			ChannelRegistered = insert.first;
 		}
 		if(bVerboseMode)
@@ -305,14 +306,14 @@ void TTrbCalibration::PrintExcludedChannels() const {
 }
 
 void TTrbCalibration::PrintRefChannels() const {
-		
+
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+ TRBv3 TDC Reference Channel List +" << endl;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++) 
+	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++)
 		cout << hex << MapIndex->first << dec << " " << MapIndex->second << " " << ReferenceCalibrations.find(MapIndex->first)->second.GetEntries() << endl;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-	
+
 }
 
 void TTrbCalibration::WriteToFile(){
