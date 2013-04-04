@@ -84,7 +84,7 @@ public:
 	void SetChannelAddress(std::pair< UInt_t, UInt_t > UserAddress); // set TDC channel address
 	void SetChannelAddress( UInt_t nUserTdcAddress, UInt_t nUserTdcChannel); // set TDC channel address
 	void SetCycleLength(Double_t fUserCycleLength) { fClockCycle = fabs(fUserCycleLength); }; // set clock cycle length in ns
-	void SetStatLimit(Int_t nUserStatLimit) { nMinEntries=nUserStatLimit; }; // set minimum number of events in fine time histogram required to attempt calibration
+	void SetStatsLimit(Int_t nUserStatLimit) { nMinEntries=nUserStatLimit; }; // set minimum number of events in fine time histogram required to attempt calibration
 	void SetVerboseMode(Bool_t bUserVerboseMode) { bVerboseMode=bUserVerboseMode; }; // set verbose mode
 	void WriteHistograms() const; // write histograms to current directory
 	ClassDef(TTrbFineTime,1);

@@ -248,6 +248,7 @@ void TTrbCalibration::FillFineTimeHistograms(){
 			TTrbFineTime temp;
 			temp.SetVerboseMode(bVerboseMode);
 			temp.SetChannelAddress(ChanAddress);
+			temp.SetStatsLimit(nEntriesMin);
 			if(bVerboseMode)
 				cout << "Inserting temporary fine time object into map..." << endl;
 			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert =
