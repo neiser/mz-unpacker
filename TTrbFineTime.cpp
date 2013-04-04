@@ -16,6 +16,7 @@ TTrbFineTime::TTrbFineTime() :
 }
 
 TTrbFineTime::TTrbFineTime(const TTrbFineTime &a) : TObject(a) { // copy constructor
+	Init();
 	// this copy constructor is need for some STL containers and algorithms
 	bVerboseMode		= a.bVerboseMode;
 	bCalibrationIsValid = a.bCalibrationIsValid;
@@ -147,7 +148,7 @@ Double_t TTrbFineTime::GetCalibratedTime(UInt_t nUserFineTime) const{
 void TTrbFineTime::Init(){ // initialise object
 	CalibrationTable.clear(); // clear calibration table;
 	InitHistogram(); // initialise fine time histogram
-	fMinWidth = 0.0; // minimum fine time distribution width
+	fMinWidth = MIN_HISTOGRAM_WIDTH; // minimum fine time distribution width
 	fClockCycle = CLOCK_CYCLE_LENGTH;
 }
 
