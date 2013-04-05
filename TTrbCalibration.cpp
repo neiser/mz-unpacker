@@ -60,7 +60,7 @@ void TTrbCalibration::ApplyTdcCalibration(){
 			if(FindTdcChannel!=ChannelCalibrations.end()){ // check if channel is calibrated
 				// first calculate time roughly, including epoch counter, which counts the overflows of coarse time
 				// we don't use << binary operator due to overflow
-				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2,COARSE_TIME_BITS)
+				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2.0,COARSE_TIME_BITS)
 				                                              + TrbData->Hits_nCoarseTime[nHitIndex]);
 				// Have a look, which calibration for the fine time we use...
 				// Any yes, fine time needs to be SUBTRACTED, see TDC documentation!
