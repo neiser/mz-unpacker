@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <map>
@@ -24,8 +23,7 @@
 
 // +++ define constants +++
 #define N_TDC_CHAN 32 // number of TDC channels
-#define TDC_CHAN_OFFSET 1 // TDC channel index offset (first two channels are reserved for reference time)
-#define TDC_SWAP_RISING_FALLING 1
+#define TDC_CHAN_OFFSET 2 // TDC channel index offset (first two channels are reserved for reference time)
 
 // +++ class definition +++
 class TTrbAnalysis : public TObject{
@@ -40,7 +38,7 @@ private:
 	Bool_t CheckRandomBits(); // check if hits' random bits are the same in an event
 	void ClearEventMaps(); // clear event-related maps
 	Int_t ComputeTdcChanId(UInt_t nTrbAddress, UInt_t nTdcChannel);
-	std::vector< std::pair< Double_t,Int_t > > ComputeEventTiming(); // compute timing differences between hits in one event
+	std::vector< std::pair< Double_t,Int_t > > ComputeEventTiming(); // compute timing differences between hits in one event 
 	void FillTdcHits();
 	void FillTdcLeadingEdge(); // fill TDC leading edge timestamp map (removing multi-hit channels)
 	void FillTimeOverThreshold(); // fill pulse width into Time-over-Threshold map
@@ -84,3 +82,6 @@ public:
 };
 
 #endif
+
+
+	

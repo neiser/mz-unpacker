@@ -47,20 +47,9 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	TH1D hMultiHits("hMultiHits","hMultiHits",25,-1.5,23.5);
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
-	//for(Int_t i=4; i<5; i++){ // begin loop over all events
 		GetEntry(i);
-
-		if(TrbData->nSubEvtDecError!=0) { // check if there were any problems during conversion
-			if(bVerboseMode)
-				cout << "Skipped: " << TrbData->nSubEvtDecError << endl;
+		if(TrbData->nSubEvtDecError!=0) // check if there were any problems during conversion
 			continue; // skip rest of loop
-		}
-		if(bVerboseMode) {
-			cout << "Analyzing event " << i << endl;
-			PrintTdcHits();
-			PrintRefTimestamps();
-			PrintTdcLeadingEdges();
-		}
 		++nEvtCntDecErr; // increment counter
 		if(!CheckRandomBits())
 			continue;
@@ -77,7 +66,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 			hTdcHitTimingPeak.Fill(Hit->second);
 		}
 		std::vector< std::pair< Double_t,Int_t > > fEvtTiming = ComputeEventTiming();
-		if(fEvtTiming.size()>0){
+		if(fEvtTiming.size()>1){
 			for(std::vector< std::pair< Double_t,Int_t > >::const_iterator it=fEvtTiming.begin(); it!=fEvtTiming.end(); ++it){
 				hTdcEventTiming.Fill(it->first);
 				hTdcEvtTimingChanDist.Fill(it->first,(Double_t)it->second);
@@ -132,7 +121,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	delete AnalysisOut; // close RooT file and delete pointer
 }
 
-Bool_t TTrbAnalysis::CheckRandomBits(){
+Bool_t TTrbAnalysis::CheckRandomBits(){ 
 	// check that all TDC hits in an event have the same random bits sequence
 	switch (TrbData->Hits_){
 		case 0: // no TDC hits, shouldn't happen
@@ -189,7 +178,7 @@ std::vector< std::pair< Double_t,Int_t > > TTrbAnalysis::ComputeEventTiming(){
 			if(itA==itB) // ignore same entries
 				continue;
 			Int_t nChannelDiff = abs(itA->first - itB->first);
-			Double_t fTimeDiff = itA->second - itB->second; // compute timing difference
+			Double_t fTimeDiff = fabs(itA->second - itB->second); // compute absolute timing difference
 			fTimingDifference.push_back(make_pair(fTimeDiff,nChannelDiff)); // insert timing difference into vector
 		} // end of loop B over all leading edge timestamps
 	} // end of loop A over all leading edge timestamps
@@ -272,7 +261,7 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			CurrentTdcHit--;
 			continue; // skip rest of loop
 		}
-		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET+TDC_SWAP_RISING_FALLING) % 2)!=0){ // channel number not even, skip this entry
+		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET) % 2)!=0){ // channel number not even, skip this entry
 			continue; // skip rest of loop
 		}
 		// adjust for reference time
@@ -284,7 +273,7 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			Double_t fLeadingEdge = TrbData->Hits_fTime[CurrentTdcHit->second] - TrbData->Hits_fTime[Offset->second];
 			TdcLeadingEdges.insert(make_pair((Int_t)CurrentTdcHit->first,fLeadingEdge)); // fill entry into leading edge map
 		}
-
+		
 	} // end of loop over all TDC hits
 }
 
@@ -294,11 +283,6 @@ void TTrbAnalysis::FillTimeOverThreshold(){
 		return;
 	for(std::map< Int_t,Int_t >::const_iterator CurrentHit=PixelHits.begin(); CurrentHit!=PixelHits.end(); ++CurrentHit){ // begin of loop over matched hits
 		Double_t fTempHitWidth = TrbData->Hits_fTime[CurrentHit->second] - TrbData->Hits_fTime[CurrentHit->first];
-		// Undo the swapping if desired
-		if(TDC_SWAP_RISING_FALLING==1)
-			fTempHitWidth = -fTempHitWidth;
-		if(bVerboseMode)
-			cout << "Time from leading to trailing edge: " << fTempHitWidth << endl;
 		Int_t nTempChanId = ComputeTdcChanId(TrbData->Hits_nTrbAddress[CurrentHit->first],TrbData->Hits_nTdcChannel[CurrentHit->first]);
 		if(nTempChanId<0)
 			continue;
@@ -312,9 +296,6 @@ Int_t TTrbAnalysis::GetEntry(Long64_t nEntryIndex){
 	Int_t nEntrySize = TrbData->GetEntry(nEntryIndex); // retrieve data from tree
 	if(nEntrySize<1) // if entry is invalid return now
 		return (nEntrySize);
-	// if(bVerboseMode)
-	// 	cout << "Getting entry " << nEntryIndex << "..."<< nEntrySize << endl;
-
 	bAllRefChanValid = SetRefTimestamps(); // extract reference timestamps
 	FillTdcHits(); // fill all TDC hits into multimap, reference channels are excluded
 	if(!TdcHits.empty()){ // if there are any TDC hits, do basic analysis tasks
@@ -334,8 +315,6 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 		return (nMultipleHits);
 	std::multimap< UInt_t,Int_t >::const_iterator CurrentTdcHit=TdcHits.begin();
 	while(CurrentTdcHit!=TdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
-		// TdcHits->first is the uniqueId of the channel
-		// TdcHits->second index in the TrbData->Hits_ array
 		Int_t nMultiplicity = (Int_t) TdcHits.count(CurrentTdcHit->first);
 		if(bSkipMultiHits && nMultiplicity>1){ // check if multiple hits occur
 			CurrentTdcHit = TdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
@@ -357,13 +336,12 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 		}
 		++CurrentTdcHit; // increment iterator
 	}
-	if(bVerboseMode)
-		cout << "Found " << PixelHits.size() << " hit matches." << endl;
+	//cout << PixelHits.size() << endl;
 	return (nMultipleHits);
 }
 
 void TTrbAnalysis::Init(){
-
+	
 	TrbData = NULL;
 	// intialise setup specific variables
 	nEventsMax		= -1; // number of events in data set
@@ -393,8 +371,6 @@ Bool_t TTrbAnalysis::OpenTrbTree(string cUserDataFilename){
 	TTree *TrbTree = (TTree*)TrbTreeFile->Get("T");
 	TrbData = new TTrbDataTree(TrbTree);
 	nEventsMax = (Int_t)TrbData->fChain->GetEntriesFast();
-	if(bVerboseMode)
-		cout << "TrbTree opened with " << nEventsMax << " entries" << endl;
 	return (kTRUE);
 }
 
@@ -427,7 +403,7 @@ void TTrbAnalysis::PrintTdcHits() const {
 	cout << "++++++++++++++++++++" << endl;
 	for(std::multimap< UInt_t,Int_t >::const_iterator CurIndex=TdcHits.begin(); CurIndex!=TdcHits.end(); CurIndex++){
 		if(TrbData->Hits_bIsCalibrated[CurIndex->second])
-			cout << CurIndex->first << " , " << std::setprecision(10) << TrbData->Hits_fTime[CurIndex->second] << " ns" << endl;
+			cout << CurIndex->first << " , " << TrbData->Hits_fTime[CurIndex->second] << endl;
 		else
 			cout << CurIndex->first << " , " << TrbData->Hits_nCoarseTime[CurIndex->second] << " , " << TrbData->Hits_nFineTime[CurIndex->second] << endl;
 	}
@@ -468,7 +444,7 @@ Bool_t TTrbAnalysis::SetRefTimestamps(){
 }
 
 
-Int_t TTrbAnalysis::SetTrbAddresses(string cUserTdcAddressesFile){
+Int_t TTrbAnalysis::SetTrbAddresses(string cUserTdcAddressesFile){ 
 	// set TRB addresses, address delimeter is '|'
 	if(cUserTdcAddressesFile.empty()){ // check if TRB address string is empty
 		if(bVerboseMode)
