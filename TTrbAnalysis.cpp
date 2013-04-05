@@ -47,6 +47,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	TH1D hMultiHits("hMultiHits","hMultiHits",25,-1.5,23.5);
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
+	//for(Int_t i=4; i<5; i++){ // begin loop over all events
 		GetEntry(i);
 
 		if(TrbData->nSubEvtDecError!=0) { // check if there were any problems during conversion
@@ -131,7 +132,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	delete AnalysisOut; // close RooT file and delete pointer
 }
 
-Bool_t TTrbAnalysis::CheckRandomBits(){ 
+Bool_t TTrbAnalysis::CheckRandomBits(){
 	// check that all TDC hits in an event have the same random bits sequence
 	switch (TrbData->Hits_){
 		case 0: // no TDC hits, shouldn't happen
@@ -283,7 +284,7 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			Double_t fLeadingEdge = TrbData->Hits_fTime[CurrentTdcHit->second] - TrbData->Hits_fTime[Offset->second];
 			TdcLeadingEdges.insert(make_pair((Int_t)CurrentTdcHit->first,fLeadingEdge)); // fill entry into leading edge map
 		}
-		
+
 	} // end of loop over all TDC hits
 }
 
@@ -357,7 +358,7 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 }
 
 void TTrbAnalysis::Init(){
-	
+
 	TrbData = NULL;
 	// intialise setup specific variables
 	nEventsMax		= -1; // number of events in data set
@@ -462,7 +463,7 @@ Bool_t TTrbAnalysis::SetRefTimestamps(){
 }
 
 
-Int_t TTrbAnalysis::SetTrbAddresses(string cUserTdcAddressesFile){ 
+Int_t TTrbAnalysis::SetTrbAddresses(string cUserTdcAddressesFile){
 	// set TRB addresses, address delimeter is '|'
 	if(cUserTdcAddressesFile.empty()){ // check if TRB address string is empty
 		if(bVerboseMode)
