@@ -48,7 +48,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
-	//for(Int_t i=0; i<1; i++){ // begin loop over all events
+	//for(Int_t i=4; i<5; i++){ // begin loop over all events
 		GetEntry(i);
 
 		if(TrbData->nSubEvtDecError!=0) { // check if there were any problems during conversion
