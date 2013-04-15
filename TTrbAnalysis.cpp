@@ -36,7 +36,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	TH1D hTdcEff("hTdcEff","hTdcEff; no of missing trailing edges/event; frequency",12,-1.5,10.5);
 	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching; no of leading edges; no of complete hits; frequency",100,-0.5,99.5,100,-0.5,99.5);
 	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels; unique channel no; frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming; leading edge timestamp (ns); frequency",6000,-15000000.0,5000.0);
+	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming; leading edge timestamp (ns); frequency",6000,-12000000.0,5000.0);
 	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming; #DeltaT (ns); frequency",1000,-40.0,40.0);
 	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist; #DeltaT (ns); #DeltaChan ID; frequency",500,-40.0,40.0,33,-0.5,32.5);
 	TH2D hTdcEvtTimingVsMult("hTdcEvtTimingVsMult","hTdcEvtTimingVsMult; #DeltaT (ns); hit multiplicity; frequency",500,-40.0,40.0,10,-0.5,9.5);
@@ -68,7 +68,7 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 			for(std::vector< std::pair< Double_t,Int_t > >::const_iterator it=fEvtTiming.begin(); it!=fEvtTiming.end(); ++it){
 				hTdcEventTiming.Fill(it->first);
 				hTdcEvtTimingChanDist.Fill(it->first,(Double_t)it->second);
-				hTdcEvtTimingVsMult.Fill(it->first,(Double_t)PixelHits.size());
+				hTdcEvtTimingVsMult.Fill(it->first,(Double_t)TdcLeadingEdges.size());
 			}
 		}
 		hPixelHits.Fill((Double_t)PixelHits.size());
