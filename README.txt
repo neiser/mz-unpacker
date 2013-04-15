@@ -40,14 +40,15 @@ root[1] TTrbCalibration a(RooT_filename,Calibration_type=0,Min_Statistics=10000,
 root[2] a.DoTdcCalibration()
 This produces two RooT files: one with calibration graphs and another with the calibrated TRB data;
 
-+++++++++++++++++++++++
-+ TRBv3 Data Analysis +
-+++++++++++++++++++++++
+++++++++++++++++++++++++++++++++
++ TRBv3 Data Analysis for NA61 +
+++++++++++++++++++++++++++++++++
 + Building libraries
 root[0] .x BuildTrbAnalysis.cpp
 root[1] TTrbAnalysis a(RooT_filename,"TDC_Addresses_test.txt",VerboseMode=kFALSE)
+root[2] a.WriteTdcMapping("myMappingFile.txt")
 root[2] a.Analyse(Output_filename)
-
+This performs the analysis of the calibrated TRB data and writes the channel mapping to the specified text file ("myMappingFile.txt")
 
 
 +++++++++++++++++++++++

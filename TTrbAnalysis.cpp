@@ -30,21 +30,20 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	// define histograms
 	TFile *AnalysisOut = new TFile(cUserAnalysisFilename.c_str(),"RECREATE");
 	TH1D hEvtStats("hEvtStats","hEvtStats",15,-0.5,14.5);
-	TH1D hRefClocks("hRefClocks","hRefClocks",18,-0.5,17.5);
-	TH1D hTdcHits("hTdcHits","hTdcHits",51,-1.5,49.5);
-	TH1D hPixelHits("hPixelHits","hPixelHits",51,-1.5,49.5);
-	TH1D hTdcEff("hTdcEff","hTdcEff",12,-1.5,10.5);
-	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching",100,-0.5,99.5,100,-0.5,99.5);
-	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming",6000,-15000.0,15000.0);
-	TH1D hTdcHitTimingPeak("hTdcHitTimingPeak","hTdcHitTimingPeak",100,-400.0,-360.0);
-	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming",500,-1.0,20.0);
-	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist",500,-1.0,20.0,nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hHitWidth("hHitWidth","hHitWidth",120,-10.0,50.0);
-	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
-	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming",2000,-2500,2500,400,-10.0,50.0);
-	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,2000,-2500,2500);
-	TH1D hMultiHits("hMultiHits","hMultiHits",25,-1.5,23.5);
+	TH1D hRefClocks("hRefClocks","hRefClocks; no of ref clocks/event; frequency",18,-0.5,17.5);
+	TH1D hTdcHits("hTdcHits","hTdcHits; no of TDC hits/event; frequency",51,-1.5,49.5);
+	TH1D hPixelHits("hPixelHits","hPixelHits; no of complete PMT hits/event; frequency",51,-1.5,49.5);
+	TH1D hTdcEff("hTdcEff","hTdcEff; no of missing trailing edges/event; frequency",12,-1.5,10.5);
+	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching; no of leading edges; no of complete hits; frequency",100,-0.5,99.5,100,-0.5,99.5);
+	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels; unique channel no; frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
+	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming; leading edge timestamp (ns); frequency",6000,-15000000.0,5000.0);
+	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming; #DeltaT (ns); frequency",1000,-40.0,40.0);
+	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist; #DeltaT (ns); #DeltaChan ID; frequency",500,-40.0,40.0,33,-0.5,32.5);
+	TH2D hTdcEvtTimingVsMult("hTdcEvtTimingVsMult","hTdcEvtTimingVsMult; #DeltaT (ns); hit multiplicity; frequency",500,-40.0,40.0,10,-0.5,9.5);
+	TH1D hHitWidth("hHitWidth","hHitWidth; PMT hit width (ns); frequency",120,-10.0,50.0);
+	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel; unique channel ID; PMT hit width (ns); frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
+	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel; unique channel ID; leading edge timesstamp (ns); frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,2000,-25000,5000);
+	TH1D hMultiHits("hMultiHits","hMultiHits; no of TDC channels w mult hits; frequency",25,-1.5,23.5);
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
 		GetEntry(i);
@@ -63,29 +62,28 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 		for(std::map< Int_t,Double_t >::const_iterator Hit=TdcLeadingEdges.begin(); Hit!=TdcLeadingEdges.end(); Hit++){
 			hTdcHitChannels.Fill((Double_t)Hit->first);
 			hTdcHitTiming.Fill(Hit->second);
-			hTdcHitTimingPeak.Fill(Hit->second);
 		}
 		std::vector< std::pair< Double_t,Int_t > > fEvtTiming = ComputeEventTiming();
 		if(fEvtTiming.size()>1){
 			for(std::vector< std::pair< Double_t,Int_t > >::const_iterator it=fEvtTiming.begin(); it!=fEvtTiming.end(); ++it){
 				hTdcEventTiming.Fill(it->first);
 				hTdcEvtTimingChanDist.Fill(it->first,(Double_t)it->second);
+				hTdcEvtTimingVsMult.Fill(it->first,(Double_t)PixelHits.size());
 			}
 		}
 		hPixelHits.Fill((Double_t)PixelHits.size());
 		if(PixelHits.empty()) // check that we have matched hits and computed their width
 			continue; // skip rest of loop
-		if(bAllRefChanValid){ // check if all reference clock signals are available
+		//if(bAllRefChanValid){ // check if all reference clock signals are available
 			++nEvtCntRefMiss;
 			hTdcHitMatching.Fill((Double_t)TdcLeadingEdges.size(),(Double_t)PixelHits.size());
 			hTdcEff.Fill((Double_t)(TdcLeadingEdges.size()-PixelHits.size()));
-		}
+		//}
 		for(std::map< Int_t,Double_t >::const_iterator Hit=TimeOverThreshold.begin(); Hit!=TimeOverThreshold.end(); Hit++){
 			hHitWidth.Fill(Hit->second);
 			hHitWidthVsChannel.Fill((Double_t)Hit->first,Hit->second);
 			std::map< Int_t,Double_t >::const_iterator LeadingEdge = TdcLeadingEdges.find(Hit->first);
 			if(LeadingEdge!=TdcLeadingEdges.end()){
-				hHitWidthVsTiming.Fill(LeadingEdge->second,Hit->second);
 				hHitTimeVsChannel.Fill((Double_t)LeadingEdge->first,LeadingEdge->second);
 			}
 		}
@@ -110,12 +108,11 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	hTdcHitMatching.Write();
 	hTdcHitChannels.Write();
 	hTdcHitTiming.Write();
-	hTdcHitTimingPeak.Write();
 	hTdcEventTiming.Write();
 	hTdcEvtTimingChanDist.Write();
+	hTdcEvtTimingVsMult.Write();
 	hHitWidth.Write();
 	hHitWidthVsChannel.Write();
-	hHitWidthVsTiming.Write();
 	hHitTimeVsChannel.Write();
 	hMultiHits.Write();
 	delete AnalysisOut; // close RooT file and delete pointer
@@ -178,7 +175,7 @@ std::vector< std::pair< Double_t,Int_t > > TTrbAnalysis::ComputeEventTiming(){
 			if(itA==itB) // ignore same entries
 				continue;
 			Int_t nChannelDiff = abs(itA->first - itB->first);
-			Double_t fTimeDiff = fabs(itA->second - itB->second); // compute absolute timing difference
+			Double_t fTimeDiff = (itA->second - itB->second); // compute absolute timing difference
 			fTimingDifference.push_back(make_pair(fTimeDiff,nChannelDiff)); // insert timing difference into vector
 		} // end of loop B over all leading edge timestamps
 	} // end of loop A over all leading edge timestamps
@@ -261,7 +258,7 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			CurrentTdcHit--;
 			continue; // skip rest of loop
 		}
-		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET) % 2)!=0){ // channel number not even, skip this entry
+		if(((CurrentTdcHit->first-TDC_CHAN_OFFSET-1) % 2)!=0){ // channel number not even, skip this entry
 			continue; // skip rest of loop
 		}
 		// adjust for reference time
@@ -282,7 +279,7 @@ void TTrbAnalysis::FillTimeOverThreshold(){
 	if(PixelHits.empty()) // matched pixel hits map is empty
 		return;
 	for(std::map< Int_t,Int_t >::const_iterator CurrentHit=PixelHits.begin(); CurrentHit!=PixelHits.end(); ++CurrentHit){ // begin of loop over matched hits
-		Double_t fTempHitWidth = TrbData->Hits_fTime[CurrentHit->second] - TrbData->Hits_fTime[CurrentHit->first];
+		Double_t fTempHitWidth = TrbData->Hits_fTime[CurrentHit->first] - TrbData->Hits_fTime[CurrentHit->second];
 		Int_t nTempChanId = ComputeTdcChanId(TrbData->Hits_nTrbAddress[CurrentHit->first],TrbData->Hits_nTdcChannel[CurrentHit->first]);
 		if(nTempChanId<0)
 			continue;

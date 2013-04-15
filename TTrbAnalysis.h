@@ -23,7 +23,7 @@
 
 // +++ define constants +++
 #define N_TDC_CHAN 32 // number of TDC channels
-#define TDC_CHAN_OFFSET 2 // TDC channel index offset (first two channels are reserved for reference time)
+#define TDC_CHAN_OFFSET 1 // TDC channel index offset (first two channels are reserved for reference time)
 
 // +++ class definition +++
 class TTrbAnalysis : public TObject{
