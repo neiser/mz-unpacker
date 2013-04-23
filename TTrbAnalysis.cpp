@@ -30,21 +30,21 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	// define histograms
 	TFile *AnalysisOut = new TFile(cUserAnalysisFilename.c_str(),"RECREATE");
 	TH1D hEvtStats("hEvtStats","hEvtStats",15,-0.5,14.5);
-	TH1D hRefClocks("hRefClocks","hRefClocks",18,-0.5,17.5);
-	TH1D hTdcHits("hTdcHits","hTdcHits",51,-1.5,49.5);
-	TH1D hPixelHits("hPixelHits","hPixelHits",51,-1.5,49.5);
+	TH1D hRefClocks("hRefClocks","hRefClocks; no of reference channels per event; frequency",18,-0.5,17.5);
+	TH1D hTdcHits("hTdcHits","hTdcHits;no of leading edge hits per event; frequency",51,-1.5,49.5);
+	TH1D hPixelHits("hPixelHits","hPixelHits;no of complete hits per event; frequency",51,-1.5,49.5);
 	TH1D hTdcEff("hTdcEff","hTdcEff",12,-1.5,10.5);
-	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching",100,-0.5,99.5,100,-0.5,99.5);
-	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming",6000,-15000.0,15000.0);
+	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching; no of leading edge hits per event; no of complete hits per event; frequency",100,-0.5,99.5,100,-0.5,99.5);
+	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels; unique TDC channel ID; frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
+	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming; leading edge time stamp (corrected for reference clock) (ns); frequency",6000,HIT_TIME_MIN,HIT_TIME_MAX);
 	TH1D hTdcHitTimingPeak("hTdcHitTimingPeak","hTdcHitTimingPeak",100,-400.0,-360.0);
-	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming",500,-1.0,20.0);
-	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist",500,-1.0,20.0,nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hHitWidth("hHitWidth","hHitWidth",120,-10.0,50.0);
-	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
-	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming",2000,-2500,2500,400,-10.0,50.0);
-	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,2000,-2500,2500);
-	TH1D hMultiHits("hMultiHits","hMultiHits",25,-1.5,23.5);
+	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming; #DeltaT (ns); frequency",500,-1.0,20.0);
+	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist; #DeltaT (ns); unique TDC channel ID; frequency",500,-1.0,20.0,nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
+	TH1D hHitWidth("hHitWidth","hHitWidth; hit width (ns); frequency",120,-10.0,50.0);
+	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel; unique TDC channel ID; hit width (ns)",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
+	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming; leading edge time stamp (ns); hit width (ns); frequency",2000,-HIT_TIME_MIN,HIT_TIME_MAX,400,-10.0,50.0);
+	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel; unique TDC channel ID; leading edge time stamp (ns); frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,6000,HIT_TIME_MIN,HIT_TIME_MAX);
+	TH1D hMultiHits("hMultiHits","hMultiHits; no of channels with multiple hits per event; frequency",25,-1.5,23.5);
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
 	//for(Int_t i=4; i<5; i++){ // begin loop over all events

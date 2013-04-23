@@ -23,9 +23,11 @@
 #include "TTrbDataTree.h"
 
 // +++ define constants +++
-#define N_TDC_CHAN 32 // number of TDC channels
+#define N_TDC_CHAN 65 // number of TDC channels
 #define TDC_CHAN_OFFSET 1 // TDC channel index offset (first two channels are reserved for reference time)
 #define TDC_SWAP_RISING_FALLING 1
+#define HIT_TIME_MIN -70000.0 // lower boundary for hit time histograms (in ns); change as required
+#define HIT_TIME_MAX 0.0 // upper boundary for hit time histograms (in ns); change as required
 
 // +++ class definition +++
 class TTrbAnalysis : public TObject{
