@@ -132,6 +132,11 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	delete AnalysisOut; // close RooT file and delete pointer
 }
 
+void TTrbAnalysis::Analyse(string cUserAnalysisFilename, UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
+	SetRefChannel(nUserTrbAddress,nUserTdcChannel);
+	Analyse(cUserAnalysisFilename);
+}
+
 Bool_t TTrbAnalysis::CheckRandomBits(){
 	// check that all TDC hits in an event have the same random bits sequence
 	switch (TrbData->Hits_){
@@ -286,6 +291,17 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 		}
 
 	} // end of loop over all TDC hits
+	// now correct leading edge time stamps for user reference channel
+	if(bRefChanIsSet&&!TdcLeadingEdges.empty()){ // find time stamp of user reference channel
+		std::map< Int_t,Double_t >::const_iterator RefTime = TdcLeadingEdges.find(nTdcRefChannel);
+		if(RefTime==TdcLeadingEdges.end()){ // couldn't find user reference time
+			TdcLeadingEdges.clear(); // clear leading edges map
+			return;
+		}
+		for(std::map< Int_t, Double_t >::iterator ThisLeadingEdge=TdcLeadingEdges.begin(); ThisLeadingEdge!=TdcLeadingEdges.end(); ThisLeadingEdge++){ // begin loop over all leading edge timestamps
+			ThisLeadingEdge->second -= RefTime->second;
+		}
+	}
 }
 
 void TTrbAnalysis::FillTimeOverThreshold(){
@@ -369,6 +385,7 @@ void TTrbAnalysis::Init(){
 	nEventsMax		= -1; // number of events in data set
 	nMaxTdcChannel	= 0; // unique index of last channel
 	nTrbEndpoints	= 0; // number of TRB boards in setup
+	bRefChanIsSet	= kFALSE; // no user reference channel is set
 	// initialise event level variables
 	bAllRefChanValid = kFALSE;
 	nEvtMultHits	= 0; // number of channels with multiple hits
@@ -452,6 +469,14 @@ void TTrbAnalysis::PrintTrbAddresses() const {
 		cout << hex << CurIndex->first << dec << " , " << CurIndex->second << endl;
 	}
 	cout << "+++++++++++++++++++++++++++" << endl;
+}
+
+void TTrbAnalysis::SetRefChannel(UInt_t nTrbAddress, UInt_t nTdcChannel){
+	Int_t nTempRefChan = ComputeTdcChanId(nTrbAddress,nTdcChannel);
+	if(nTempRefChan>-1){
+		bRefChanIsSet = kTRUE;
+		nTdcRefChannel = nTempRefChan;
+	}
 }
 
 Bool_t TTrbAnalysis::SetRefTimestamps(){
