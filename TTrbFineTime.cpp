@@ -30,7 +30,9 @@ TTrbFineTime::TTrbFineTime(const TTrbFineTime &a) : TObject(a) { // copy constru
 	hFineTimeDistribution	= a.hFineTimeDistribution;
 	hBinWidth				= a.hBinWidth;
 	grCalibrationTable		= a.grCalibrationTable;
+	grFineTimeBinWidth		= a.grFineTimeBinWidth;
 	CalibrationTable		= a.CalibrationTable;
+	BinWidthTable			= a.BinWidthTable;
 }
 
 TTrbFineTime::~TTrbFineTime(){ // standard destructor
@@ -61,9 +63,10 @@ void TTrbFineTime::CalibrationMode0(){ // compute calibration table using simple
 	//cout << "TDC address " << hex << nTdcAddress << dec << " " << nTdcChannel << endl;
 	//cout << fSlope << endl;
 	for(Int_t nCurrentTdcBin=nLowerEdgeBin; nCurrentTdcBin<(nUpperEdgeBin+1); ++nCurrentTdcBin){ // begin of loop over all TDC fine time bins
+		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
+		BinWidthTable.insert(make_pair(nBinIndex,fSlope));
 		hBinWidth.Fill(fSlope);
 		Double_t fBinValue = (nCurrentTdcBin-nLowerEdgeBin) * fSlope; // compute timing value based on slope
-		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
 		CalibrationTable.insert(make_pair(nBinIndex,fBinValue));
 	} // end of loop over all TDC fine time bins
 	bCalibrationIsValid = kTRUE;
@@ -84,11 +87,12 @@ void TTrbFineTime::CalibrationMode1(){ // compute calibration table using advanc
 		Double_t fBinEntries = hFineTimeDistribution.GetBinContent(nCurrentTdcBin);
 		if((Int_t)fBinEntries == 0) // skip empty bins
 			continue;
+		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
 		Double_t fBinWidth = fBinEntries/fTotalEntries * fClockCycle;
+		BinWidthTable.insert(make_pair(nBinIndex,fBinWidth));
 		//cout << fBinWidth << endl;
 		hBinWidth.Fill(fBinWidth);
 		fBinValue += 0.5*fBinWidthOld + 0.5*fBinWidth;
-		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
 		//cout << nBinIndex << " , " << fBinValue << endl;
 		CalibrationTable.insert(make_pair(nBinIndex,fBinValue));
 		fBinWidthOld = fBinWidth;
@@ -122,6 +126,20 @@ void TTrbFineTime::ComputeCalibrationTable(){ // compute calibration constants
 			bTableIsComputed	= kFALSE;
 	}
 	FillCalibrationGraph();
+	FillBinWidthGraph();
+}
+
+void TTrbFineTime::FillBinWidthGraph(){
+	if(!bCalibrationIsValid) // if calibration is not valid, return w/o filling graph
+		return;
+	grFineTimeBinWidth.Set((Int_t)BinWidthTable.size());
+	std::map< UInt_t,Double_t >::const_iterator BinWidthTableIndex;
+	std::map< UInt_t,Double_t >::const_iterator BinWidthTableEnd = BinWidthTable.end();
+	Int_t nIndex = 0;
+	for(BinWidthTableIndex=BinWidthTable.begin(); BinWidthTableIndex!=BinWidthTableEnd; ++BinWidthTableIndex){
+		grFineTimeBinWidth.SetPoint(nIndex,BinWidthTableIndex->first,BinWidthTableIndex->second);
+		++nIndex;
+	}
 }
 
 void TTrbFineTime::FillCalibrationGraph(){ // fill calibration table graph
@@ -147,6 +165,7 @@ Double_t TTrbFineTime::GetCalibratedTime(UInt_t nUserFineTime) const{
 
 void TTrbFineTime::Init(){ // initialise object
 	CalibrationTable.clear(); // clear calibration table;
+	BinWidthTable.clear();
 	InitHistogram(); // initialise fine time histogram
 	fMinWidth = MIN_HISTOGRAM_WIDTH; // minimum fine time distribution width
 	fClockCycle = CLOCK_CYCLE_LENGTH;
@@ -216,11 +235,19 @@ void TTrbFineTime::SetHistogramNames(){ // set histogram names
 	cHistogramName << "grCalibrationTable_" << cChannelName.str();
 	grCalibrationTable.SetName(cHistogramName.str().c_str());
 	grCalibrationTable.SetTitle(";raw fine time (bins);cal. fine time (ns)");
+	// now fine time bin width graph
+	cHistogramName.clear();
+	cHistogramName.str("");
+	cHistogramName << "grFineTimeBinWidth_" << cChannelName.str();
+	grFineTimeBinWidth.SetName(cHistogramName.str().c_str());
+	grFineTimeBinWidth.SetTitle(";fine time bin;bin width (ns)");
 }
 
 void TTrbFineTime::WriteHistograms() const{ // write histograms to current directory
 	hFineTimeDistribution.Write();
 	hBinWidth.Write();
-	if(bCalibrationIsValid)
+	if(bCalibrationIsValid){
 		grCalibrationTable.Write();
+		grFineTimeBinWidth.Write();
+	}
 }
