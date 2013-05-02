@@ -45,14 +45,18 @@ void TTrbAnalysisBase::ClearEventMaps(){
 void TTrbAnalysisBase::ComputeMappingTable(){
 	MappingTable.clear();
 	// loop over all TDC addresses
-	std::map< UInt_t,UInt_t >::iterator LastTdcAddress = TdcAddresses.end();
-	for(std::map< UInt_t,UInt_t >::iterator CurrentTdc=TdcAddresses.begin(); CurrentTdc!=LastTdcAddress; ++CurrentTdc){ // begin loop over all TDC addresses
-		UInt_t nTdcIndex = (UInt_t)distance(TdcAddresses.begin(),CurrentTdc);
+	std::map< UInt_t,UInt_t >::const_iterator FirstTdcAddress = TdcAddresses.begin();
+	std::map< UInt_t,UInt_t >::const_iterator LastTdcAddress = TdcAddresses.end();
+	for(std::map< UInt_t,UInt_t >::const_iterator CurrentTdc=FirstTdcAddress; CurrentTdc!=LastTdcAddress; ++CurrentTdc){ // begin loop over all TDC addresses
+		UInt_t nTdcIndex = (UInt_t)distance(FirstTdcAddress,CurrentTdc);
 		for(UInt_t i=0; i<CurrentTdc->second; ++i){ // begin loop over all TDC channels
 			UInt_t nSeqId = nTdcIndex * CurrentTdc->second + i;
 			MappingTable.insert(make_pair(make_pair(CurrentTdc->first,i+nTdcOffset),nSeqId));
 		} // end of loop over all TDC channels
 	} // end of loop over all TDC addresses
+	if(bVerboseMode){
+		PrintTdcMapping();
+	}
 }
 
 Bool_t TTrbAnalysisBase::ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
@@ -101,18 +105,6 @@ UInt_t TTrbAnalysisBase::ExcludeChannels(string UserFilename){
 	return(nExcludedChannels);
 }
 
-void TTrbAnalysisBase::FillSyncTimeStamps(){ // find sync timestamps in an event and write to EvtSyncTimeStamps map, return value
-	EvtSyncTimeStamps.clear(); // clear sync timestamps map
-	// loop over Hits_nTdcChannel array and extract time whenever we find the reference channel
-	for(Int_t nCurEvtIndex=0; nCurEvtIndex<TrbData->Hits_; ++nCurEvtIndex){ // loop over all hits in entry
-		if(!TrbData->Hits_bIsRefChannel[nCurEvtIndex]) // check for TDC reference channels
-			continue; // skip rest of loop
-		EvtSyncTimeStamps.insert(make_pair((UInt_t)TrbData->Hits_nTrbAddress[nCurEvtIndex],(UInt_t)nCurEvtIndex)); // fill TDC address and array index into map
-	}
-	//if(TdcRefTimes.size()!=TrbAddresses.size())
-	//	return (kFALSE);
-	//return (kTRUE);
-}
 
 Int_t TTrbAnalysisBase::GetEntry(Long64_t nEntryIndex){
 	// Get event entry from TTree object and perform basic analysis tasks
@@ -123,7 +115,7 @@ Int_t TTrbAnalysisBase::GetEntry(Long64_t nEntryIndex){
 	if(bVerboseMode){
 		cout << "Getting entry " << nEntryIndex << " with size "<< nEntrySize << endl;
 	}
-	FillSyncTimeStamps();
+	ScanEvent();
 	//bAllRefChanValid = SetRefTimestamps(); // extract reference timestamps
 	//FillTdcHits(); // fill all TDC hits into multimap, reference channels are excluded
 	//if(!TdcHits.empty()){ // if there are any TDC hits, do basic analysis tasks
@@ -176,6 +168,20 @@ Bool_t TTrbAnalysisBase::OpenTrbTree(string cUserDataFilename){
 	return (kTRUE);
 }
 
+void TTrbAnalysisBase::PrintEvtEntryMap() const{
+	std::multimap< UInt_t,UInt_t >::const_iterator FirstEntry = EvtChanEntries.begin();
+	std::multimap< UInt_t,UInt_t >::const_iterator LastEntry = EvtChanEntries.end();
+	cout << "+++++++++++++++++++++++++++" << endl;
+	cout << "+++   Event TDC Hits    +++" << endl;
+	cout << "+++++++++++++++++++++++++++" << endl;
+	cout << EvtChanEntries.size() << " TDC HITS FOUND" << endl;
+	cout << "+++++++++++++++++++++++++++" << endl;
+	for(std::multimap< UInt_t,UInt_t >::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){ // begin loop over all event hit entries
+		cout << std::distance(FirstEntry,CurEntry) << "\t" << CurEntry->first << "\t" << CurEntry->second << endl;
+	} // end of loop over all event hit entries
+	cout << "+++++++++++++++++++++++++++" << endl;
+}
+
 void TTrbAnalysisBase::PrintSyncTimeStamps() const {
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "+++ TDC Sync Timestamps +++" << endl;
@@ -190,15 +196,64 @@ void TTrbAnalysisBase::PrintSyncTimeStamps() const {
 }
 
 void TTrbAnalysisBase::PrintTdcAddresses() const {
-	Int_t nTdcIndex = 0;
+	//Int_t nTdcIndex = 0;
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "+++    TDC ADDRESSES    +++" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
-	for(std::map< UInt_t,UInt_t >::const_iterator CurIndex=TdcAddresses.begin(); CurIndex!=TdcAddresses.end(); ++CurIndex){
-		cout << nTdcIndex << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second << endl;
-		++nTdcIndex;
+	std::map< UInt_t,UInt_t >::const_iterator FirstIndex = TdcAddresses.begin();
+	std::map< UInt_t,UInt_t >::const_iterator LastIndex = TdcAddresses.end();
+	for(std::map< UInt_t,UInt_t >::const_iterator CurIndex=FirstIndex; CurIndex!=LastIndex; ++CurIndex){
+		cout << distance(FirstIndex,CurIndex) << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second << endl;
+		//++nTdcIndex;
 	}
 	cout << "+++++++++++++++++++++++++++" << endl;
+}
+
+void TTrbAnalysisBase::PrintTdcMapping() const {
+	cout << "+++++++++++++++++++++++++++" << endl;
+	cout << "+++     TDC Mapping     +++" << endl;
+	cout << "+++++++++++++++++++++++++++" << endl;
+	std::map< std::pair< UInt_t,UInt_t >,UInt_t >::const_iterator LastTdc = MappingTable.end();
+	for(std::map< std::pair< UInt_t,UInt_t >,UInt_t >::const_iterator CurrentTdc=MappingTable.begin(); CurrentTdc!=LastTdc; ++CurrentTdc){ // begin loop over mapping table
+		cout << hex << CurrentTdc->first.first << dec << "\t" << CurrentTdc->first.second << "\t" << CurrentTdc->second << endl;
+	//	} // end of loop over TDC channels
+	} // end of loop over mapping table
+	cout << "+++++++++++++++++++++++++++" << endl;
+}
+
+void TTrbAnalysisBase::ScanEvent(){
+	EvtSyncTimeStamps.clear(); // clear sync timestamps map
+	EvtChanEntries.clear(); // clear hit index map
+	// loop over Hits_nTdcChannel array and extract time whenever we find the reference channel
+	for(Int_t nCurEvtIndex=0; nCurEvtIndex<TrbData->Hits_; ++nCurEvtIndex){ // loop over all hits in entry
+		if(!TrbData->Hits_bIsCalibrated[nCurEvtIndex]){ // channel fine time is not calibrated
+			if(bVerboseMode)
+				cout << "Entry at index " << nCurEvtIndex << " not calibrated, thus skipping it!" << endl;
+			continue; // skip rest of loop
+		}
+		std::pair< UInt_t,UInt_t > TempChanAddress (TrbData->Hits_nTrbAddress[nCurEvtIndex],TrbData->Hits_nTdcChannel[nCurEvtIndex]); // create address pair consisting of FPGA address and TDC channel ID
+		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),TempChanAddress)!=ExcludedChannels.end()){ // channel found in exclusion list
+			continue; // skip rest of loop
+		}
+		if(TrbData->Hits_bIsRefChannel[nCurEvtIndex]){ // check for TDC reference channels
+			EvtSyncTimeStamps.insert(make_pair((UInt_t)TempChanAddress.first,(UInt_t)nCurEvtIndex)); // fill TDC address and array index into map
+		}
+		else if(TrbData->Hits_nTdcChannel[nCurEvtIndex]<nTdcOffset){ 
+			continue; // skip rest of loop
+		}
+		else{
+			Int_t nTempSeqId = GetSeqId(TempChanAddress.first,TempChanAddress.second);
+			if(nTempSeqId<0){ // channel address not found in mapping table (should not happen)
+				continue;
+			}
+			EvtChanEntries.insert(make_pair((UInt_t)nTempSeqId,(UInt_t)nCurEvtIndex));
+		}
+	} // end of loop over all hits in this entry
+	if(bVerboseMode){
+		PrintSyncTimeStamps();
+		PrintEvtEntryMap();
+		//cout << GetSizeOfEvtEntryMap() << " TDC entries accepted." << endl;
+	}
 }
 
 void TTrbAnalysisBase::SetTdcAddresses(string cUserTdcAddressesFile){ // set TRB addresses

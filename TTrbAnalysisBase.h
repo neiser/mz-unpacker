@@ -42,9 +42,9 @@ protected:
 	Bool_t CheckRandomBits(); // check if hits' random bits are the same in an event
 	void ClearEventMaps(); // clear event-related maps
 	void ComputeMappingTable(); // compute mapping table
-	void FillSyncTimeStamps(); // find sync timestamps in an event and write to EvtSyncTimeStamps map, return value
 	void Init();
 	Bool_t OpenTrbTree(string cUserDataFilename); // open ROOT file containing Tree with calibrated TRB data
+	void ScanEvent(); // scan event data and fill sync timestamp map and hit index multimap
 	void SetTdcAddresses(string cUserTdcAddressesFile); // set TRB addresses using text file as input
 public:
 	TTrbAnalysisBase(string cUserDataFilename, string cUserTdcAddressesFile, UInt_t nUserTdcChannels=32, UInt_t nUserTdcOffset=2, Bool_t bUserVerboseMode=kFALSE); // constructor
@@ -54,13 +54,17 @@ public:
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from analysis
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel) from analysis
 	Int_t GetEntry(Long64_t nEntryIndex); // get entry from ROOT Tree and store event values in local variables
+	UInt_t GetSizeOfEvtEntryMap() const { return ((UInt_t)EvtChanEntries.size()); };
 	UInt_t GetSizeOfMapTable() const { return ((UInt_t)MappingTable.size()); };
 	UInt_t GetSizeOfSyncMap() const { return ((UInt_t)EvtSyncTimeStamps.size()); };
 	Int_t GetSeqId(UInt_t nUserTdcAddress, UInt_t nUserTdcChannel); // get sequential channel number
-	UInt_t GetTdcN() const { return ((UInt_t)TdcAddresses.size()); };
+	Int_t GetNEvents() const { return ((Int_t)TrbData->fChain->GetEntriesFast()); };
+	UInt_t GetNTdc() const { return ((UInt_t)TdcAddresses.size()); };
 	UInt_t GetTdcOffset() const { return (nTdcOffset); };
+	void PrintEvtEntryMap() const;
 	void PrintSyncTimeStamps() const;
 	void PrintTdcAddresses() const;
+	void PrintTdcMapping() const;
 	void SetChanPerTdc(UInt_t nUserChanPerTdc) { nChanPerTdc = nUserChanPerTdc; }; // set number of TDC channels per TDC, excluding reference channels
 	void SetTdcOffset(UInt_t nUserTdcOffset) { nTdcOffset = nUserTdcOffset; }; // set TDC channel offset to mask reference channels
 	void WriteTdcMapping(string cUserMappingFile); // write mapping table to text file
