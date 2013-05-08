@@ -1,0 +1,5 @@
+# Setup for DIRC Test Experiment in Mainz, July 2012
+# Matthias Hoek
+# v1 (22/11/2012)
+# PMT_Name Columns Rows Pitch_X Pitch_Y Setup_File X Y Angle
+MCP-PMT_1 8 8 6.5 6.5 MCP_Laser_Mapping_130507.txt -22.75 22.75 0.0

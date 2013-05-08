@@ -372,7 +372,8 @@ void TTrbEventDisplay::Init(){
 void TTrbEventDisplay::LoadData(string cUserDatafile){
 	if(cUserDatafile.empty())
 		return;
-	Events = new TTrbAnalysis(cUserDatafile,"c030|c050|c090|c080");
+	//Events = new TTrbAnalysis(cUserDatafile,"laser_tdc_list_130423.txt");
+	Events = new TTrbAnalysis(cUserDatafile,"laser_tdc_list_130507.txt");
 	cout << Events->GetNEvents() << "\t" << Events->GetNTrb() << endl;
 	bDataIsValid = kTRUE;
 }
@@ -504,7 +505,8 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 		(*CurrentPmt)->ReadSparseData(*EventData);
 		vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){
-			hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
+			//hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,fabs(CurrentPixel->fAmplitude));
+			hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
 		}
 	} // end of loop over all MAPMTs in this setup
 	if(canEventDisplay==NULL){
@@ -533,7 +535,9 @@ void TTrbEventDisplay::Show(Int_t nUserStart, Int_t nUserStop){
 			(*CurrentPmt)->ReadSparseData(*EventData);
 			vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 			for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){
-				hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
+				//hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,fabs(CurrentPixel->fAmplitude));
+				if(CurrentPixel->fAmplitude>-300.0&&CurrentPixel->fAmplitude<-100.0)
+					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
 			}
 		} // end of loop over all MAPMTs in this setup
 	}
