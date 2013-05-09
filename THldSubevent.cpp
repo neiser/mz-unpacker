@@ -73,6 +73,7 @@ Bool_t THldSubEvent::DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader){
 	}
 	TdcHeader.nRandomBits	= (DataWord>>16) & 0xFF;
 	TdcHeader.nErrorBits	= DataWord & 0xFFFF;
+	nTdcLastChannelNo = -1; // reset the last channel number...
 	if(bVerboseMode){
 		cout << "TDC Header word found!" << endl;
 		cout << "TDC Error Code is " << hex << TdcHeader.nErrorBits << dec << endl;
