@@ -47,12 +47,13 @@ class THldSubEvent : public TObject{
 	friend void ClearTdcHeader(TDC_HEADER& TdcHeader);
  private:
 	ifstream* HldFile;
-	Bool_t CheckHubAddress(UInt_t& nUserHubAddress); // check decoded HUB address against user provided list
-	Bool_t CheckTdcAddress(UInt_t& nUserTdcAddress); // check decoded TDC address against user provided list
+	Bool_t CheckHubAddress(const UInt_t& nUserHubAddress); // check decoded HUB address against user provided list
+	Bool_t CheckTdcAddress(const UInt_t& nUserTdcAddress); // check decoded TDC address against user provided list
 	void DecodeBaseEventSize();
 	//Bool_t DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, UInt_t& nTdcRandomBits, UInt_t& nTdcErrorCode);
 	Bool_t DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader);
 	Bool_t DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader);
+	UInt_t DecodeCTSData(unsigned i, std::vector<UInt_t> nTrbData);
 	void Init(); // initialise variables etc.
 	Bool_t ReadHeader(); // read subevent header words
 	Bool_t ReadTrailer(); // read subevent trailer words
@@ -72,6 +73,7 @@ class THldSubEvent : public TObject{
 	size_t nSubEventSize; // number of bytes read from HLD file 
 	UInt_t nNumberOfTrbsFound; // number of TRB boards found in subevent
 	UInt_t nNumberOfTdcsFound; // number of TDCs found in subevent (there should be 4 TDCs per TRBv3 board)
+	UInt_t nCTSExtTriggerId; // CTS can provide a external trigger ID
 	size_t nTrbWordsRead; // not used at the moment
 	std::vector<UInt_t> nTrbData; // vector containing TRBv3 data words, excluding header and trailer information
 	TClonesArray* Hits;

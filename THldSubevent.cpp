@@ -19,11 +19,11 @@ THldSubEvent::~THldSubEvent(){ // destructor
 	//delete TrbHits;
 }
 
-Bool_t THldSubEvent::CheckHubAddress(UInt_t& nUserHubAddress){
+Bool_t THldSubEvent::CheckHubAddress(const UInt_t& nUserHubAddress){
 	return ( find(TrbSettings->nHubAddress.begin(),TrbSettings->nHubAddress.end(),nUserHubAddress) != TrbSettings->nHubAddress.end());
 }
 
-Bool_t THldSubEvent::CheckTdcAddress(UInt_t& nUserTdcAddress){
+Bool_t THldSubEvent::CheckTdcAddress(const UInt_t& nUserTdcAddress){
 	return ( find(TrbSettings->nTdcAddress.begin(),TrbSettings->nTdcAddress.end(),nUserTdcAddress) != TrbSettings->nTdcAddress.end());
 }
 
@@ -139,6 +139,16 @@ Bool_t THldSubEvent::DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TD
 	return kTRUE;
 }
 
+UInt_t THldSubEvent::DecodeCTSData(unsigned i0, std::vector<UInt_t> nTrbData) {
+	// i0 should point the CTS header
+	UInt_t header = nTrbData[i0];
+	//for(unsigned i=i0;i<nTrbData.size();i++) {
+		
+	//	UInt_t CurrentDataWord = nTrbData[i]; 
+	//}
+	return 0;
+}
+
 
 void THldSubEvent::Init(){ // initialise subevent variables
 	if(bVerboseMode)
@@ -157,7 +167,8 @@ void THldSubEvent::Init(){ // initialise subevent variables
 	nTdcHits			= 0; // number of TDC hits found in subevent
 	nNumberOfTrbsFound  = 0; // number of TRB boards found in subevent
 	nNumberOfTdcsFound	= 0; // number of TDCs found in subevent
-
+	nCTSExtTriggerId = 0; // by default, it's zero
+		
 	nBaseEventSize	= 0;
 	nDataBytes		= 0;
 	nDataWords		= 0;
@@ -166,6 +177,7 @@ void THldSubEvent::Init(){ // initialise subevent variables
 	bIsValid		= kFALSE;
 	nTdcEpochCounter = 0;
 	nTdcLastChannelNo = -1; // at the beginning of a subevent, there's no such channel
+	
 	
 	Hits->Clear("C");
 }
@@ -266,7 +278,9 @@ Bool_t THldSubEvent::ReadTrbData() {
 	Bool_t bFoundCtsPacket = kFALSE;
 	
 	TDC_HEADER TdcHeader;
-	
+
+	// declare i outside loop to check in the end
+	// if we processed everything correctly 
 	unsigned i=0;
 	for(i=0;i<nTrbData.size();i++){ // loop over all TRB data and decode TDC hits
 		
@@ -277,8 +291,54 @@ Bool_t THldSubEvent::ReadTrbData() {
 			// look for DataWord with matching TrbAddress
 			nTrbAddress = CurrentDataWord & 0xFFFF;
 			nTrbWords	= CurrentDataWord>>16;
-		
-			if(CheckHubAddress(nTrbAddress)) {
+
+
+			if(nTrbAddress==TrbSettings->nCtsAddress) {
+				// Check first if it's CTS, because it might contain a TDC 
+				// except for the integrated TDC and external trigger id
+				bFoundCtsPacket = kTRUE;
+				if(bVerboseMode)
+					cout << "Found CTS readout packet, ";
+				if(CheckTdcAddress(TrbSettings->nCtsAddress)) {
+					if(bVerboseMode)
+						cout << "decoding it (" << nTrbWords << " words)" << endl;
+					// the CTS address is also mentioned in the TDC list,
+					// so we expect to find some TDC information
+					// we also save the external trigger id (if we find one)
+					UInt_t nCTSwords = DecodeCTSData(i+1, nTrbData);
+
+					if(nCTSwords==0 || nCTSwords>nTrbWords) {
+						if(bVerboseMode)
+							cout << "ERROR in decoding CTS word, skipping it." << endl;
+						i += nTrbWords;
+					}
+					else {
+						// TDC words of the CTS are at the very end of this data block
+						// so we fake at this point to have found a "normal" TDC data block now
+						// skip the already parsed CTS words
+						i += nCTSwords;
+						// but not the appended TDC words
+						nTdcWords = nTrbWords-nCTSwords;
+						nTrbWords = nTdcWords;
+						nTdcAddress = nTrbAddress;
+						if(bVerboseMode)
+							cout << "TDC in CTS Endpoint found at 0x" << setfill('0') << setw(4)
+							     << hex << nTdcAddress << dec << ", Payload " << nTdcWords << endl;
+	
+					}
+				}
+				else {
+					// we are not interested in the CTS stuff,
+					// i.e. the CTS address is not mentioned as a TDC endpoint
+					if(bVerboseMode)
+						cout << "skipping it (" << nTrbWords << " words)" << endl;
+					i += nTrbWords;
+				}
+				
+				// skip rest of loop, but we might decode TDC stuff from the CTS now
+				continue; 
+			}
+			else if(CheckHubAddress(nTrbAddress)) {
 				// we found a interesting hub, we simply do nothing but
 				// to go one level deeper in the topology
 				// a consistency check could verify if nTrbWords extracted now
@@ -290,21 +350,12 @@ Bool_t THldSubEvent::ReadTrbData() {
 	
 			}
 			else if(CheckTdcAddress(nTrbAddress)) {
-				// we recognized it as an TDC endpoint (might still be wrong...)
+				// we recognized it as an TDC endpoint
 				nTdcWords	= nTrbWords;
 				nTdcAddress = nTrbAddress;
 				if(bVerboseMode)
 					cout << "TDC Endpoint found at 0x" << setfill('0') << setw(4)
 					     << hex << nTdcAddress << dec << ", Payload " << nTdcWords << endl;
-			}
-			else if(nTrbAddress==TrbSettings->nCtsAddress) {
-				// this information is not used at the moment,
-				// so we skip payload to exclude misidentifaction as an endpoint word
-				if(bVerboseMode)
-					cout << "Found CTS readout packet, skipping it (" << nTrbWords << " words)" << endl;
-				i += nTrbWords;
-				bFoundCtsPacket = kTRUE;
-				continue; // skip rest of loop, should bring us to the end of the loop
 			}
 			else {
 				// this doesn't seem to be interesting data, so skip it
