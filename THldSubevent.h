@@ -53,7 +53,7 @@ class THldSubEvent : public TObject{
 	//Bool_t DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, UInt_t& nTdcRandomBits, UInt_t& nTdcErrorCode);
 	Bool_t DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader);
 	Bool_t DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader);
-	UInt_t DecodeCTSData(unsigned i, std::vector<UInt_t> nTrbData);
+	UInt_t DecodeCTSData(unsigned i);
 	void Init(); // initialise variables etc.
 	Bool_t ReadHeader(); // read subevent header words
 	Bool_t ReadTrailer(); // read subevent trailer words

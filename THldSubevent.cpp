@@ -139,14 +139,41 @@ Bool_t THldSubEvent::DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TD
 	return kTRUE;
 }
 
-UInt_t THldSubEvent::DecodeCTSData(unsigned i0, std::vector<UInt_t> nTrbData) {
+UInt_t THldSubEvent::DecodeCTSData(unsigned i0) {
 	// i0 should point the CTS header
 	UInt_t header = nTrbData[i0];
-	//for(unsigned i=i0;i<nTrbData.size();i++) {
-		
-	//	UInt_t CurrentDataWord = nTrbData[i]; 
-	//}
-	return 0;
+	// we extract only stuff which is interesting for now...
+	UInt_t nInputs = header >> 16 & 0xf;
+	UInt_t nTrigChannels = header >> 20 & 0xf;
+	UInt_t bIncludeLastIdle = header >> 25 & 0x1;
+	UInt_t bIncludeCounters = header >> 26 & 0x1;
+	UInt_t bIncludeTimestamp = header >> 27 & 0x1;
+	UInt_t nExtTrigFlag = header >> 28 & 0x3;
+	
+	// how many words each data needs is documented in trb3docu.pdf
+	// don't forget the header, which is one word
+	UInt_t nCTSwords = 1 + nInputs*2 + nTrigChannels*2 +
+		bIncludeLastIdle*2 + bIncludeCounters*3 + bIncludeTimestamp*1;
+
+	
+	
+	// now, the external trigger module (ETM) is missing	
+	if(nExtTrigFlag==0x1) {
+		// ETM sends one word, is probably MBS Vulom Recv
+		nCTSwords+=1;
+	}
+	else if(nExtTrigFlag==0x2) {
+		// ETM sends four words, is probably a Mainz A2 recv
+		nCTSwords+=4;
+	}
+	else if(nExtTrigFlag==0x3) {
+		if(bVerboseMode)
+			cout << "ERROR: Unknown ETM found" << endl;
+		// return 0, which skips the CTS stuff
+		nCTSwords = 0;
+	}
+	
+	return nCTSwords;
 }
 
 
@@ -305,7 +332,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 					// the CTS address is also mentioned in the TDC list,
 					// so we expect to find some TDC information
 					// we also save the external trigger id (if we find one)
-					UInt_t nCTSwords = DecodeCTSData(i+1, nTrbData);
+					UInt_t nCTSwords = DecodeCTSData(i+1);
 
 					if(nCTSwords==0 || nCTSwords>nTrbWords) {
 						if(bVerboseMode)
