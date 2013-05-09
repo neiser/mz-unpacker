@@ -33,6 +33,8 @@ void TTrbEventData::AddSubEvt(THldEvent& UserHldEvent){
 	nSubEvtDecoding = UserHldEvent.SubEventData->SubEventHeader.nDecoding; // subevent decoding settings
 	nSubEvtId		= UserHldEvent.SubEventData->SubEventHeader.nEventId; // subevent ID (should be 0x8c00 for TRBv3)
 	nSubEvtTrigger	= UserHldEvent.SubEventData->SubEventHeader.nTrigger; // subevent trigger number
+	nCTSExtTrigger = UserHldEvent.SubEventData->nCTSExtTrigger;  // trigger number from CTS external trigger module (ETM)
+	nCTSExtTriggerStatus = UserHldEvent.SubEventData->nCTSExtTriggerStatus; // some status for CTS ETM
 	nSebErrCode		= UserHldEvent.SubEventData->SubEventTrailer.nSebError; // subevent error code
 	nTrbs			= UserHldEvent.SubEventData->nNumberOfTrbsFound;
 	nTdcs			= UserHldEvent.SubEventData->nNumberOfTdcsFound;

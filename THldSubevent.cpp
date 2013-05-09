@@ -155,16 +155,23 @@ UInt_t THldSubEvent::DecodeCTSData(unsigned i0) {
 	UInt_t nCTSwords = 1 + nInputs*2 + nTrigChannels*2 +
 		bIncludeLastIdle*2 + bIncludeCounters*3 + bIncludeTimestamp*1;
 
-	
-	
 	// now, the external trigger module (ETM) is missing	
+	// i should point to the first ETM word
+	unsigned i = i0+nCTSwords;
+	
 	if(nExtTrigFlag==0x1) {
 		// ETM sends one word, is probably MBS Vulom Recv
+		// this is not yet tested
 		nCTSwords+=1;
+		nCTSExtTrigger = nTrbData[i] & 0x00ffffff; // lower 24 bits are trigger number 
+		nCTSExtTriggerStatus = nTrbData[i] & 0xff000000; // upper 8 bits are status/error
 	}
 	else if(nExtTrigFlag==0x2) {
 		// ETM sends four words, is probably a Mainz A2 recv
 		nCTSwords+=4;
+		nCTSExtTrigger = nTrbData[i];
+		nCTSExtTriggerStatus = nTrbData[i+1];
+		// word 3+4 are 0xdeadbeef i.e. not used at the moment...
 	}
 	else if(nExtTrigFlag==0x3) {
 		if(bVerboseMode)
@@ -172,6 +179,10 @@ UInt_t THldSubEvent::DecodeCTSData(unsigned i0) {
 		// return 0, which skips the CTS stuff
 		nCTSwords = 0;
 	}
+
+	if(bVerboseMode)
+		cout << "External Trigger ID " << hex << nCTSExtTrigger << ", Status: " << nCTSExtTriggerStatus <<endl;
+
 	
 	return nCTSwords;
 }
@@ -194,8 +205,9 @@ void THldSubEvent::Init(){ // initialise subevent variables
 	nTdcHits			= 0; // number of TDC hits found in subevent
 	nNumberOfTrbsFound  = 0; // number of TRB boards found in subevent
 	nNumberOfTdcsFound	= 0; // number of TDCs found in subevent
-	nCTSExtTriggerId = 0; // by default, it's zero
-		
+	nCTSExtTrigger = 0; // by default, it's zero
+	nCTSExtTriggerStatus = 0; // by default, it's zero
+	
 	nBaseEventSize	= 0;
 	nDataBytes		= 0;
 	nDataWords		= 0;

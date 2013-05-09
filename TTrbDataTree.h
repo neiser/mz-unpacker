@@ -1,8 +1,8 @@
 //////////////////////////////////////////////////////////
 // This class has been automatically generated on
-// Mon Mar 18 12:00:00 2013 by ROOT version 5.32/02
+// Thu May  9 17:03:47 2013 by ROOT version 5.34/05
 // from TTree T/UMainz TRB HLD Data
-// found on file: ep-1.hld.root
+// found on file: data/2013-05-08-cb-bunch6364/run-1.hld.root
 //////////////////////////////////////////////////////////
 
 #ifndef TTrbDataTree_h
@@ -42,6 +42,8 @@ public :
    UInt_t          nSebErrCode;
    UInt_t          nTrbs;
    UInt_t          nTdcs;
+   UInt_t          nCTSExtTrigger;
+   UInt_t          nCTSExtTriggerStatus;
    UInt_t          nSubEvtDecError;
    Int_t           Hits_;
    UInt_t          Hits_fUniqueID[kMaxHits];   //[Hits_]
@@ -77,6 +79,8 @@ public :
    TBranch        *b_event_nSebErrCode;   //!
    TBranch        *b_event_nTrbs;   //!
    TBranch        *b_event_nTdcs;   //!
+   TBranch        *b_event_nCTSExtTrigger;   //!
+   TBranch        *b_event_nCTSExtTriggerStatus;   //!
    TBranch        *b_event_nSubEvtDecError;   //!
    TBranch        *b_event_Hits_;   //!
    TBranch        *b_Hits_fUniqueID;   //!
@@ -113,9 +117,9 @@ TTrbDataTree::TTrbDataTree(TTree *tree) : fChain(0)
 // if parameter tree is not specified (or zero), connect the file
 // used to generate this class and read the Tree.
    if (tree == 0) {
-      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("ep-1.hld.root");
+      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("data/2013-05-08-cb-bunch6364/run-1.hld.root");
       if (!f || !f->IsOpen()) {
-         f = new TFile("ep-1.hld.root");
+         f = new TFile("data/2013-05-08-cb-bunch6364/run-1.hld.root");
       }
       f->GetObject("T",tree);
 
@@ -181,6 +185,8 @@ void TTrbDataTree::Init(TTree *tree)
    fChain->SetBranchAddress("nSebErrCode", &nSebErrCode, &b_event_nSebErrCode);
    fChain->SetBranchAddress("nTrbs", &nTrbs, &b_event_nTrbs);
    fChain->SetBranchAddress("nTdcs", &nTdcs, &b_event_nTdcs);
+   fChain->SetBranchAddress("nCTSExtTrigger", &nCTSExtTrigger, &b_event_nCTSExtTrigger);
+   fChain->SetBranchAddress("nCTSExtTriggerStatus", &nCTSExtTriggerStatus, &b_event_nCTSExtTriggerStatus);
    fChain->SetBranchAddress("nSubEvtDecError", &nSubEvtDecError, &b_event_nSubEvtDecError);
    fChain->SetBranchAddress("Hits", &Hits_, &b_event_Hits_);
    fChain->SetBranchAddress("Hits.fUniqueID", Hits_fUniqueID, &b_Hits_fUniqueID);

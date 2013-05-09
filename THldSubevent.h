@@ -73,7 +73,8 @@ class THldSubEvent : public TObject{
 	size_t nSubEventSize; // number of bytes read from HLD file 
 	UInt_t nNumberOfTrbsFound; // number of TRB boards found in subevent
 	UInt_t nNumberOfTdcsFound; // number of TDCs found in subevent (there should be 4 TDCs per TRBv3 board)
-	UInt_t nCTSExtTriggerId; // CTS can provide a external trigger ID
+	UInt_t nCTSExtTrigger; // CTS can provide a external trigger ID...
+	UInt_t nCTSExtTriggerStatus; // ...and some more about it (depending on implemented module) 
 	size_t nTrbWordsRead; // not used at the moment
 	std::vector<UInt_t> nTrbData; // vector containing TRBv3 data words, excluding header and trailer information
 	TClonesArray* Hits;
