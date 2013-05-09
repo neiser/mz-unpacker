@@ -30,22 +30,21 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	// define histograms
 	TFile *AnalysisOut = new TFile(cUserAnalysisFilename.c_str(),"RECREATE");
 	TH1D hEvtStats("hEvtStats","hEvtStats",15,-0.5,14.5);
-	TH1D hRefClocks("hRefClocks","hRefClocks",18,-0.5,17.5);
-	TH1D hTdcHits("hTdcHits","hTdcHits",51,-1.5,49.5);
-	TH1D hPixelHits("hPixelHits","hPixelHits",51,-1.5,49.5);
+	TH1D hRefClocks("hRefClocks","hRefClocks; no of reference channels per event; frequency",18,-0.5,17.5);
+	TH1D hTdcHits("hTdcHits","hTdcHits;no of leading edge hits per event; frequency",51,-1.5,49.5);
+	TH1D hPixelHits("hPixelHits","hPixelHits;no of complete hits per event; frequency",51,-1.5,49.5);
 	TH1D hTdcEff("hTdcEff","hTdcEff",12,-1.5,10.5);
-	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching",100,-0.5,99.5,100,-0.5,99.5);
-	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming",6000,-15000.0,15000.0);
+	TH2D hTdcHitMatching("hTdcHitMatching","hTdcHitMatching; no of leading edge hits per event; no of complete hits per event; frequency",100,-0.5,99.5,100,-0.5,99.5);
+	TH1D hTdcHitChannels("hTdcHitChannels","hTdcHitChannels; unique TDC channel ID; frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
+	TH1D hTdcHitTiming("hTdcHitTiming","hTdcHitTiming; leading edge time stamp (corrected for reference clock) (ns); frequency",6000,HIT_TIME_MIN,HIT_TIME_MAX);
 	TH1D hTdcHitTimingPeak("hTdcHitTimingPeak","hTdcHitTimingPeak",100,-400.0,-360.0);
-	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming",500,-0.5,110.0);
-	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist",500,-1.0,120.0,nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
-	TH1D hHitWidth("hHitWidth","hHitWidth",120,-10.0,50.0);
-	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
-	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming",2000,-2500,2500,400,-10.0,50.0);
-	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,2000,-2500,2500);
-	TH1D hMultiHits("hMultiHits","hMultiHits",25,-1.5,23.5);
-
+	TH1D hTdcEventTiming("hTdcEventTiming","hTdcEventTiming; #DeltaT (ns); frequency",500,-1.0,20.0);
+	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist; #DeltaT (ns); unique TDC channel ID; frequency",500,-1.0,20.0,nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
+	TH1D hHitWidth("hHitWidth","hHitWidth; hit width (ns); frequency",120,-10.0,50.0);
+	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel; unique TDC channel ID; hit width (ns)",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
+	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming; leading edge time stamp (ns); hit width (ns); frequency",2000,-HIT_TIME_MIN,HIT_TIME_MAX,400,-10.0,50.0);
+	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel; unique TDC channel ID; leading edge time stamp (ns); frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,6000,HIT_TIME_MIN,HIT_TIME_MAX);
+	TH1D hMultiHits("hMultiHits","hMultiHits; no of channels with multiple hits per event; frequency",25,-1.5,23.5);
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
 	//for(Int_t i=4; i<5; i++){ // begin loop over all events
@@ -133,6 +132,11 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	delete AnalysisOut; // close RooT file and delete pointer
 }
 
+void TTrbAnalysis::Analyse(string cUserAnalysisFilename, UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
+	SetRefChannel(nUserTrbAddress,nUserTdcChannel);
+	Analyse(cUserAnalysisFilename);
+}
+
 Bool_t TTrbAnalysis::CheckRandomBits(){
 	// check that all TDC hits in an event have the same random bits sequence
 	switch (TrbData->Hits_){
@@ -189,12 +193,8 @@ std::vector< std::pair< Double_t,Int_t > > TTrbAnalysis::ComputeEventTiming(){
 		for(itB=itA; itB!=TdcLeadingEdges.end(); ++itB){ // begin of loop B over all leading edge timestamps
 			if(itA==itB) // ignore same entries
 				continue;
-			if(bVerboseMode) {
-				cout << "A " << itA->first << " B " << itB->first
-				     << " A " << itA->second << " B " << itB->second << endl;
-			}
 			Int_t nChannelDiff = abs(itA->first - itB->first);
-			Double_t fTimeDiff = itB->second - itA->second; // compute timing difference
+			Double_t fTimeDiff = itA->second - itB->second; // compute timing difference
 			fTimingDifference.push_back(make_pair(fTimeDiff,nChannelDiff)); // insert timing difference into vector
 		} // end of loop B over all leading edge timestamps
 	} // end of loop A over all leading edge timestamps
@@ -271,7 +271,6 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 	if(TdcHits.empty()) // no TDC hits available
 		return;
 	for(std::multimap< UInt_t,Int_t >::const_iterator CurrentTdcHit=TdcHits.begin(); CurrentTdcHit!=TdcHits.end(); CurrentTdcHit++){ // begin of loop over all TDC hits (needs to be a while loop!)
-
 		Int_t nMultiplicity = (Int_t) TdcHits.count(CurrentTdcHit->first);
 		if(nMultiplicity>1){ // check if multiple hits occur
 			CurrentTdcHit = TdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
@@ -286,12 +285,23 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 		std::map< UInt_t,Int_t >::const_iterator Offset = TdcRefTimes.find(nTdcAddress);
 		if(Offset==TdcRefTimes.end()) // couldn't find reference signal timestamp
 			continue; // skip rest of loop
-		if(TrbData->Hits_bIsCalibrated[CurrentTdcHit->second]) {
+		if(TrbData->Hits_bIsCalibrated[CurrentTdcHit->second]){
 			Double_t fLeadingEdge = TrbData->Hits_fTime[CurrentTdcHit->second] - TrbData->Hits_fTime[Offset->second];
 			TdcLeadingEdges.insert(make_pair((Int_t)CurrentTdcHit->first,fLeadingEdge)); // fill entry into leading edge map
 		}
 
 	} // end of loop over all TDC hits
+	// now correct leading edge time stamps for user reference channel
+	if(bRefChanIsSet&&!TdcLeadingEdges.empty()){ // find time stamp of user reference channel
+		std::map< Int_t,Double_t >::const_iterator RefTime = TdcLeadingEdges.find(nTdcRefChannel);
+		if(RefTime==TdcLeadingEdges.end()){ // couldn't find user reference time
+			TdcLeadingEdges.clear(); // clear leading edges map
+			return;
+		}
+		for(std::map< Int_t, Double_t >::iterator ThisLeadingEdge=TdcLeadingEdges.begin(); ThisLeadingEdge!=TdcLeadingEdges.end(); ThisLeadingEdge++){ // begin loop over all leading edge timestamps
+			ThisLeadingEdge->second -= RefTime->second;
+		}
+	}
 }
 
 void TTrbAnalysis::FillTimeOverThreshold(){
@@ -352,12 +362,11 @@ Int_t TTrbAnalysis::HitMatching(Bool_t bSkipMultiHits){
 			++CurrentTdcHit;
 			continue; // skip rest of loop
 		}
-
 		std::multimap< UInt_t,Int_t >::const_iterator TempTdcHit = CurrentTdcHit; // store pointer to leading-edge entry
 		++CurrentTdcHit; // increment iterator to point to the next element
 		if(CurrentTdcHit==TdcHits.end()) // check if we reached end of hit map
 			break; // if end of hit map is reached, exit this loop
-		if((CurrentTdcHit->first-TempTdcHit->first)==1) { // found hit sequence
+		if((CurrentTdcHit->first-TempTdcHit->first)==1){ // found hit sequence
 			PixelHits.insert(make_pair(TempTdcHit->second,CurrentTdcHit->second)); // enter this combination into pixel hit map
 			// fill Time-over-Threshold map here
 
@@ -376,6 +385,7 @@ void TTrbAnalysis::Init(){
 	nEventsMax		= -1; // number of events in data set
 	nMaxTdcChannel	= 0; // unique index of last channel
 	nTrbEndpoints	= 0; // number of TRB boards in setup
+	bRefChanIsSet	= kFALSE; // no user reference channel is set
 	// initialise event level variables
 	bAllRefChanValid = kFALSE;
 	nEvtMultHits	= 0; // number of channels with multiple hits
@@ -459,6 +469,14 @@ void TTrbAnalysis::PrintTrbAddresses() const {
 		cout << hex << CurIndex->first << dec << " , " << CurIndex->second << endl;
 	}
 	cout << "+++++++++++++++++++++++++++" << endl;
+}
+
+void TTrbAnalysis::SetRefChannel(UInt_t nTrbAddress, UInt_t nTdcChannel){
+	Int_t nTempRefChan = ComputeTdcChanId(nTrbAddress,nTdcChannel);
+	if(nTempRefChan>-1){
+		bRefChanIsSet = kTRUE;
+		nTdcRefChannel = nTempRefChan;
+	}
 }
 
 Bool_t TTrbAnalysis::SetRefTimestamps(){

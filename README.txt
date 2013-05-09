@@ -37,6 +37,9 @@ root[0] .x BuildTrbCalibration.cpp
 
 + Run Calibration
 root[1] TTrbCalibration a(RooT_filename,Calibration_type=0,Min_Statistics=10000,VerboseMode=kFALSE)
+# so far, two calibration methods have been implemented (more to follow):
+# 0 -> simple calibration using only the total width of the fine time distribution
+# 1 -> sophisticated calibration computing an individual bin width based on fine time bin entries
 root[2] a.DoTdcCalibration()
 This produces two RooT files: one with calibration graphs and another with the calibrated TRB data;
 

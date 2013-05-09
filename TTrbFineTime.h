@@ -39,6 +39,7 @@ private:
 	void AnalyseHistogram(); // extract information from fine time histogram needed during calibration
 	void CalibrationMode0(); // compute calibration table using simple method
 	void CalibrationMode1(); // compute calibration table using advanced method
+	void FillBinWidthGraph(); // fill fine time bin width graph
 	void FillCalibrationGraph(); // fill calibration table graph
 	void Init(); // initialise object
 	void InitHistogram(); // initialise fine time histogram
@@ -61,7 +62,9 @@ protected:
 	TH1D hFineTimeDistribution; // histogram containing fine time data
 	TH1D hBinWidth; // histogram containing distribution of fine time bin widths
 	TGraph grCalibrationTable; // graph showing the calibration correlation
+	TGraph grFineTimeBinWidth; // fine time bin width as a function of fine time bin index
 	std::map< UInt_t,Double_t > CalibrationTable; // map containing calibration constants (value) for each fine time bin (index)
+	std::map< UInt_t,Double_t > BinWidthTable; // map containing computed fine time bin width (value) for each fine time bin (index)
 public:
 	TTrbFineTime(); // standard constructor
 	TTrbFineTime(const TTrbFineTime &a); // copy constructor

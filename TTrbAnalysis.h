@@ -23,9 +23,11 @@
 #include "TTrbDataTree.h"
 
 // +++ define constants +++
-#define N_TDC_CHAN 32 // number of TDC channels
+#define N_TDC_CHAN 65 // number of TDC channels
 #define TDC_CHAN_OFFSET 1 // TDC channel index offset (first two channels are reserved for reference time)
 #define TDC_SWAP_RISING_FALLING 1
+#define HIT_TIME_MIN -70000.0 // lower boundary for hit time histograms (in ns); change as required
+#define HIT_TIME_MAX 10000.0 // upper boundary for hit time histograms (in ns); change as required
 
 // +++ class definition +++
 class TTrbAnalysis : public TObject{
@@ -57,14 +59,17 @@ protected:
 	Int_t nEventsMax; // max number of events in data file
 	Int_t nMaxTdcChannel; // maximum TDC channel ID
 	Int_t nTrbEndpoints; // number of TRB board addresses defined by user input
+	Int_t nTdcRefChannel;
 	// event level information for analysis
 	Bool_t bAllRefChanValid; // flag indicating that all reference channel signals are found
+	Bool_t bRefChanIsSet; // flag indicating user specified reference channel is valid
 	Int_t nEvtMultHits; // number of channels with multiple hits in event
 public:
 	TTrbAnalysis(string cUserDataFilename, string cUserTdcAddressesFile, Bool_t bUserVerboseMode=kFALSE); // constructor
 	//string cUserTdcAddressesFile
 	~TTrbAnalysis(); // destructor
 	void Analyse(string cUserAnalysisFilename); // analysis routine
+	void Analyse(string cUserAnalysisFilename, UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // analysis routine
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from calibration
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel)
 	Int_t GetEntry(Long64_t nEntryIndex);
@@ -78,6 +83,7 @@ public:
 	void PrintTdcHits() const;
 	void PrintTdcLeadingEdges() const;
 	void PrintTrbAddresses() const;
+	void SetRefChannel(UInt_t nTrbAddress, UInt_t nTdcChannel); // set TDC reference channel (not for synchronisation!)
 	void WriteTdcMapping(string cUserMappingFile);
 	/* some magic ROOT stuff... */
 	ClassDef(TTrbAnalysis,1);
