@@ -55,7 +55,10 @@ public:
 	~TTrbEventData();
 	void AddEvtHeader(HLD_HEADER& UserEvtHeader);
 	void AddSubEvt(THldEvent& UserHldEvent);
-	void AddSubEvt(SUB_HEADER& UserSubEvtHeader, UInt_t nUserSebErrCode, UInt_t nUserTrbs, UInt_t nUserTdcs, UInt_t nUserSubEvtDecError);
+	void AddSubEvt(SUB_HEADER& UserSubEvtHeader,
+	               UInt_t nUserCTSExtTrigger,
+	               UInt_t nUserCTSExtTriggerStatus,             
+	               UInt_t nUserSebErrCode, UInt_t nUserTrbs, UInt_t nUserTdcs, UInt_t nUserSubEvtDecError);
 	void Fill(THldEvent& UserHldEvent);
 	/* some magic ROOT stuff... */
 	ClassDef(TTrbEventData,1);

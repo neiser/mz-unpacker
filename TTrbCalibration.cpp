@@ -43,8 +43,17 @@ void TTrbCalibration::ApplyTdcCalibration(){
 		// copy event related data
 		HLD_HEADER TempEvtHeader = { TrbData->nEvtSize ,TrbData->nEvtDecoding, TrbData->nEvtId, TrbData->nEvtSeqNr, TrbData->nEvtDate, TrbData->nEvtTime, TrbData->nEvtRun, TrbData->nEvtPad };
 		CurrentEventData->AddEvtHeader(TempEvtHeader);
-		SUB_HEADER TempSubEvtHeader = { TrbData->nSubEvtSize, TrbData->nSubEvtDecoding, TrbData->nSubEvtId, TrbData->nSubEvtTrigger };
-		CurrentEventData->AddSubEvt(TempSubEvtHeader,TrbData->nSebErrCode,TrbData->nTrbs,TrbData->nTdcs,TrbData->nSubEvtDecError);
+		SUB_HEADER TempSubEvtHeader = { TrbData->nSubEvtSize,
+		                                TrbData->nSubEvtDecoding,
+		                                TrbData->nSubEvtId,
+		                                TrbData->nSubEvtTrigger };
+		CurrentEventData->AddSubEvt(TempSubEvtHeader,
+		                            TrbData->nCTSExtTrigger,
+		                            TrbData->nCTSExtTriggerStatus,
+		                            TrbData->nSebErrCode,
+		                            TrbData->nTrbs,
+		                            TrbData->nTdcs,
+		                            TrbData->nSubEvtDecError);
 		// calibrate fine time
 		for(Int_t nHitIndex=0; nHitIndex<TrbData->Hits_; nHitIndex++){ // begin of loop over hits
 			// copy existing hit data

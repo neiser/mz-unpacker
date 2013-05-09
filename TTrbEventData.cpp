@@ -41,11 +41,19 @@ void TTrbEventData::AddSubEvt(THldEvent& UserHldEvent){
 	nSubEvtDecError = (UInt_t)UserHldEvent.SubEventData->ErrorCode.to_ulong();
 }
 
-void TTrbEventData::AddSubEvt(SUB_HEADER& UserSubEvtHeader, UInt_t nUserSebErrCode, UInt_t nUserTrbs, UInt_t nUserTdcs, UInt_t nUserSubEvtDecError){
+void TTrbEventData::AddSubEvt(SUB_HEADER& UserSubEvtHeader,
+                              UInt_t nUserCTSExtTrigger,
+                              UInt_t nUserCTSExtTriggerStatus,
+                              UInt_t nUserSebErrCode,
+                              UInt_t nUserTrbs,
+                              UInt_t nUserTdcs,
+                              UInt_t nUserSubEvtDecError){
 	nSubEvtSize		= UserSubEvtHeader.nSize;
 	nSubEvtDecoding = UserSubEvtHeader.nDecoding;
 	nSubEvtId		= UserSubEvtHeader.nEventId;
 	nSubEvtTrigger	= UserSubEvtHeader.nTrigger;
+	nCTSExtTrigger = nUserCTSExtTrigger;  
+	nCTSExtTriggerStatus = nUserCTSExtTriggerStatus; 
 	nSebErrCode		= nUserSebErrCode;
 	nTrbs			= nUserTrbs;
 	nTdcs			= nUserTdcs;
@@ -79,6 +87,9 @@ void TTrbEventData::Init(){
 	nSubEvtTrigger	= 0;
 	nSebErrCode		= 0;
 
+	nCTSExtTrigger = 0;
+	nCTSExtTriggerStatus = 0;
+	
 	nTrbs = 0;
 	nTdcs = 0;
 	nSubEvtDecError = 0;
