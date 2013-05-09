@@ -42,6 +42,8 @@ protected:
 	UInt_t nSebErrCode; // subevent builder error code
 	UInt_t nTrbs; // number of TRB boards in subevent
 	UInt_t nTdcs; // number of TDCs in subevent
+	UInt_t nCTSExtTrigger; // central trigger system (CTS) external trigger module (ETM)
+	UInt_t nCTSExtTriggerStatus; // status of CTS ETM
 	// Unpacker information
 	UInt_t nSubEvtDecError; // error bit pattern from subevent decoding
 	// remaining data
