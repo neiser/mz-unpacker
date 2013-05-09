@@ -79,6 +79,7 @@ Bool_t TTrbUnpacker::CreateTree(){
 }
 
 UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode HLD raw data
+	cout << "Unpacking \"" << cHldFilename << "\"..." << endl;
 	TClonesArray Hits;
 	Hits.SetClass("TTrbHit",1000); // declare that TTrbHits are being stored in the TClonesArray
 	UInt_t nDecodedEvents = 0; // counter of decoded events
