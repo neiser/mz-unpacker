@@ -124,7 +124,8 @@ Bool_t THldSubEvent::DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TD
 		nTdcEpochCounter = 0;
 	}
 
-	Bool_t bIsRefChannel	= (nTdcChannelNo==TrbSettings->nTdcRefChannel) ? kTRUE : kFALSE;
+	Bool_t bIsRefChannel	= (nTdcChannelNo==TrbSettings->nTdcRefChannel
+		   || nUserTdcAddress==TrbSettings->nCtsAddress) ? kTRUE : kFALSE;
 	UInt_t nTdcFineTime		= (DataWord>>12) & 0x3FF; // TDC fine time is represented by 10 bits
 	UInt_t nTdcEdge			= (DataWord>>11) & 0x1; // TDC edge indicator: 1->rising edge, 0->falling edge
 	UInt_t nTdcCoarseTime	= DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
