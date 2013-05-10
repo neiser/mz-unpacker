@@ -319,7 +319,7 @@ void TTrbAnalysis::FillTimeOverThreshold(){
 		Int_t nTempChanId = ComputeTdcChanId(TrbData->Hits_nTrbAddress[CurrentHit->first],TrbData->Hits_nTdcChannel[CurrentHit->first]);
 		if(nTempChanId<0)
 			continue;
-		TimeOverThreshold.insert(make_pair(nTempChanId,fTempHitWidth));
+		TimeOverThreshold.insert(make_pair(nTempChanId+TDC_SWAP_RISING_FALLING,fTempHitWidth));
 	} // end of loop over matched hits
 }
 
