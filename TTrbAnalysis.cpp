@@ -292,27 +292,28 @@ void TTrbAnalysis::FillTdcLeadingEdge(){
 			continue; // skip rest of loop
 		}
 		// adjust for reference time
-		UInt_t nTdcAddress = TrbData->Hits_nTrbAddress[CurrentTdcHit->second];
-		std::map< UInt_t,Int_t >::const_iterator Offset = TdcRefTimes.find(nTdcAddress);
-		if(Offset==TdcRefTimes.end()) // couldn't find reference signal timestamp
-			continue; // skip rest of loop
+		//UInt_t nTdcAddress = TrbData->Hits_nTrbAddress[CurrentTdcHit->second];
+		//std::map< UInt_t,Int_t >::const_iterator Offset = TdcRefTimes.find(nTdcAddress);
+		//if(Offset==TdcRefTimes.end()) // couldn't find reference signal timestamp
+		//	continue; // skip rest of loop
 		if(TrbData->Hits_bIsCalibrated[CurrentTdcHit->second]){
-			Double_t fLeadingEdge = TrbData->Hits_fTime[CurrentTdcHit->second] - TrbData->Hits_fTime[Offset->second];
+			Double_t fLeadingEdge = TrbData->Hits_fTime[CurrentTdcHit->second]; //- TrbData->Hits_fTime[Offset->second];
 			TdcLeadingEdges.insert(make_pair((Int_t)CurrentTdcHit->first,fLeadingEdge)); // fill entry into leading edge map
 		}
 
 	} // end of loop over all TDC hits
 	// now correct leading edge time stamps for user reference channel
-	if(bRefChanIsSet&&!TdcLeadingEdges.empty()){ // find time stamp of user reference channel
-		std::map< Int_t,Double_t >::const_iterator RefTime = TdcLeadingEdges.find(nTdcRefChannel);
-		if(RefTime==TdcLeadingEdges.end()){ // couldn't find user reference time
+	//if(bRefChanIsSet&&!TdcLeadingEdges.empty()){ // find time stamp of user reference channel
+		std::map< UInt_t,Int_t  >::const_iterator RefTimeIdx = TdcRefTimes.find(0x8000);
+		if(RefTimeIdx==TdcRefTimes.end()){ // couldn't find user reference time
 			TdcLeadingEdges.clear(); // clear leading edges map
 			return;
 		}
+		Double_t refTime = TrbData->Hits_fTime[RefTimeIdx->second];
 		for(std::map< Int_t, Double_t >::iterator ThisLeadingEdge=TdcLeadingEdges.begin(); ThisLeadingEdge!=TdcLeadingEdges.end(); ThisLeadingEdge++){ // begin loop over all leading edge timestamps
-			ThisLeadingEdge->second -= RefTime->second;
+			ThisLeadingEdge->second -= refTime;
 		}
-	}
+		//}
 }
 
 void TTrbAnalysis::FillTimeOverThreshold(){
