@@ -42,8 +42,11 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 	TH2D hTdcEvtTimingChanDist("hTdcEvtTimingChanDist","hTdcEvtTimingChanDist; #DeltaT (ns); unique TDC channel ID; frequency",500,-1.0,20.0,nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5);
 	TH1D hHitWidth("hHitWidth","hHitWidth; hit width (ns); frequency",120,-10.0,50.0);
 	TH2D hHitWidthVsChannel("hHitWidthVsChannel","hHitWidthVsChannel; unique TDC channel ID; hit width (ns)",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,400,-10.0,50.0);
-	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming; leading edge time stamp (ns); hit width (ns); frequency",2000,-HIT_TIME_MIN,HIT_TIME_MAX,400,-10.0,50.0);
+	hHitWidthVsChannel.SetOption("COL");
+	TH2D hHitWidthVsTiming("hHitWidthVsTiming","hHitWidthVsTiming; leading edge time stamp (ns); hit width (ns); frequency",2000,HIT_TIME_MIN,HIT_TIME_MAX,400,-10.0,50.0);
+	hHitWidthVsTiming.SetOption("COL");
 	TH2D hHitTimeVsChannel("hHitTimeVsChannel","hHitTimeVsChannel; unique TDC channel ID; leading edge time stamp (ns); frequency",nMaxTdcChannel,-0.5,nMaxTdcChannel-0.5,6000,HIT_TIME_MIN,HIT_TIME_MAX);
+	hHitTimeVsChannel.SetOption("COL");
 	TH1D hMultiHits("hMultiHits","hMultiHits; no of channels with multiple hits per event; frequency",25,-1.5,23.5);
 	// begin with analysis
 	for(Int_t i=0; i<nEventsMax; i++){ // begin loop over all events
