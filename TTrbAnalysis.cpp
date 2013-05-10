@@ -72,6 +72,8 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 		hTdcHits.Fill((Double_t)TdcLeadingEdges.size());
 		if(TdcLeadingEdges.empty()) // check if there are any hits in the TDC channels (excluding reference signals)
 			continue; // skip rest of loop
+		if(bVerboseMode)
+			cout << ">>>>>>> Leading Edges found at i=" << i << endl;
 		++nEvtCntEmptyTdc;
 		hMultiHits.Fill((Double_t)nEvtMultHits);
 		for(std::map< Int_t,Double_t >::const_iterator Hit=TdcLeadingEdges.begin(); Hit!=TdcLeadingEdges.end(); Hit++){
@@ -102,6 +104,11 @@ void TTrbAnalysis::Analyse(string cUserAnalysisFilename){
 				hHitWidthVsTiming.Fill(LeadingEdge->second,Hit->second);
 				hHitTimeVsChannel.Fill((Double_t)LeadingEdge->first,LeadingEdge->second);
 			}
+			else {
+				if(bVerboseMode)
+					cout << "ToT event not found in Leading Edges, unique channel id " << Hit->first << endl;
+			}
+			    
 		}
 	} // end of loop over all events
 	// fill general histograms
@@ -436,7 +443,11 @@ void TTrbAnalysis::PrintRefTimestamps() const {
 	cout << TdcRefTimes.size() << " REFERENCE TIMESTAMPS FOUND" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
 	for(std::map< UInt_t,Int_t >::const_iterator CurIndex=TdcRefTimes.begin(); CurIndex!=TdcRefTimes.end(); CurIndex++){
-		cout << hex << CurIndex->first << dec << " , " << TrbData->Hits_nCoarseTime[CurIndex->second] << endl;
+		//cout << hex << CurIndex->first << dec << " , " << TrbData->Hits_[CurIndex->second] << endl;
+		if(TrbData->Hits_bIsCalibrated[CurIndex->second])
+			cout << CurIndex->first << " , " << std::setprecision(10) << TrbData->Hits_fTime[CurIndex->second] << " ns" << endl;
+		else
+			cout << CurIndex->first << " , " << TrbData->Hits_nCoarseTime[CurIndex->second] << " , " << TrbData->Hits_nFineTime[CurIndex->second] << endl;
 	}
 	cout << "+++++++++++++++++++++++++++" << endl;
 }
