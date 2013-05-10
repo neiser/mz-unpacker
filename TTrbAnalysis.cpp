@@ -248,7 +248,7 @@ UInt_t TTrbAnalysis::ExcludeChannels(string UserFilename){
 void TTrbAnalysis::FillTdcHits(){
 	TdcHits.clear(); // clear any previous TDC hits
 	for(Int_t i=0; i<TrbData->Hits_; ++i){ // loop over all hits in entry
-		if(TrbData->Hits_nTdcChannel[i]<TDC_CHAN_OFFSET) // check if reference channel
+		if(TrbData->Hits_bIsRefChannel[i] || TrbData->Hits_nTdcChannel[i]<TDC_CHAN_OFFSET) // check if reference channel
 			continue; // skip rest of loop
 		if(!TrbData->Hits_bIsCalibrated[i]) // channel fine time is not calibrated
 			continue; // skip rest of loop
