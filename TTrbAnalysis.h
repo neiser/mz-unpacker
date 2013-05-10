@@ -26,8 +26,8 @@
 #define N_TDC_CHAN 65 // number of TDC channels
 #define TDC_CHAN_OFFSET 1 // TDC channel index offset (defines which channels are reserved for reference timing)
 #define TDC_SWAP_RISING_FALLING 1
-#define HIT_TIME_MIN -70000.0 // lower boundary for hit time histograms (in ns); change as required
-#define HIT_TIME_MAX 10000.0 // upper boundary for hit time histograms (in ns); change as required
+#define HIT_TIME_MIN -520.0 // lower boundary for hit time histograms (in ns); change as required
+#define HIT_TIME_MAX -440.0 // upper boundary for hit time histograms (in ns); change as required
 
 // +++ class definition +++
 class TTrbAnalysis : public TObject{
