@@ -63,12 +63,15 @@ void THldEvent::PrintHeader(){
 }
 
 Bool_t THldEvent::ReadIt(){
-	if(SubEventData!=NULL)
+	if(SubEventData!=NULL){
 		delete SubEventData;
+		SubEventData = NULL;
+	}
 	if(!ReadHeader()){ // read HLD Event header information
 		return (kFALSE);
 	}
 	if(EventHeader.nSize == sizeof(HLD_HEADER)){ // check if event contains only header information
+		bHasSubEvent = kFALSE;
 		if(bVerboseMode)
 			cout << "HLD event " << EventHeader.nSeqNr << " contains only header information!" << endl;
 		SkipPaddingBytes(EventHeader.nSize);
