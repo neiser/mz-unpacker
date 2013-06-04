@@ -42,6 +42,7 @@ protected:
 
 public:
 	TTrbDummyAnalysis(string cUserDataFilename); // constructor
+	TTrbDummyAnalysis(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserTdcWidth=32, UInt_t nUserTdcOffset=2); // constructor
 	~TTrbDummyAnalysis();
 	void KeepMultiHits() { bSkipMultiHits = kFALSE; };
 	UInt_t GetNMatchedHits() const { return ((UInt_t)MatchedHits.size()); }; // get number of matched TDC hits, i.e. leading and trailing edge

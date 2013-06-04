@@ -9,6 +9,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -31,7 +32,6 @@ private:
 	string cDataFilename; // name of data file
 	string cTreeName; // name of tree, standard is "T"
 	TFile *RawData; // pointer to RooT file containing Tree with raw data
-	void Init();
 	void OpenTree();
 protected:
 	// flags indicating status of base class
@@ -46,9 +46,11 @@ protected:
 	std::map< std::pair< UInt_t,UInt_t >,UInt_t > MappingTable; // look-up table for channel mapping
 	std::map< UInt_t,UInt_t > EvtSyncTimestamps; // map containing TDC address and array index where sync timestamp can be found for this TDC in the current event
 	std::multimap< UInt_t,UInt_t > EvtTdcHits; // multimap containing unique channel number as key and array index as value
-	std::vector< std::pair< UInt_t,UInt_t > > ExcludedChannels; // list of channels excluded from calibration(needs to be provided by user)
+	//std::vector< std::pair< UInt_t,UInt_t > > ExcludedChannels; // list of channels excluded from calibration(needs to be provided by user)
+	std::set< std::pair< UInt_t,UInt_t > > ExcludedChannels;
 	virtual void ComputeMappingTable(); // compute mapping table
 	Bool_t GetTreeStatus() const { return (bTreeIsOpen); };
+	void Init();
 	void UpdateStatus(); // this function checks if all necessary information is available to perform an analysis
 public:
 	TTrbAnalysisBase(string cUserDataFilename, Bool_t bUserVerboseMode=kFALSE, string cUserTreeName="T"); // constructor

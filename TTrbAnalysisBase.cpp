@@ -59,12 +59,14 @@ void TTrbAnalysisBase::ComputeMappingTable(){
 
 Bool_t TTrbAnalysisBase::ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
 	std::pair< UInt_t,UInt_t > TempPair (nUserTrbAddress, nUserTdcChannel); // create pair consisting of FPGA address and TDC channel
-	std::vector< pair< UInt_t,UInt_t > >::iterator CheckPair; // iterator on vector containing excluded channel addresses
-	CheckPair = find(ExcludedChannels.begin(),ExcludedChannels.end(),TempPair); // check if channel is already excluded
-	if(CheckPair!=ExcludedChannels.end())
-		return (kFALSE);
-	ExcludedChannels.push_back(TempPair); // enter this channel into vector
-	return(kTRUE);
+	return ((Bool_t)(ExcludedChannels.insert(TempPair)).second);
+
+	//std::vector< pair< UInt_t,UInt_t > >::iterator CheckPair; // iterator on vector containing excluded channel addresses
+	//CheckPair = find(ExcludedChannels.begin(),ExcludedChannels.end(),TempPair); // check if channel is already excluded
+	//if(CheckPair!=ExcludedChannels.end())
+	//	return (kFALSE);
+	//ExcludedChannels.push_back(TempPair); // enter this channel into vector
+	//return(kTRUE);
 }
 
 UInt_t TTrbAnalysisBase::ExcludeChannels(string UserFilename){
@@ -142,6 +144,7 @@ Int_t TTrbAnalysisBase::GetTdcSyncIndex(UInt_t nTdcAddress) const {
 
 
 void TTrbAnalysisBase::Init(){ // initialise object variables
+	cout << "This is TTrbAnalysisBase::Init()..." << endl;
 	RawData = NULL; // initialise pointer to RooT file
 	TrbData = NULL; // initialise pointer TTree with raw data
 	nTdcDefaultSize	= 0; // these need to be variables set by the user
@@ -183,9 +186,9 @@ void TTrbAnalysisBase::PrintExcludedChannels() const {
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "+++  EXCLUDED CHANNELS  +++" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
-	std::vector< std::pair< UInt_t,UInt_t > >::const_iterator FirstIndex = ExcludedChannels.begin();
-	std::vector< std::pair< UInt_t,UInt_t > >::const_iterator LastIndex = ExcludedChannels.end();
-	for(std::vector< std::pair< UInt_t,UInt_t > >::const_iterator CurIndex=FirstIndex; CurIndex!=LastIndex; ++CurIndex){
+	std::set< std::pair< UInt_t,UInt_t > >::const_iterator FirstIndex = ExcludedChannels.begin();
+	std::set< std::pair< UInt_t,UInt_t > >::const_iterator LastIndex = ExcludedChannels.end();
+	for(std::set< std::pair< UInt_t,UInt_t > >::const_iterator CurIndex=FirstIndex; CurIndex!=LastIndex; ++CurIndex){
 		cout << distance(FirstIndex,CurIndex) << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second << endl;
 		//++nTdcIndex;
 	}
@@ -263,7 +266,8 @@ void TTrbAnalysisBase::ScanEvent(){
 			continue; // skip rest of loop
 		}
 		std::pair< UInt_t,UInt_t > TempChanAddress (TrbData->Hits_nTrbAddress[nCurEvtIndex],TrbData->Hits_nTdcChannel[nCurEvtIndex]); // create address pair consisting of FPGA address and TDC channel ID
-		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),TempChanAddress)!=ExcludedChannels.end()){ // channel found in exclusion list
+//		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),TempChanAddress)!=ExcludedChannels.end()){ // channel found in exclusion list
+		if(ExcludedChannels.find(TempChanAddress)!=ExcludedChannels.end()){ // channel found in exclusion list
 			continue; // skip rest of loop
 		}
 		if(TrbData->Hits_bIsRefChannel[nCurEvtIndex]){ // check for TDC reference channels
