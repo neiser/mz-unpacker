@@ -2,11 +2,10 @@
 
 ClassImp(TLaserspotAnalysis);
 
-TLaserspotAnalysis::TLaserspotAnalysis(string cUserDataFilename, UInt_t nUserLaserTrbAddress, UInt_t nUserLaserTdcChan, UInt_t nUserMcpSpotTrbAddress, UInt_t nUserMcpSpotTdcChan) : TTrbAnalysisBase(cUserDataFilename) {
+TLaserspotAnalysis::TLaserspotAnalysis(string cUserDataFilename) : TTrbAnalysisBase(cUserDataFilename) {
 	// do nothing so far...
 	cout << "This is the constructor of TLaserspotAnalysis class..." << endl;
 	Init();
-
 }
 
 TLaserspotAnalysis::TLaserspotAnalysis(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserLaserTrbAddress, UInt_t nUserLaserTdcChan, UInt_t nUserMcpSpotTrbAddress, UInt_t nUserMcpSpotTdcChan, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth) : TTrbAnalysisBase(cUserDataFilename){
@@ -45,7 +44,7 @@ void TLaserspotAnalysis::Analyse(string cUserAnalysisFilename){
 	hEvtStats.GetXaxis()->SetBinLabel(NO_LASER_ERR+1,"no laser trigger error");
 	TH1D hLaserTrigWidth("hLaserTrigWidth","hLaserTrigWidth; signal width (ns); frequency",1000,0.0,50.0); // width of laser trigger signal
 	TH1D hMcpSpotSigWidth("hMcpSpotSigWidth","hMcpSpotSigWidth; MCP-PMT signal width (ns); frequency",1000,0.0,25.0); // signal width of MCP-PMT spot signal
-
+	TH1D hMcpSpotTiming("hMcpSpotTiming","hMcpSpotTiming",1000,20.0,40.0);
 	TH1D hTdcSync("hTdcSync","hTdcSync",(Int_t)GetNTdcs()+2,-0.5,GetNTdcs()+1.5);
 	TH1D hEvtMultiplicity("hEvtMultiplicity","hEvtMultiplicity;",16,-0.5,15.5);
 	TH1D hTdcHits("hTdcHits","hTdcHits",(Int_t)GetSizeOfMapTable()+2,-0.5,GetSizeOfMapTable()+1.5);
@@ -98,11 +97,14 @@ void TLaserspotAnalysis::Analyse(string cUserAnalysisFilename){
 			continue; // skip rest of loop
 		}
 		hEvtStats.Fill((Double_t)NO_LASER_ERR);
+		Double_t fLaserTrigTime = TrbData->Hits_fTime[LaserTrigHit->first.first] - TrbData->Hits_fTime[LaserTrigHit->second.nSyncIndex];
 		hLaserTrigWidth.Fill(fabs(LaserTrigHit->second.fTimeOverThreshold));
 		// now check if we have a signal in the expected MCP-PMT channel
 		std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator McpSpotHit = FindHitByValue(nMcpSpotSeqId);
 		if(McpSpotHit!=MatchedHits.end()){ // MCP-PMT spot signal found
+			Double_t fMcpSpotTime = TrbData->Hits_fTime[McpSpotHit->first.first] - TrbData->Hits_fTime[McpSpotHit->second.nSyncIndex];
 			hMcpSpotSigWidth.Fill(McpSpotHit->second.fTimeOverThreshold);
+			hMcpSpotTiming.Fill(fMcpSpotTime-fLaserTrigTime);
 		}
 		std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator FirstHit	= MatchedHits.begin();
 		std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator LastHit	= MatchedHits.end();
@@ -192,7 +194,7 @@ Int_t TLaserspotAnalysis::HitMatching(){
 					continue; // skip rest of loop
 				}
 				// need to get iterators to leading and trailing edges
-				cout << "Matching multi hits now..." << endl;
+				//cout << "Matching multi hits now..." << endl;
 				// loop over hits
 				do{
 					TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);

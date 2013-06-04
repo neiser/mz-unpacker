@@ -47,7 +47,7 @@ protected:
 	std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator FindHitByValue(UInt_t nUserSeqId) const;
 
 public:
-	TLaserspotAnalysis(string cUserDataFilename, UInt_t nUserLaserTrbAddress, UInt_t nUserLaserTdcChan, UInt_t nUserMcpSpotTrbAddress, UInt_t nUserMcpSpotTdcChan); // constructor
+	TLaserspotAnalysis(string cUserDataFilename); // constructor
 	TLaserspotAnalysis(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserLaserTrbAddress, UInt_t nUserLaserTdcChan, UInt_t nUserMcpSpotTrbAddress, UInt_t nUserMcpSpotTdcChan, UInt_t nUserTdcOffset=2, UInt_t nUserTdcWidth=32); // constructor
 	~TLaserspotAnalysis();
 	void ClearTimingWindow() { TimingWindow=std::make_pair(0,0); bApplyTimingCut=kFALSE; };
