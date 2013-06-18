@@ -85,6 +85,9 @@ private:
 	Int_t nNPairs;
 	Double_t fHist2dMin, fHist2dMax;
 	Double_t fHistCoarseMin, fHistCoarseMax;
+	std::pair< Int_t,Int_t > TimeBinning;
+	std::pair< Int_t,Int_t > CoarseTimeBinning;
+	std::pair< Int_t,Int_t > FineTimeBinning;
 	std::map< std::pair<UInt_t,UInt_t>,SyncHistograms > TdcPairs;
 	void ClearAllPlots();
 	void GenerateTdcPairs();
@@ -101,7 +104,10 @@ public:
 	virtual ~TTdcSyncAnalysis();
 	void Analyse(string cUserAnalysisFilename); // user analysis code goes here...
 	void PrintTdcPairs() const;
+	void SetCoarseTimeBinning(Int_t nUserBinning) { CoarseTimeBinning.first=nUserBinning; CoarseTimeBinning.second=nUserBinning; };
 	void SetCoarseTimeLimits(Double_t fUserMin, Double_t fUserMax) { fHistCoarseMin=fUserMin; fHistCoarseMax=fUserMax; };
+	void SetFineTimeBinning(Int_t nUserBinning) { FineTimeBinning.first=nUserBinning; FineTimeBinning.second=nUserBinning;};
+	void SetTimeBinning(Int_t nUserBinning) { TimeBinning.first=nUserBinning; TimeBinning.second=nUserBinning; };
 	void SetTimeLimits(Double_t fUserMin, Double_t fUserMax) { fHist2dMin=fUserMin; fHist2dMax=fUserMax; };
 	//void Show();
 	/* some magic ROOT stuff... */

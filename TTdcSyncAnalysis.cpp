@@ -25,9 +25,6 @@ TTdcSyncAnalysis::~TTdcSyncAnalysis(){
 }
 
 void TTdcSyncAnalysis::Analyse(string cUserAnalysisFilename){
-//	if(TdcAddresses.find(nUserTdcAddressA)==TdcAddresses.end() || TdcAddresses.find(nUserTdcAddressB)==TdcAddresses.end())
-//		return;
-//	ofstream EvtListFileOut("EvtList.txt");
 	InitHistograms();
 	TFile *AnalysisOut = new TFile(cUserAnalysisFilename.c_str(),"RECREATE"); // open RooT file for analysis results
 //	// define histograms
@@ -41,13 +38,6 @@ void TTdcSyncAnalysis::Analyse(string cUserAnalysisFilename){
 	hEvtStats.GetXaxis()->SetBinLabel(NO_MATCH_ERR+1,"no matched hits error");
 	hEvtStats.GetXaxis()->SetBinLabel(NO_LASER_ERR+1,"no laser trigger error");
 	TH1D hTdcSync("hTdcSync","hTdcSync; no of sync timestamps/event; frequency",(Int_t)GetNTdcs()+2,-0.5,GetNTdcs()+1.5);
-	// need to define histograms for TDC pairs here!!!
-//	TH2D hTdcSyncTimestamps("hTdcSyncTimestamps","hTdcSyncTimestamps",1000,99786.0,99802.0,1000,99786.0,99802.0);
-//	TH1D hSyncJitter("hSyncJitter","hSyncJitter",4000,-10.0,10.0);
-//	TH2D hSyncJitterFT("hSyncJitterFT","hSyncJitterFT",2000,-10.0,10.0,600,0.0,600.0);
-//	TH2D hSyncJitterEvtNo("hSyncJitterEvtNo","hSyncJitterEvtNo",2000,-10.0,10.0,5000,0.0,(Double_t)GetNEvents());
-//	//AnalysisOut->cd(cUserAnalysisFilename.c_str());
-//	// analysis variables
 //	// main analysis loop
 	for(Int_t i=0; i<GetNEvents(); i++){ // begin loop over all events
 //		// first, get event data
@@ -107,14 +97,6 @@ void TTdcSyncAnalysis::ClearAllPlots(){
 	}
 }
 
-//Double_t TTdcSyncAnalysis::GetSynchronisedTime(const std::pair< std::pair< Int_t,Int_t >,TrbPixelHit>& UserHit ) const {
-//	Double_t fTempSynchronisedTime = -1.0;
-//	fTempSynchronisedTime = TrbData->Hits_fTime[UserHit.first.first] - TrbData->Hits_fTime[UserHit.second.nSyncIndex];
-//	return (fTempSynchronisedTime);
-//}
-//
-
-
 void TTdcSyncAnalysis::GenerateTdcPairs(){
 	if(nNPairs<2)
 		return;
@@ -157,6 +139,12 @@ void TTdcSyncAnalysis::Init(){
 	fHist2dMax = 100000.;
 	fHistCoarseMin = 0.0;
 	fHistCoarseMax = 10000.0;
+	TimeBinning.first	= 1000;
+	TimeBinning.second	= 1000;
+	CoarseTimeBinning.first		= 100;
+	CoarseTimeBinning.second	= 100;
+	FineTimeBinning.first	= 300;
+	FineTimeBinning.second	= 300;
 	TdcPairs.clear();
 }
 
@@ -181,15 +169,15 @@ void TTdcSyncAnalysis::InitHistograms(){
 		cHistoName.clear();	cHistoTitle.clear();
 		cHistoName = "hTimeCorrelation_" + CurPair->second.cBasename;
 		cHistoTitle = "Time Correlation " + CurPair->second.cBasename;
-		CurPair->second.hTimeCorrelation = new TH2D(cHistoName.c_str(),cHistoTitle.c_str(),1000,fHist2dMin,fHist2dMax,1000,fHist2dMin,fHist2dMax);
+		CurPair->second.hTimeCorrelation = new TH2D(cHistoName.c_str(),cHistoTitle.c_str(),TimeBinning.first,fHist2dMin,fHist2dMax,TimeBinning.second,fHist2dMin,fHist2dMax);
 		cHistoName.clear();	cHistoTitle.clear();
 		cHistoName = "hCoarseTimeCorrelation_" + CurPair->second.cBasename;
 		cHistoTitle = "Coarse Time Correlation " + CurPair->second.cBasename;
-		CurPair->second.hCoarseTimeCorrelation = new TH2D(cHistoName.c_str(),cHistoTitle.c_str(),100,fHistCoarseMin,fHistCoarseMax,100,fHistCoarseMin,fHistCoarseMax);
+		CurPair->second.hCoarseTimeCorrelation = new TH2D(cHistoName.c_str(),cHistoTitle.c_str(),CoarseTimeBinning.first,fHistCoarseMin,fHistCoarseMax,CoarseTimeBinning.second,fHistCoarseMin,fHistCoarseMax);
 		cHistoName.clear();	cHistoTitle.clear();
 		cHistoName = "hFineTimeCorrelation_" + CurPair->second.cBasename;
 		cHistoTitle = "Fine Time Correlation " + CurPair->second.cBasename;
-		CurPair->second.hFineTimeCorrelation = new TH2D(cHistoName.c_str(),cHistoTitle.c_str(),300,0.0,600.0,300,0.0,600.0);
+		CurPair->second.hFineTimeCorrelation = new TH2D(cHistoName.c_str(),cHistoTitle.c_str(),FineTimeBinning.first,0.0,600.0,FineTimeBinning.second,0.0,600.0);
 	}
 }
 
