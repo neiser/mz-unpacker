@@ -105,10 +105,10 @@ public:
 	void Analyse(string cUserAnalysisFilename); // user analysis code goes here...
 	void PrintTdcPairs() const;
 	void SetCoarseTimeBinning(Int_t nUserBinning) { CoarseTimeBinning.first=nUserBinning; CoarseTimeBinning.second=nUserBinning; };
-	void SetCoarseTimeLimits(Double_t fUserMin, Double_t fUserMax) { fHistCoarseMin=fUserMin; fHistCoarseMax=fUserMax; };
+	void SetCoarseTimeLimits(Double_t fUserMin, Double_t fUserMax) { (fUserMin<fUserMax)? fHistCoarseMin=fUserMin: fHistCoarseMin=fUserMax; (fUserMin<fUserMax)? fHistCoarseMax=fUserMax: fHistCoarseMax=fUserMin; };
 	void SetFineTimeBinning(Int_t nUserBinning) { FineTimeBinning.first=nUserBinning; FineTimeBinning.second=nUserBinning;};
 	void SetTimeBinning(Int_t nUserBinning) { TimeBinning.first=nUserBinning; TimeBinning.second=nUserBinning; };
-	void SetTimeLimits(Double_t fUserMin, Double_t fUserMax) { fHist2dMin=fUserMin; fHist2dMax=fUserMax; };
+	void SetTimeLimits(Double_t fUserMin, Double_t fUserMax) { (fUserMin<fUserMin)? fHist2dMin=fUserMin: fHist2dMin=fUserMax; (fUserMin<fUserMin)? fHist2dMax=fUserMax: fHist2dMax=fUserMin; };
 	//void Show();
 	/* some magic ROOT stuff... */
 	ClassDef(TTdcSyncAnalysis,1);
