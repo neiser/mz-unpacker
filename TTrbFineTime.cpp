@@ -103,6 +103,22 @@ void TTrbFineTime::CalibrationMode1(){ // compute calibration table using advanc
 		cout << cChannelName.str() << " - Calibration successful! " << CalibrationTable.size() << endl;
 }
 
+void TTrbFineTime::CalibrationMode2(){ // compute calibration table using static limits
+	if(!CalibrationTable.empty()) // check if calibration table map is empty
+		CalibrationTable.clear(); // clear map contents
+	Double_t fWidth = (Double_t)STATIC_UPPER_LIMIT-STATIC_LOWER_LIMIT;
+	Double_t fSlope = fClockCycle/fWidth; // compute slope based on clock cycle length and width of fine time distribution
+	for(Int_t nCurrentTdcBin=STATIC_LOWER_LIMIT; nCurrentTdcBin<(STATIC_UPPER_LIMIT+1); ++nCurrentTdcBin){ // begin of loop over all TDC fine time bins
+		hBinWidth.Fill(fSlope);
+		Double_t fBinValue = (nCurrentTdcBin-STATIC_LOWER_LIMIT) * fSlope; // compute timing value based on slope
+		CalibrationTable.insert(make_pair(nCurrentTdcBin,fBinValue));
+	} // end of loop over all TDC fine time bins
+	bCalibrationIsValid = kTRUE;
+	bTableIsComputed	= kTRUE;
+	if(bVerboseMode)
+		cout << cChannelName.str() << " - Calibration successful! " << CalibrationTable.size() << endl;
+}
+
 void TTrbFineTime::ComputeCalibrationTable(){ // compute calibration constants
 	AnalyseHistogram(); // extract basic quantities of fine time distribution from histogram
 	if((Int_t)hFineTimeDistribution.GetEntries()<nMinEntries){ // check if enough entries in fine time distribution to attempt calibration
@@ -120,6 +136,9 @@ void TTrbFineTime::ComputeCalibrationTable(){ // compute calibration constants
 			break;
 		case 1: // advanced calibration taking fine time bin width variations into account
 			CalibrationMode1();
+			break;
+		case 2: // static fine time limits (need to use this in case of degenrate fine time distributions)
+			CalibrationMode2();
 			break;
 		default: // if get here a wrong calibration type has been specified
 			bCalibrationIsValid = kFALSE;
