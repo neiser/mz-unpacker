@@ -109,6 +109,7 @@ void TTrbFineTime::CalibrationMode2(){ // compute calibration table using static
 	Double_t fWidth = (Double_t)STATIC_UPPER_LIMIT-STATIC_LOWER_LIMIT;
 	Double_t fSlope = fClockCycle/fWidth; // compute slope based on clock cycle length and width of fine time distribution
 	for(Int_t nCurrentTdcBin=STATIC_LOWER_LIMIT; nCurrentTdcBin<(STATIC_UPPER_LIMIT+1); ++nCurrentTdcBin){ // begin of loop over all TDC fine time bins
+		BinWidthTable.insert(make_pair(nCurrentTdcBin,fSlope));
 		hBinWidth.Fill(fSlope);
 		Double_t fBinValue = (nCurrentTdcBin-STATIC_LOWER_LIMIT) * fSlope; // compute timing value based on slope
 		CalibrationTable.insert(make_pair(nCurrentTdcBin,fBinValue));
