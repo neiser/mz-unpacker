@@ -28,6 +28,8 @@
 //#include "TrbStructs.h"
 
 // +++ define constants +++
+#define STATIC_LOWER_LIMIT 31 // lower limit needed for static calibration
+#define STATIC_UPPER_LIMIT 500 // upper limit needed for static calibration
 #define FINE_TIME_BINS 601 // number of bins in fine time histogram
 #define MIN_STATS 10000 // minimum number of entries in fine time histogram for a valid calibration (this is a guide only)
 #define CLOCK_CYCLE_LENGTH 5.0 // clock cycle length in ns
@@ -39,6 +41,7 @@ private:
 	void AnalyseHistogram(); // extract information from fine time histogram needed during calibration
 	void CalibrationMode0(); // compute calibration table using simple method
 	void CalibrationMode1(); // compute calibration table using advanced method
+	void CalibrationMode2(); // compute calibration table using static limits
 	void FillBinWidthGraph(); // fill fine time bin width graph
 	void FillCalibrationGraph(); // fill calibration table graph
 	void Init(); // initialise object
