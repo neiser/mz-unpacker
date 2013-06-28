@@ -49,19 +49,8 @@ void TTrbFineTime::CalibrationMode0(){ // compute calibration table using simple
 		CalibrationTable.clear(); // clear map contents
 	Double_t fWidth = hFineTimeDistribution.GetBinCenter(nUpperEdgeBin) - hFineTimeDistribution.GetBinCenter(nLowerEdgeBin); // compute width of fine time distribution
 	if(bVerboseMode)
-		cout << "Checking Finetime Histogram Width: " << fWidth << " <= " << fMinWidth << "? ";
-	if(fWidth<=fMinWidth){ // check if width is too narrow
-		if(bVerboseMode)
-			cout << "YES! Skipping." << endl;
-		bCalibrationIsValid = kFALSE;
-		bTableIsComputed	= kFALSE;
-		return;
-	}
-	if(bVerboseMode)
 		cout << "No, that's ok." << endl;
 	Double_t fSlope = fClockCycle/fWidth; // compute slope based on clock cycle length and width of fine time distribution
-	//cout << "TDC address " << hex << nTdcAddress << dec << " " << nTdcChannel << endl;
-	//cout << fSlope << endl;
 	for(Int_t nCurrentTdcBin=nLowerEdgeBin; nCurrentTdcBin<(nUpperEdgeBin+1); ++nCurrentTdcBin){ // begin of loop over all TDC fine time bins
 		UInt_t nBinIndex = (UInt_t)hFineTimeDistribution.GetBinCenter(nCurrentTdcBin); // get central value of bin (should be bin index minus one, but you never know)
 		BinWidthTable.insert(make_pair(nBinIndex,fSlope));
@@ -130,7 +119,14 @@ void TTrbFineTime::ComputeCalibrationTable(){ // compute calibration constants
 		bTableIsComputed	= kTRUE;
 		return;
 	}
-
+	Double_t fWidth = hFineTimeDistribution.GetBinCenter(nUpperEdgeBin) - hFineTimeDistribution.GetBinCenter(nLowerEdgeBin); // compute width of fine time distribution
+	if(bVerboseMode)
+		cout << "Checking Finetime Histogram Width: " << fWidth << " <= " << fMinWidth << "? ";
+	if(fWidth<=fMinWidth){ // check if width is too narrow
+		//if(bVerboseMode)
+		cout << hex << nTdcAddress << dec << "\t" << nTdcChannel << ":\t Skipping to static calibration." << endl;
+		nCalibrationType = 2; // use static method
+	}
 	switch(nCalibrationType){
 		case 0: // simple calibration based only on total width of fine time distribution
 			CalibrationMode0();

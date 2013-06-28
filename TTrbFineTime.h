@@ -33,7 +33,7 @@
 #define FINE_TIME_BINS 601 // number of bins in fine time histogram
 #define MIN_STATS 10000 // minimum number of entries in fine time histogram for a valid calibration (this is a guide only)
 #define CLOCK_CYCLE_LENGTH 5.0 // clock cycle length in ns
-#define MIN_HISTOGRAM_WIDTH 0 // minimum width of histogram to do Calibration0
+#define MIN_HISTOGRAM_WIDTH 300 // minimum width of histogram to do Calibration0
 
 // +++ class definition +++
 class TTrbFineTime : public TObject{
