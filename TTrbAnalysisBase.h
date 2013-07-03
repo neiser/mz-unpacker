@@ -46,7 +46,6 @@ protected:
 	std::map< std::pair< UInt_t,UInt_t >,UInt_t > MappingTable; // look-up table for channel mapping
 	std::map< UInt_t,UInt_t > EvtSyncTimestamps; // map containing TDC address and array index where sync timestamp can be found for this TDC in the current event
 	std::multimap< UInt_t,UInt_t > EvtTdcHits; // multimap containing unique channel number as key and array index as value
-	//std::vector< std::pair< UInt_t,UInt_t > > ExcludedChannels; 
 	std::set< std::pair< UInt_t,UInt_t > > ExcludedChannels; // list of channels excluded from calibration(needs to be provided by user)
 	virtual void ComputeMappingTable(); // compute mapping table
 	Bool_t GetTreeStatus() const { return (bTreeIsOpen); };
@@ -74,6 +73,7 @@ public:
 	UInt_t GetSizeOfMapTable() const { return ((UInt_t)MappingTable.size()); }; // get size of mapping table, corresponds to number of channels
 	Bool_t GetStatus() const { return (bCanAnalyse); }; // get status of base analysis class, only proceed with analysis if true!
 	Int_t GetTdcSyncIndex(UInt_t nTdcAddress) const;
+	Double_t GetTdcSyncTimestamp(UInt_t nTdcAddress) const;
 	string GetTreeName() const { return (cTreeName); }; // get name of tree
 	void PrintExcludedChannels() const; // print list of excluded channels to screen
 	void PrintSyncTimestamps() const; // print list of sync timestamps to screen
@@ -91,4 +91,4 @@ public:
 	ClassDef(TTrbAnalysisBase,1);
 };
 
-#endif _T_TRB_ANALYSIS_BASE_H
+#endif

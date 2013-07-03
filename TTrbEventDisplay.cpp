@@ -1,157 +1,19 @@
-/* standard C++ header files */
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <cstdlib>
-#include <cstdio>
-#include <vector>
-#include <cfloat>
-#include <climits>
-#include <limits>
-#include <stdexcept>
-#include <string>
-#include <ctime>
-#include <cctype>
-#include <algorithm>
-#include <cmath>
-#include <map>
-#include <iterator>
-/* RooT header files */
-#include "TArc.h"
-#include "TCanvas.h"
-#include "TFile.h"
-#include "TH1D.h"
-#include "TH2D.h"
-#include "TH2Poly.h"
-#include "TMarker.h"
-#include "TMath.h"
-#include "TTree.h"
-#include "TVirtualFitter.h"
-/* special header files */
-//#include "TMarocRawData.h"
-#include "TTrbAnalysis.h"
-#include "TMapmt.cpp"
-
-#define VERBOSE_MODE 0 // 1 switches on verbose output (debugging purposes)
-
-#define MAX_READOUT_CHAN 4096
-
-// use text files to describe setup
-
-// function needed for ring fit
-
-std::vector<MAPMT_PIXEL> CherenkovRing;
-
-void myfcn(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t) {
-    // minimisation function computing the sum of squares of residuals
-    f = 0;
-    for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=CherenkovRing.begin(); CurrentPixel!=CherenkovRing.end(); CurrentPixel++){
-		Double_t u = CurrentPixel->fX - par[0];
-		Double_t v = CurrentPixel->fY - par[1];
-		Double_t dr = par[2] - sqrt(u*u+v*v);
-		f += dr*dr;
-	}
-}
-
-class TTrbEventDisplay{
-private:
-	std::vector<TMapmt*> DetectorSetup;
-	//TMarocRawData *Events;
-	TTrbAnalysis *Events;
-
-	// flags for required data
-	Bool_t bSetupIsValid;
-	Bool_t bDataIsValid;
-
-	// options flags
-	Bool_t bUseThresholdFile; // flag indicating use of user supplied threshold file
-	Bool_t bDoRingFit;
-
-	// flags organising display
-	Bool_t bPixelCentreMapsAreFilled;
-	Bool_t bPixelMapIsFilled;
-	Bool_t bChannelMapIsFilled;
-	Bool_t bReadoutMapIsFilled;
-	Bool_t bThresholdMapIsFilled;
-	
-	Int_t nNumberOfBins;
-	Int_t nNumberOfEvents;
-	Int_t nNumberOfPixels;
-	Int_t nNumberOfPmts;
-	stringstream cEventDisplayTitle;
-	string cTreeName;
-	
-	TMarker mSetupCentre;
-
-	TCanvas *canActiveCanvas;
-	TCanvas *canEventDisplay;
-	TCanvas *canPixelCentreMaps;
-	TCanvas *canPixelMap;
-	TCanvas *canReadoutMap;
-	TCanvas *canThresholdMap;
-
-	TH2Poly hEventMap; // 2D histogram for plotting hit distribution in an event
-	TH2Poly hPixelIndexMap; // 2D histogram for plotting MAPMT pixel indices for given geometry
-	TH2Poly hChannelMap; // 2D histogram for plotting readout channel mapping for given geometry
-	TH2Poly hThresholdMap; // 2D histogram for plotting pixel thresholds for given geometry
-	TH2Poly hPixelCentreXMap; // 2D histogram for plotting horizontal pixel centre coordinates for given geometry
-	TH2Poly hPixelCentreYMap; // 2D histogram for plotting vertical pixel centre coordinates for given geometry
-
-	//Bool_t CreateDisplayCanvas(); 
-	void DefineDisplayBins();
-	void DeleteSetup();
-	Bool_t FillPixelCentreMaps();
-	Bool_t FillPixelMap();
-	Bool_t FillReadoutMap();
-	Bool_t FillThresholdMap();
-	void FitRing();
-	void Init(); // initialise parameters
-	Int_t LoadSetup(string cUserFilename);
-	void SetCanvasStyle(TCanvas *canThisCanvas);
-
-public:
-	TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, string cUserDataFilename); // standard constructor
-	virtual ~TTrbEventDisplay(); // standard destructor
-	Int_t GetN() const { return(nNumberOfEvents); }
-	void LoadData(string cUserDatafile);
-	void LoadThresholds(string cUserThresholdFilename);
-	void Show(Int_t nUserEventId=0);
-	void Show(Int_t nUserStart, Int_t nUserStop);
-	void ShowPixelCentreMaps();
-	void ShowPixelMap();
-	void ShowReadoutMap();
-	void ShowThresholdMap();
-
-	/* some magic ROOT stuff... */
-	ClassDef(TTrbEventDisplay,1);
-};
+#include "TTrbEventDisplay.h"
 
 ClassImp(TTrbEventDisplay);
 
-
-TTrbEventDisplay::TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, string cUserDataFilename){
+TTrbEventDisplay::TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, string cUserDataFilename) : TTrbAnalysisBase(cUserDataFilename){ // standard constructor
+	cout << "Initialising TRB Event Display..." << endl;
 	Init();
-	cout << "Loading setup..." << endl;
-	nNumberOfPmts = LoadSetup(cUserSetupFilename);
-	if(!bSetupIsValid)
-		exit (-1);
-	cout << "Loading thresholds..." << endl;
-	LoadThresholds(cUserThresholdFilename);
-	if(bUseThresholdFile)
-		bDoRingFit = kTRUE;
-	cout << "Loading data..." << endl;
-	LoadData(cUserDataFilename);
-	if(!bDataIsValid){
-		DeleteSetup();
-		exit (-1);
-	}
+	InitHistograms();
+	cout << "Loading setup configuration file " << cUserSetupFilename << endl;
+	LoadSetup(cUserSetupFilename);
+	// base analysis class needs to know TDC address list, TDC size and TDC offset
 }
 
-
 TTrbEventDisplay::~TTrbEventDisplay(){ // standard destructor
-	CherenkovRing.clear();
+	cout << "This is the destructor of TTrbEventDisplay class..." << endl;
 	DeleteSetup();
-	delete Events;
 }
 
 void TTrbEventDisplay::DefineDisplayBins(){
@@ -255,71 +117,105 @@ Bool_t TTrbEventDisplay::FillReadoutMap(){
 	return (bReadoutMapIsFilled);
 }
 
-Bool_t TTrbEventDisplay::FillThresholdMap(){
-	if(!bUseThresholdFile)
-		return(kFALSE);
-	if(bThresholdMapIsFilled)
-		return (bThresholdMapIsFilled);
-#if VERBOSE_MODE
-	cout << "Fill Threshold Map..." << endl;
-#endif
-	for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
-		std::vector<MAPMT_PIXEL> ListOfPixels = (*CurrentPmt)->GetPixels();
-		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=ListOfPixels.begin(); CurrentPixel!=ListOfPixels.end(); CurrentPixel++){
-			hThresholdMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fThreshold);
+Int_t TTrbEventDisplay::HitMatching(){
+	// match leading and trailing edge timestamps
+	// use TdcHits multimap as starting point
+	Int_t nMultipleHits = 0;
+	//MatchedHits.clear(); // clear map containing matched hits
+	LETimestamps.clear(); // clear leading edge map
+	if(EvtTdcHits.empty()) // no TDC hits available
+		return (nMultipleHits);
+	std::multimap< UInt_t,UInt_t >::const_iterator CurrentTdcHit=EvtTdcHits.begin();
+	while(CurrentTdcHit!=EvtTdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
+		//TrbPixelHit TempPixelHit;
+		//TempPixelHit.bHasSyncTime = kFALSE;
+		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > LeadingEdges;
+		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > TrailingEdges;
+		if(((CurrentTdcHit->first) % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
+					CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first);
+					continue; // skip rest of loop
+				}
+		LeadingEdges = EvtTdcHits.equal_range(CurrentTdcHit->first); // find range of entries for leading edges
+		if(LeadingEdges.second==EvtTdcHits.end()){
+			break;
+		}
+		TrailingEdges	= EvtTdcHits.equal_range(CurrentTdcHit->first+1); // find range of entries for trailing edges, trailing edge channel is leading edge + 1
+		UInt_t nMultLeadEdge = (UInt_t) std::distance(LeadingEdges.first,LeadingEdges.second); // count hits for this channel
+		UInt_t nMultTrailEdge = (UInt_t) std::distance(TrailingEdges.first,TrailingEdges.second);
+		//cout << "Multiplicities: " << nMultLeadEdge << "\t" << nMultTrailEdge << endl;
+		if(nMultLeadEdge!=nMultTrailEdge){ //mismatch of leading & trailing edge multiplicities
+			CurrentTdcHit = TrailingEdges.second; // skip these entries
+			//if(bVerboseMode){ // some error message
+
+			//}
+			continue; // skip rest of loop
+		}
+		Double_t fSyncLETime = -1.0;
+		std::pair< Int_t,Int_t > TempHitIndices;
+		std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= LeadingEdges.first;
+		std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = TrailingEdges.first;
+		switch(nMultLeadEdge){
+			case 1: // single hit 		
+				TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
+				//TempPixelHit.nChannelA = CurLeadEdge->first;
+				//TempPixelHit.nChannelB = CurTrailEdge->first;
+				//TempPixelHit.fTimeOverThreshold = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
+				//TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
+				//TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
+				//MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
+				//}
+				fSyncLETime = TrbData->Hits_fTime[CurLeadEdge->second] - TrbData->Hits_fTime[GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second])];
+				LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
+				CurrentTdcHit = TrailingEdges.second;
+				break;
+			default: // multiple hits
+				++nMultipleHits;
+				if(bSkipMultiHits){ // user decision to skip multiple hits
+					CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
+					continue; // skip rest of loop
+				}
+				// need to get iterators to leading and trailing edges
+				//cout << "Matching multi hits now..." << endl;
+				// loop over hits
+				//do{
+				//	TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
+				//	TempPixelHit.nChannelA = CurLeadEdge->first;
+				//	TempPixelHit.nChannelB = CurTrailEdge->first;
+				//	TempPixelHit.fTimeOverThreshold = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
+				//	TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
+				//	TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
+				//	MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
+				//	++CurLeadEdge;
+				//	++CurTrailEdge;
+
+				//} while (CurLeadEdge!=LeadingEdges.second);
+				//CurrentTdcHit = TrailingEdges.second;
+				//break;
 		}
 	}
-	bThresholdMapIsFilled = kTRUE;
-	return (bThresholdMapIsFilled);
+	//cout << MatchedHits.size() << endl;
+	return (nMultipleHits);
 }
 
-void TTrbEventDisplay::FitRing(){
-	if(!bDoRingFit)
-		return;
-	if(CherenkovRing.size()<3)
-		return;
-	// define fit algorithm and starting values
-	TVirtualFitter::SetDefaultFitter("Minuit");  //default is Minuit
-	TVirtualFitter *fitter = TVirtualFitter::Fitter(0, 3);
-	fitter->SetFCN(myfcn);
-	fitter->SetParameter(0, "x0",   0.0, 0.1, 0,0);
-	fitter->SetParameter(1, "y0",   0.0, 0.1, 0,0);
-	fitter->SetParameter(2, "R",    120.0, 0.1, 0,0);
-	// switch off verbose mode
-	Double_t arglist[1] = {0};
-	arglist[0] = -1;
-	fitter->ExecuteCommand("SET PRINT",arglist,1);
-	arglist[0] = 0;
-	fitter->ExecuteCommand("SET NOW",arglist,0);
-	arglist[0] = 0;
-	fitter->ExecuteCommand("MIGRAD", arglist, 0);
-	//Draw the circle on top of the points
-	canActiveCanvas->cd();
-	TArc arc(fitter->GetParameter(0),fitter->GetParameter(1),fitter->GetParameter(2));
-	arc.SetLineColor(kBlack); arc.SetLineWidth(4); arc.SetLineStyle(9); arc.SetFillStyle(0);
-	arc.DrawClone("SAME");
-	TMarker mRingCentre(fitter->GetParameter(0),fitter->GetParameter(1),29);
-	mRingCentre.DrawClone("SAME");
-	cout << "++++++++++++++++++++++++" << endl;
-	cout << "+++ Ring Fit Results +++" << endl;
-	cout << "++++++++++++++++++++++++" << endl;
-	cout << "\n";
-	cout << "X_0:\t" << fitter->GetParameter(0) << " +- " << fitter->GetParError(0) << endl;
-	cout << "\n";
-	cout << "Y_0:\t" << fitter->GetParameter(1) << " +- " << fitter->GetParError(1) << endl;
-	cout << "\n";
-	cout << "R:\t" << fitter->GetParameter(2) << " +- " << fitter->GetParError(2) << endl;
-	cout << "\n";
-}
+void TTrbEventDisplay::Init(){ // initialise event display class variables
+	DetectorSetup.clear();
+	LETimestamps.clear();
 
-void TTrbEventDisplay::Init(){
-	// initialise class variables
+	bSetupIsValid	= kFALSE;
+	bDataIsValid	= kFALSE;
+	bPixelCentreMapsAreFilled	= kFALSE;
+	bPixelMapIsFilled			= kFALSE;
+	bChannelMapIsFilled			= kFALSE;
+	bReadoutMapIsFilled			= kFALSE;
+	bThresholdMapIsFilled		= kFALSE;
+
+	bSkipMultiHits = kTRUE;
+
 	nNumberOfBins	= 0;
 	nNumberOfEvents = 0;
 	nNumberOfPixels	= 0;
 	nNumberOfPmts	= 0;
 
-	//cTreeName = "fTdata";
 	cTreeName = "T";
 	cEventDisplayTitle.str("DIRC@Mainz Event Display");
 	// intialise display canvases
@@ -329,61 +225,37 @@ void TTrbEventDisplay::Init(){
 	canPixelCentreMaps	= NULL;
 	canReadoutMap		= NULL;
 	canEventDisplay		= NULL;
+}
 
-	Events = NULL;
-
-	// initialise required data flags
-	bSetupIsValid	= kFALSE;
-	bDataIsValid	= kFALSE;
-	// initialise optional flags
-	bUseThresholdFile	= kFALSE;
-	bDoRingFit			= kFALSE;
-	// intialise display flags
-	bChannelMapIsFilled			= kFALSE;
-	bPixelMapIsFilled			= kFALSE;
-	bReadoutMapIsFilled			= kFALSE;
-	bThresholdMapIsFilled		= kFALSE;
-	bPixelCentreMapsAreFilled	= kFALSE;
-
-	mSetupCentre.SetX(0.0);
-	mSetupCentre.SetY(0.0);
-	mSetupCentre.SetMarkerStyle(28);
-
+void TTrbEventDisplay::InitHistograms(){
 	hEventMap.AddDirectory(0); // do not add histogram to current directory
-	hEventMap.SetStats(kFALSE);
+	hEventMap.SetStats(kFALSE); // switch off statistics box
 	hEventMap.SetName("hEventMap"); hEventMap.SetTitle("DIRC@Mainz Event Map; horizontal coordinate; vertical coordinate");
 	hPixelIndexMap.AddDirectory(0); // do not add histogram to current directory
-	hPixelIndexMap.SetStats(kFALSE);
+	hPixelIndexMap.SetStats(kFALSE); // switch off statistics box
 	hPixelIndexMap.SetName("hPixelIndexMap"); hPixelIndexMap.SetTitle("DIRC@Mainz Pixel Index Map; horizontal coordinate; vertical coordinate");
 	hChannelMap.AddDirectory(0); // do not add histogram to current directory
-	hChannelMap.SetStats(kFALSE);
+	hChannelMap.SetStats(kFALSE); // switch off statistics box
 	hChannelMap.SetName("hChannelMap"); hChannelMap.SetTitle("DIRC@Mainz Readout Channel Index Map; horizontal coordinate; vertical coordinate");
 	hThresholdMap.AddDirectory(0); // do not add histogram to current directory
-	hThresholdMap.SetStats(kFALSE);
+	hThresholdMap.SetStats(kFALSE); // switch off statistics box
 	hThresholdMap.SetName("hThresholdMap"); hThresholdMap.SetTitle("DIRC@Mainz Threshold Map; horizontal coordinate; vertical coordinate");
 	hPixelCentreXMap.AddDirectory(0); // do not add histogram to current directory
-	hPixelCentreXMap.SetStats(kFALSE);
+	hPixelCentreXMap.SetStats(kFALSE); // switch off statistics box
 	hPixelCentreXMap.SetName("hPixelCentreXMap"); hPixelCentreXMap.SetTitle("DIRC@Mainz Pixel Centre X Map; horizontal coordinate; vertical coordinate");
 	hPixelCentreYMap.AddDirectory(0); // do not add histogram to current directory
-	hPixelCentreYMap.SetStats(kFALSE);
+	hPixelCentreYMap.SetStats(kFALSE); // switch off statistics box
 	hPixelCentreYMap.SetName("hPixelCentreYMap"); hPixelCentreYMap.SetTitle("DIRC@Mainz Pixel Centre Y Map; horizontal coordinate; vertical coordinate");
 }
 
-void TTrbEventDisplay::LoadData(string cUserDatafile){
-	if(cUserDatafile.empty())
+void TTrbEventDisplay::LoadSetup(string cUserSetupFilename){ // load user-defined MAPMT setup
+	if(cUserSetupFilename.empty()){
+		bSetupIsValid = kFALSE;
 		return;
-	//Events = new TTrbAnalysis(cUserDatafile,"laser_tdc_list_130423.txt");
-	Events = new TTrbAnalysis(cUserDatafile,"laser_tdc_list_130507.txt");
-	cout << Events->GetNEvents() << "\t" << Events->GetNTrb() << endl;
-	bDataIsValid = kTRUE;
-}
-
-Int_t TTrbEventDisplay::LoadSetup(string cUserFilename){
-	if(cUserFilename.empty())
-		return (-1);
+	}
 	Int_t nPmtsAdded = 0; // number of MAPMTs successfully added
 	Int_t nLineIndex = 0;
-	ifstream UserSetupFile(cUserFilename.c_str(),ifstream::in);
+	ifstream UserSetupFile(cUserSetupFilename.c_str(),ifstream::in);
 	while(UserSetupFile.good()){ // start loop over input file
 		string cCurrentLine;
 		getline(UserSetupFile,cCurrentLine); // get line from input file
@@ -396,15 +268,7 @@ Int_t TTrbEventDisplay::LoadSetup(string cUserFilename){
 #endif
 			continue;
 		}
-		string cBuffer;
-		vector<string> tokens;
-		stringstream cParsingLine(cCurrentLine);
-		while(!cParsingLine.eof()){ // parse string containing line from input file
-			cParsingLine >> cBuffer;
-			if(!cBuffer.empty())
-				tokens.push_back(cBuffer);
-			cBuffer.clear();
-		}
+		vector<string> tokens = LineParser(cCurrentLine);
 		TMapmt *CurrentMapmt = NULL;
 		switch (tokens.size()) {
 			case 9:
@@ -414,12 +278,14 @@ Int_t TTrbEventDisplay::LoadSetup(string cUserFilename){
 				CurrentMapmt->SetAbsolutePosition(atof(tokens.at(6).c_str()),atof(tokens.at(7).c_str()));
 				CurrentMapmt->SetRotationAngle(atof(tokens.at(8).c_str())*TMath::DegToRad());
 				if(CurrentMapmt->AddPixels(tokens.at(5))>0){
-					nNumberOfPixels += CurrentMapmt->GetN();
-					DetectorSetup.push_back(CurrentMapmt);
-					nPmtsAdded++;
+					DetectorSetup.push_back(CurrentMapmt); // add MAPMT to setup vector
+					nNumberOfPixels += CurrentMapmt->GetN(); // increment number of pixels in setup
+					nNumberOfPmts++; // increment number of MAPMTs in setup
 				}
-				else
+				else{
 					delete CurrentMapmt;
+					CurrentMapmt = NULL;
+				}
 				break;
 			default:
 				cout << "Skipping incomplete MCP-PMT definition on line " << nLineIndex << endl;
@@ -428,64 +294,26 @@ Int_t TTrbEventDisplay::LoadSetup(string cUserFilename){
 		}
 	} // end loop over input file
 	UserSetupFile.close();
-	if(nPmtsAdded>0 && nNumberOfPixels>0){
+	if(nNumberOfPmts>0 && nNumberOfPixels>0){
 		bSetupIsValid = kTRUE;
 		DefineDisplayBins();
 	}
-	return (nPmtsAdded);
 }
 
-void TTrbEventDisplay::LoadThresholds(string cUserThresholdFilename){
-	if(!bSetupIsValid)
+void TTrbEventDisplay::PrintLETimestamps() const{
+	if(LETimestamps.empty())
 		return;
-	if(cUserThresholdFilename.empty())
-		return;
-	ifstream UserThresholdFile(cUserThresholdFilename.c_str(),ifstream::in);
-	Int_t nLineIndex = 0;
-	std::vector<Double_t> fUserThresholds;
-	fUserThresholds.reserve(MAX_READOUT_CHAN);
-	while(UserThresholdFile.good()){ // start of loop over input file
-		string cCurrentLine;
-		getline(UserThresholdFile,cCurrentLine); // get line from input file
-		nLineIndex++;
-		if(cCurrentLine.empty()) // skip empty lines
-			continue;
-		if(cCurrentLine.find("#")==0){
-#if VERBOSE_MODE
-			cout << "Ignore comments in line " << nLineIndex << endl;
-#endif
-			continue;
-		}
-		string cBuffer;
-		vector<string> tokens;
-		stringstream cParsingLine(cCurrentLine);
-		while(!cParsingLine.eof()){ // parse string containing line from input file
-			cParsingLine >> cBuffer;
-			if(!cBuffer.empty())
-				tokens.push_back(cBuffer);
-			cBuffer.clear();
-		}
-#if VERBOSE_MODE
-		cout << tokens.size() << endl;
-#endif
-		switch (tokens.size()) {
-			case 1: // just pedestal values
-				fUserThresholds.push_back(atof(tokens.at(0).c_str()));
-				break;
-			case 7: // output from Marco Mirazita's pedestal macro (0->channel index, 1->pedestal mean, 2->pedestal sigma, 3->3sigma cut) 
-			case 9: // output from Marco Mirazita's pedestal macro (0->channel index, 1->pedestal mean, 2->pedestal sigma, 3->3sigma cut) 
-				fUserThresholds.push_back(atof(tokens.at(3).c_str()));
-				break;
-		}
-	} // end of loop over input file
-	UserThresholdFile.close();
-	cout << "Threshold vector size is " << fUserThresholds.size() << endl;
-	if(fUserThresholds.size()!=MAX_READOUT_CHAN)
-		return;
-	bUseThresholdFile = kTRUE;
-	for(std::vector<TMapmt*>::iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
-		(*CurrentPmt)->SetThresholds(&fUserThresholds);
-	} // end of loop over all MAPMTs in this setup
+	std::map<Int_t,Double_t>::const_iterator FirstEntry = LETimestamps.begin();
+	std::map<Int_t,Double_t>::const_iterator LastEntry = LETimestamps.end();
+	cout << "+++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++  Sync LE Timestamps Hits  +++" << endl;
+	cout << "+++++++++++++++++++++++++++++++++" << endl;
+	cout << LETimestamps.size() << " MATCHED TDC HITS FOUND" << endl;
+	cout << "+++++++++++++++++++++++++++++++++" << endl;
+	for(std::map<Int_t,Double_t>::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){ // begin loop over all event hit entries
+		cout << distance(FirstEntry,CurEntry) << "\t" << CurEntry->first << "\t" << CurEntry->second << endl;
+	} // end of loop over all event hit entries
+	cout << "+++++++++++++++++++++++++++++++++" << endl;
 }
 
 void TTrbEventDisplay::SetCanvasStyle(TCanvas *canThisCanvas){
@@ -497,64 +325,53 @@ void TTrbEventDisplay::SetCanvasStyle(TCanvas *canThisCanvas){
 
 void TTrbEventDisplay::Show(Int_t nUserEventId){
 	hEventMap.ClearBinContents();
-	if(Events->GetEntry(nUserEventId)<=0)
+	if(!GetStatus()){
+		cout << "TRB data not valid!" << endl;
 		return;
-	std::map<Int_t,Double_t>* EventData = Events->GetLeadingEdge();
-	cout << EventData->size() << endl;
+	}
+	if(GetEntry(nUserEventId)<1){
+		cout << "Event " << nUserEventId << " is not valid!" << endl;
+		return;
+	}
+	PrintSyncTimestamps();
+	PrintLETimestamps();
+	//cout << LETimestamps.size() << endl;
+	//
+	// TO DO:
+	// implement hit matching-> done
+	// implement vector with synchronised leading edge data-> done
+	// implement time window
+
+
+
+	//hEventMap.ClearBinContents();
+	//if(Events->GetEntry(nUserEventId)<=0)
+	//	return;
+	//std::map<Int_t,Double_t>* EventData = Events->GetLeadingEdge();
+	//cout << EventData->size() << endl;
 	for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
-		(*CurrentPmt)->ReadSparseData(*EventData);
+		(*CurrentPmt)->ReadSparseData(LETimestamps);
 		vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){
 			//hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,fabs(CurrentPixel->fAmplitude));
-			hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
+			if(CurrentPixel->fAmplitude>-300.0&&CurrentPixel->fAmplitude<0.0)
+				hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
 		}
 	} // end of loop over all MAPMTs in this setup
 	if(canEventDisplay==NULL){
 		canEventDisplay = new TCanvas("canEventDisplay",cEventDisplayTitle.str().c_str(),-700,700);
 		SetCanvasStyle(canEventDisplay);
 	}
-	//	delete canEventDisplay;
+	////	delete canEventDisplay;
 	if(canActiveCanvas!=canEventDisplay)
 		canEventDisplay->cd();
 	canActiveCanvas = canEventDisplay;
 	cEventDisplayTitle.str("");
 	cEventDisplayTitle << "Event " << nUserEventId;
 	hEventMap.SetTitle(cEventDisplayTitle.str().c_str());
-	hEventMap.DrawCopy("COL");
-	mSetupCentre.DrawClone("SAME");
-	//FitRing();
-}
-
-void TTrbEventDisplay::Show(Int_t nUserStart, Int_t nUserStop){
-	hEventMap.ClearBinContents();
-	for(Int_t nEventIndex=nUserStart; nEventIndex<nUserStop; nEventIndex++){
-		if(Events->GetEntry(nEventIndex)<=0)
-			continue;
-		std::map<Int_t,Double_t>* EventData = Events->GetLeadingEdge();
-		for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
-			(*CurrentPmt)->ReadSparseData(*EventData);
-			vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
-			for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){
-				//hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,fabs(CurrentPixel->fAmplitude));
-				if(CurrentPixel->fAmplitude>-300.0&&CurrentPixel->fAmplitude<-100.0)
-					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
-			}
-		} // end of loop over all MAPMTs in this setup
-	}
-	if(canEventDisplay==NULL){
-		canEventDisplay = new TCanvas("canEventDisplay",cEventDisplayTitle.str().c_str(),-700,700);
-		SetCanvasStyle(canEventDisplay);
-	}
-	//	delete canEventDisplay;
-	if(canActiveCanvas!=canEventDisplay)
-		canEventDisplay->cd();
-	canActiveCanvas = canEventDisplay;
-	cEventDisplayTitle.str("");
-	cEventDisplayTitle << "Events " << nUserStart << " - " << nUserStop;
-	hEventMap.SetTitle(cEventDisplayTitle.str().c_str());
-	hEventMap.DrawCopy("COL");
-	mSetupCentre.DrawClone("SAME");
-	//FitRing();
+	hEventMap.DrawCopy("COLTEXT");
+	//mSetupCentre.DrawClone("SAME");
+	////FitRing();
 }
 
 void TTrbEventDisplay::ShowPixelCentreMaps(){
@@ -565,10 +382,10 @@ void TTrbEventDisplay::ShowPixelCentreMaps(){
 	canActiveCanvas = canPixelCentreMaps;
 	canPixelCentreMaps->Divide(1,2);
 	canPixelCentreMaps->cd(1);
-	hPixelCentreXMap.DrawCopy("COL");
+	hPixelCentreXMap.DrawCopy("COLTEXT");
 	mSetupCentre.DrawClone("SAME");
 	canPixelCentreMaps->cd(2);
-	hPixelCentreYMap.DrawCopy("COL");
+	hPixelCentreYMap.DrawCopy("COLTEXT");
 	mSetupCentre.DrawClone("SAME");
 }
 
@@ -580,7 +397,7 @@ void TTrbEventDisplay::ShowPixelMap(){
 	canActiveCanvas = canPixelMap;
 	canPixelMap->cd();
 	//canPixelMap->Clear();
-	hPixelIndexMap.DrawCopy("COL");
+	hPixelIndexMap.DrawCopy("COLTEXT");
 	mSetupCentre.DrawClone("SAME");
 }
 
@@ -591,19 +408,6 @@ void TTrbEventDisplay::ShowReadoutMap(){
 	SetCanvasStyle(canReadoutMap);
 	canActiveCanvas = canReadoutMap;
 	canReadoutMap->cd();
-	hChannelMap.DrawCopy("COL");
-	mSetupCentre.DrawClone("SAME");
-}
-
-void TTrbEventDisplay::ShowThresholdMap(){
-	if(!FillThresholdMap()){
-		cout << "No valid threshold map available!" << endl;	
-		return;
-	}
-	canThresholdMap = new TCanvas("canThresholdMap","MCP-PMT Threshold Map",-500,500);
-	SetCanvasStyle(canThresholdMap);
-	canActiveCanvas = canThresholdMap;
-	canThresholdMap->cd();
-	hThresholdMap.DrawCopy("COL");
+	hChannelMap.DrawCopy("COLTEXT");
 	mSetupCentre.DrawClone("SAME");
 }

@@ -123,13 +123,6 @@ Int_t TTrbAnalysisBase::GetEntry(Long64_t nEntryIndex){
 		cout << "Getting entry " << nEntryIndex << " with size "<< nEntrySize << endl;
 	}
 	ScanEvent();
-	//bAllRefChanValid = SetRefTimestamps(); // extract reference timestamps
-	//FillTdcHits(); // fill all TDC hits into multimap, reference channels are excluded
-	//if(!TdcHits.empty()){ // if there are any TDC hits, do basic analysis tasks
-	//	FillTdcLeadingEdge(); // correct leading edge timestamps for reference time and fill into map
-	//	nEvtMultHits = HitMatching(); // try matching leading and trailing edges and fill array indices into map, skipping multi-hit channels
-	//	FillTimeOverThreshold(); // compute pulse lengths based on matched hits and fill into map
-	//}
 	return (nEntrySize);
 }
 
@@ -150,6 +143,13 @@ Int_t TTrbAnalysisBase::GetTdcSyncIndex(UInt_t nTdcAddress) const {
 	return (FoundTdc->second);
 }
 
+Double_t TTrbAnalysisBase::GetTdcSyncTimestamp(UInt_t nTdcAddress) const {
+	Int_t nTempSyncIndex = GetTdcSyncIndex(nTdcAddress);
+	if(nTempSyncIndex<0)
+		return (-1.0);
+	else
+		return (TrbData->Hits_fTime[nTempSyncIndex]);
+}
 
 void TTrbAnalysisBase::Init(){ // initialise object variables
 	cout << "This is TTrbAnalysisBase::Init()..." << endl;
@@ -280,7 +280,10 @@ void TTrbAnalysisBase::ScanEvent(){
 		}
 		if(TrbData->Hits_bIsRefChannel[nCurEvtIndex]){ // check for TDC reference channels
 			if(TdcAddresses.find(TempChanAddress.first)!=TdcAddresses.end())
-				EvtSyncTimestamps.insert(make_pair(TempChanAddress.first,(UInt_t)nCurEvtIndex)); // fill TDC address and array index into map
+				if(!EvtSyncTimestamps.insert(make_pair(TempChanAddress.first,(UInt_t)nCurEvtIndex)).second){
+					cout << "ERROR filling sync timestamps!" << endl;
+					cout << TempChanAddress.first << "\t" << TempChanAddress.second << "\t" << nCurEvtIndex << endl;
+				} // fill TDC address and array index into map
 			continue; // skip rest of loop
 		}
 		else if(TrbData->Hits_nTdcChannel[nCurEvtIndex]<nTdcOffset){ // skip this entry as it is not part of the active TDC channels
