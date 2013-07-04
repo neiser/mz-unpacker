@@ -61,6 +61,7 @@ protected:
 	Bool_t bThresholdMapIsFilled;
 	// flags for data treatment
 	Bool_t bSkipMultiHits; // if true skip multiple hits in a channel
+	Bool_t bUseTimeWindow; // true if a time window has been set
 	// variables for 2D histograms
 	Int_t nNumberOfBins;
 	Int_t nNumberOfEvents;
@@ -68,6 +69,7 @@ protected:
 	Int_t nNumberOfPmts;
 	stringstream cEventDisplayTitle;
 	string cTreeName;
+	std::pair< Double_t,Double_t > TimingWindow;
 	
 	TMarker mSetupCentre;
 	// Canvas definitions for display
@@ -98,6 +100,8 @@ public:
 	Int_t GetNPixels() const { return (nNumberOfPixels); }; // get number of pixels in setup
 	Int_t GetNPmts() const { return (nNumberOfPmts); }; // get number of MAPMTs in setup
 	void PrintLETimestamps() const; // print list of synchronised leading edge timestamps of hits to screen
+	void ResetTimingWindow() { TimingWindow.first=0.0; TimingWindow.second=0.0; bUseTimeWindow=kFALSE; }; // reset timing window
+	void SetTimingWindow( Double_t fUserLow, Double_t fUserUpper); // set timing window for event hit selection
 	void Show(Int_t nUserEventId=0); // show single event
 	void ShowPixelCentreMaps(); // show 2D histogram with pixel centre coordinates
 	void ShowPixelMap(); // show 2D histogram with pixel numbers (MAPMT channel)

@@ -82,6 +82,7 @@ public:
 	virtual void PrintTdcMapping() const; // print TDC mapping table to screen
 	virtual void ScanEvent(); // scan event data and fill sync timestamp map and hit index multimap
 	virtual Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TRB addresses using text file as input
+	virtual Int_t SetTdcAddresses(string cUserTdcAddressesFile, UInt_t nUserChanPerTdc, UInt_t nUserTdcOffset) { SetTdcSize(nUserChanPerTdc); SetTdcOffset(nUserTdcOffset); return (SetTdcAddresses(cUserTdcAddressesFile)); }; // set TDC addresses with fixed size and offset
 	void SetTdcSize(UInt_t nUserChanPerTdc) { nTdcDefaultSize = nUserChanPerTdc; ComputeMappingTable(); }; // set number of TDC channels per TDC, excluding reference channels, needs to trigger a rebuild of mapping table
 	void SetTdcOffset(UInt_t nUserTdcOffset) { nTdcOffset = nUserTdcOffset; ComputeMappingTable(); }; // set TDC channel offset to mask reference channels, needs to trigger a rebuild of mapping table
 //	void SetTreeName( string cUserTreeName) { if(!cUserTreeName.empty()) cTreeName = cUserTreeName; }; // set name of data tree, standard is "T"

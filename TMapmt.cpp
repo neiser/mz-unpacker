@@ -33,6 +33,7 @@ using namespace std;
 class TMapmt : public TObject{
 private:
 	Bool_t bGainIsNormalised;
+	Bool_t bIgnoreThresholds;
 	Double_t fAbsoluteGain; // absolute gain value corresponding to best pixel
 	Double_t fPhi; // MAPMT rotation angle in rad
 	Double_t fPixelPitchX; // horizontal MAPMT pixel pitch 
@@ -82,8 +83,10 @@ public:
 	void GetPixelPitch(Double_t &fUserPixelPitchX, Double_t &fUserPixelPitchY) const { fUserPixelPitchX=fPixelPitchX; fUserPixelPitchY=fPixelPitchY; }
 	vector<MAPMT_PIXEL> GetPixels() { return (ListOfPixels); } // get std::vector with all pixels
 	Double_t GetRotationAngle() const { return(fPhi); } // get MAPMT rotation angle phi
+	void IgnoreThresholds() { bIgnoreThresholds=kTRUE; }; // set flag to ignore thresholds
 	void Print(); // print pixels properties to terminal
 	Int_t ReadSparseData(std::map<Int_t,Double_t>& UserSparseData); // read data from sparsified arrays
+	void RegardThresholds() { bIgnoreThresholds=kFALSE; }; // remove flag to ignore thresholds
 	Bool_t RemovePixel(Int_t nUserPixelId); // remove pixel from MAPMT (due to noise etc.)
 	Int_t RemovePixels(const vector<Int_t>& nUserPixelIds); // remove list of pixels
 	void ResetPixelAmplitudes() { for_each(ListOfPixels.begin(),ListOfPixels.end(),ResetPixelAmplitude); }
@@ -115,6 +118,7 @@ public:
 ClassImp(TMapmt);
 
 TMapmt::TMapmt(Int_t nUserNumberOfColumns, Int_t nUserNumberOfRows, Double_t fUserAbsoluteGain) : TObject(){ // constructor
+	bIgnoreThresholds = kFALSE; // use defined thresholds
 	hGainDistribution		= NULL;
 	hThresholdDistribution	= NULL;
 	hGainMap			= NULL;
@@ -323,10 +327,14 @@ TH2I* TMapmt::GetHitMap(){
 vector<MAPMT_PIXEL> TMapmt::GetHitPixels() const {
 	vector<MAPMT_PIXEL> PixelsAboveThreshold; // vector storing pixels above threshold for this event
 	PixelsAboveThreshold.reserve(ListOfPixels.size());
-	for(vector<MAPMT_PIXEL>::const_iterator CurrentPixel = ListOfPixels.begin(); CurrentPixel != ListOfPixels.end(); CurrentPixel++){ // start loop over all pixels
-		if(CurrentPixel->fAmplitude > CurrentPixel->fThreshold)
-			PixelsAboveThreshold.push_back(*CurrentPixel); // enter pixel into vector
-	} // end loop over all pixels
+	if(!bIgnoreThresholds){
+		for(vector<MAPMT_PIXEL>::const_iterator CurrentPixel = ListOfPixels.begin(); CurrentPixel != ListOfPixels.end(); CurrentPixel++){ // start loop over all pixels
+			if(CurrentPixel->fAmplitude > CurrentPixel->fThreshold)
+				PixelsAboveThreshold.push_back(*CurrentPixel); // enter pixel into vector
+		} // end loop over all pixels
+	}
+	else // in case one ignores the thresholds just copy entire pixel list
+		PixelsAboveThreshold = ListOfPixels; 
 	return (PixelsAboveThreshold);
 }
 

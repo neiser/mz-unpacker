@@ -157,12 +157,8 @@ Int_t TTrbEventDisplay::HitMatching(){
 		switch(nMultLeadEdge){
 			case 1: // single hit 		
 				TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
-				//TempPixelHit.nChannelA = CurLeadEdge->first;
-				//TempPixelHit.nChannelB = CurTrailEdge->first;
 				//TempPixelHit.fTimeOverThreshold = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
 				//TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
-				//TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
-				//MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
 				//}
 				fSyncLETime = TrbData->Hits_fTime[CurLeadEdge->second] - TrbData->Hits_fTime[GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second])];
 				LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
@@ -210,6 +206,7 @@ void TTrbEventDisplay::Init(){ // initialise event display class variables
 	bThresholdMapIsFilled		= kFALSE;
 
 	bSkipMultiHits = kTRUE;
+	bUseTimeWindow = kFALSE;
 
 	nNumberOfBins	= 0;
 	nNumberOfEvents = 0;
@@ -278,6 +275,7 @@ void TTrbEventDisplay::LoadSetup(string cUserSetupFilename){ // load user-define
 				CurrentMapmt->SetAbsolutePosition(atof(tokens.at(6).c_str()),atof(tokens.at(7).c_str()));
 				CurrentMapmt->SetRotationAngle(atof(tokens.at(8).c_str())*TMath::DegToRad());
 				if(CurrentMapmt->AddPixels(tokens.at(5))>0){
+					CurrentMapmt->IgnoreThresholds();
 					DetectorSetup.push_back(CurrentMapmt); // add MAPMT to setup vector
 					nNumberOfPixels += CurrentMapmt->GetN(); // increment number of pixels in setup
 					nNumberOfPmts++; // increment number of MAPMTs in setup
@@ -323,8 +321,17 @@ void TTrbEventDisplay::SetCanvasStyle(TCanvas *canThisCanvas){
 	canThisCanvas->SetGrid(); // set grid lines for canvas
 }
 
+void TTrbEventDisplay::SetTimingWindow( Double_t fUserLow, Double_t fUserUpper){
+	if(fUserLow==fUserUpper) // check if boundaries are equal
+		return;
+	TimingWindow.first = (fUserLow<fUserUpper)? fUserLow : fUserUpper; // set lower boundary
+	TimingWindow.second = (fUserLow<fUserUpper)? fUserUpper : fUserLow; // set upper boundary
+	bUseTimeWindow = kTRUE;
+}
+
 void TTrbEventDisplay::Show(Int_t nUserEventId){
 	hEventMap.ClearBinContents();
+	hEventMap.Reset("M");
 	if(!GetStatus()){
 		cout << "TRB data not valid!" << endl;
 		return;
@@ -342,22 +349,21 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 	// implement vector with synchronised leading edge data-> done
 	// implement time window
 
-
-
-	//hEventMap.ClearBinContents();
-	//if(Events->GetEntry(nUserEventId)<=0)
-	//	return;
-	//std::map<Int_t,Double_t>* EventData = Events->GetLeadingEdge();
-	//cout << EventData->size() << endl;
 	for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
 		(*CurrentPmt)->ReadSparseData(LETimestamps);
 		vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
-		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){
-			//hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,fabs(CurrentPixel->fAmplitude));
-			if(CurrentPixel->fAmplitude>-300.0&&CurrentPixel->fAmplitude<0.0)
-				hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
-		}
+		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
+			if(bUseTimeWindow){ // apply timing cut
+				if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
+					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
+			}
+			else // no timing window set
+				hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
+		} // end of loop over all PMT pixels
 	} // end of loop over all MAPMTs in this setup
+	Double_t fHistMinVal = hEventMap.GetMinimum()-fabs(hEventMap.GetMinimum())*1.0e-3;
+	cout << hEventMap.GetMinimum() << "\t" << fHistMinVal << endl;
+	hEventMap.SetMinimum(fHistMinVal);
 	if(canEventDisplay==NULL){
 		canEventDisplay = new TCanvas("canEventDisplay",cEventDisplayTitle.str().c_str(),-700,700);
 		SetCanvasStyle(canEventDisplay);
@@ -370,8 +376,6 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 	cEventDisplayTitle << "Event " << nUserEventId;
 	hEventMap.SetTitle(cEventDisplayTitle.str().c_str());
 	hEventMap.DrawCopy("COLTEXT");
-	//mSetupCentre.DrawClone("SAME");
-	////FitRing();
 }
 
 void TTrbEventDisplay::ShowPixelCentreMaps(){
