@@ -76,12 +76,14 @@ Bool_t TTrbEventDisplay::FillPixelCentreMaps(){
 #endif
 	for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
 		std::vector<MAPMT_PIXEL> ListOfPixels = (*CurrentPmt)->GetPixels();
-		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=ListOfPixels.begin(); CurrentPixel!=ListOfPixels.end(); CurrentPixel++){
+		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=ListOfPixels.begin(); CurrentPixel!=ListOfPixels.end(); CurrentPixel++){ // begin of loop over all pixels of current MAPMT
 			hPixelCentreXMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fX);
 			hPixelCentreYMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fY);
-		}
-	}
+		} // end of loop over all pixels of current MAPMT
+	} // end of loop over all MAPMTs in this setup
 	bPixelCentreMapsAreFilled = kTRUE;
+	hPixelCentreXMap.SetMinimum(hPixelCentreXMap.GetMinimum()-fabs(hPixelCentreXMap.GetMinimum())*1.0e-3);
+	hPixelCentreYMap.SetMinimum(hPixelCentreYMap.GetMinimum()-fabs(hPixelCentreYMap.GetMinimum())*1.0e-3);
 	return (bPixelCentreMapsAreFilled);
 }
 
@@ -201,9 +203,7 @@ void TTrbEventDisplay::Init(){ // initialise event display class variables
 	bDataIsValid	= kFALSE;
 	bPixelCentreMapsAreFilled	= kFALSE;
 	bPixelMapIsFilled			= kFALSE;
-	bChannelMapIsFilled			= kFALSE;
 	bReadoutMapIsFilled			= kFALSE;
-	bThresholdMapIsFilled		= kFALSE;
 
 	bSkipMultiHits = kTRUE;
 	bUseTimeWindow = kFALSE;
@@ -340,9 +340,8 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 		cout << "Event " << nUserEventId << " is not valid!" << endl;
 		return;
 	}
-	PrintSyncTimestamps();
+	//PrintSyncTimestamps();
 	PrintLETimestamps();
-	//cout << LETimestamps.size() << endl;
 	//
 	// TO DO:
 	// implement hit matching-> done
@@ -374,6 +373,52 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 	canActiveCanvas = canEventDisplay;
 	cEventDisplayTitle.str("");
 	cEventDisplayTitle << "Event " << nUserEventId;
+	hEventMap.SetTitle(cEventDisplayTitle.str().c_str());
+	hEventMap.DrawCopy("COLTEXT");
+}
+
+
+void TTrbEventDisplay::Show(UInt_t nUserStart, UInt_t nUserStop){
+	hEventMap.ClearBinContents();
+	hEventMap.Reset("M");
+	if(!GetStatus()){
+		cout << "TRB data not valid!" << endl;
+		return;
+	}
+	// need to check user event indices
+	UInt_t nStartIndex	= std::min(nUserStart,nUserStop);
+	UInt_t nStopIndex	= std::max(nUserStart,nUserStop);
+	if(nStopIndex>(UInt_t)GetNEvents()) // check if upper index is too large
+		nStopIndex = (UInt_t)GetNEvents();
+	for(Int_t nEventIndex=nStartIndex; nEventIndex<nStopIndex; ++nEventIndex){ // begin of loop over events
+		if(GetEntry(nEventIndex)<1){
+			cout << "Skipping event " << nEventIndex << endl;
+			continue;
+		}
+		for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
+			(*CurrentPmt)->ReadSparseData(LETimestamps);
+			vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
+			for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
+				if(bUseTimeWindow){ // apply timing cut
+					if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
+						hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
+				}
+				else // no timing window set
+					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
+			} // end of loop over all PMT pixels
+		} // end of loop over all MAPMTs in this setup
+	} // end of loop over events
+
+	if(canEventDisplay==NULL){
+		canEventDisplay = new TCanvas("canEventDisplay",cEventDisplayTitle.str().c_str(),-700,700);
+		SetCanvasStyle(canEventDisplay);
+	}
+	//	delete canEventDisplay;
+	if(canActiveCanvas!=canEventDisplay)
+		canEventDisplay->cd();
+	canActiveCanvas = canEventDisplay;
+	cEventDisplayTitle.str("");
+	cEventDisplayTitle << "Events " << nUserStart << " - " << nUserStop;
 	hEventMap.SetTitle(cEventDisplayTitle.str().c_str());
 	hEventMap.DrawCopy("COLTEXT");
 }

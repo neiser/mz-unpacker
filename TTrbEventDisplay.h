@@ -54,11 +54,9 @@ protected:
 	Bool_t bSetupIsValid; // indicate if MAPMT setup was created and is valid (only basic checks)
 	Bool_t bDataIsValid; // indicate if data is available
 	// flags organising display
-	Bool_t bPixelCentreMapsAreFilled;
-	Bool_t bPixelMapIsFilled;
-	Bool_t bChannelMapIsFilled;
-	Bool_t bReadoutMapIsFilled;
-	Bool_t bThresholdMapIsFilled;
+	Bool_t bPixelCentreMapsAreFilled; // indicate if pixel centre position maps are filled
+	Bool_t bPixelMapIsFilled; // indicate if pixel ID maps are filled
+	Bool_t bReadoutMapIsFilled; // indicate if readout channel maps are filled
 	// flags for data treatment
 	Bool_t bSkipMultiHits; // if true skip multiple hits in a channel
 	Bool_t bUseTimeWindow; // true if a time window has been set
@@ -103,6 +101,7 @@ public:
 	void ResetTimingWindow() { TimingWindow.first=0.0; TimingWindow.second=0.0; bUseTimeWindow=kFALSE; }; // reset timing window
 	void SetTimingWindow( Double_t fUserLow, Double_t fUserUpper); // set timing window for event hit selection
 	void Show(Int_t nUserEventId=0); // show single event
+	void Show(UInt_t nUserStart, UInt_t nUserStop); // accumulate events and show hit pattern
 	void ShowPixelCentreMaps(); // show 2D histogram with pixel centre coordinates
 	void ShowPixelMap(); // show 2D histogram with pixel numbers (MAPMT channel)
 	void ShowReadoutMap(); // show 2D histogram with readout channel numbers
