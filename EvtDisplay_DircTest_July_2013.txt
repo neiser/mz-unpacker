@@ -1,0 +1,10 @@
+# Setup for DIRC Test Experiment in Mainz, July 2013
+# Matthias Hoek
+# v1 (12/07/2013)
+# PMT_Name Columns Rows Pitch_X Pitch_Y Setup_File X Y Angle
+MCP-PMT_0 8 8 6.5 6.5 EvtDisplay_Mapping_MCP0_130712.txt -140.0 -178.0 -90.0
+MCP-PMT_1 8 8 6.5 6.5 EvtDisplay_Mapping_MCP1_130712.txt -140.0 -38.0 -90.0
+MCP-PMT_2 8 8 6.5 6.5 EvtDisplay_Mapping_MCP2_130712.txt -140.0 104.0 -90.0
+MCP-PMT_3 8 8 6.5 6.5 EvtDisplay_Mapping_MCP3_130712.txt 59.0 -38.0 -90.0
+MCP-PMT_4 8 8 6.5 6.5 EvtDisplay_Mapping_MCP4_130712.txt 59.0 104.0 -90.0
+
