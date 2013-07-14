@@ -340,14 +340,10 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 		cout << "Event " << nUserEventId << " is not valid!" << endl;
 		return;
 	}
-	//PrintSyncTimestamps();
+	if(LETimestamps.empty()){
+		return;
+	}
 	PrintLETimestamps();
-	//
-	// TO DO:
-	// implement hit matching-> done
-	// implement vector with synchronised leading edge data-> done
-	// implement time window
-
 	for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
 		(*CurrentPmt)->ReadSparseData(LETimestamps);
 		vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
@@ -361,7 +357,6 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 		} // end of loop over all PMT pixels
 	} // end of loop over all MAPMTs in this setup
 	Double_t fHistMinVal = hEventMap.GetMinimum()-fabs(hEventMap.GetMinimum())*1.0e-3;
-	cout << hEventMap.GetMinimum() << "\t" << fHistMinVal << endl;
 	hEventMap.SetMinimum(fHistMinVal);
 	if(canEventDisplay==NULL){
 		canEventDisplay = new TCanvas("canEventDisplay",cEventDisplayTitle.str().c_str(),-700,700);
@@ -395,20 +390,24 @@ void TTrbEventDisplay::Show(UInt_t nUserStart, UInt_t nUserStop){
 			cout << "Skipping event " << nEventIndex << endl;
 			continue;
 		}
+		if(LETimestamps.empty()){ // no hits in event
+			continue; // skip rest of loop
+		}
 		for(std::vector<TMapmt*>::const_iterator CurrentPmt=DetectorSetup.begin(); CurrentPmt!=DetectorSetup.end(); CurrentPmt++){ // start of loop over all MAPMTs in this setup
 			(*CurrentPmt)->ReadSparseData(LETimestamps);
 			vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 			for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
 				if(bUseTimeWindow){ // apply timing cut
-					if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
+					if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second){
 						hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
+					}
 				}
 				else // no timing window set
 					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
 			} // end of loop over all PMT pixels
+			Hits.clear();
 		} // end of loop over all MAPMTs in this setup
 	} // end of loop over events
-
 	if(canEventDisplay==NULL){
 		canEventDisplay = new TCanvas("canEventDisplay",cEventDisplayTitle.str().c_str(),-700,700);
 		SetCanvasStyle(canEventDisplay);
@@ -441,7 +440,7 @@ void TTrbEventDisplay::ShowPixelCentreMaps(){
 void TTrbEventDisplay::ShowPixelMap(){
 	if(!FillPixelMap())
 		return;
-	canPixelMap = new TCanvas("canPixelMap","MCP-PMT Pixel Map",-500,500);
+	canPixelMap = new TCanvas("canPixelMap","MCP-PMT Pixel Map",-500,500); // If form < 0  the menubar is not shown.
 	SetCanvasStyle(canPixelMap);
 	canActiveCanvas = canPixelMap;
 	canPixelMap->cd();
