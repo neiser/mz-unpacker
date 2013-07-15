@@ -16,7 +16,7 @@
 #include <TObject.h>
 
 // Fixed size dimensions of array or collections stored in the TTree if any.
-const Int_t kMaxHits = 1000;
+const Int_t kMaxHits = 10000;
 
 class TTrbDataTree {
 public :
