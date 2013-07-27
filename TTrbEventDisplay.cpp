@@ -352,11 +352,11 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 		(*CurrentPmt)->ReadSparseData(LETimestamps);
 		vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
-			//if(bUseTimeWindow){ // apply timing cut
-			//	if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
-			//		hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
-			//}
-			//else // no timing window set
+			if(bUseTimeWindow){ // apply timing cut
+				if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
+					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
+			}
+			else // no timing window set
 				hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
 		} // end of loop over all PMT pixels
 	} // end of loop over all MAPMTs in this setup
@@ -401,12 +401,12 @@ void TTrbEventDisplay::Show(UInt_t nUserStart, UInt_t nUserStop){
 			(*CurrentPmt)->ReadSparseData(LETimestamps);
 			vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 			for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
-				//if(bUseTimeWindow){ // apply timing cut
-				//	if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second){
-				//		hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
-				//	}
-				//}
-				//else // no timing window set
+				if(bUseTimeWindow){ // apply timing cut
+					if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second){
+						hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
+					}
+				}
+				else // no timing window set
 					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
 			} // end of loop over all PMT pixels
 			Hits.clear();
