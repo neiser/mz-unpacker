@@ -89,6 +89,7 @@ protected:
 	Bool_t FillPixelMap(); // fill 2D histogram with pixel number
 	Bool_t FillReadoutMap(); // fill 2D histogram with readout channel number
 	Int_t HitMatching(); // match leading and trailing edge timestamps, returning the number of channels with multiple hits
+	void KeepMultiHits() { bSkipMultiHits=kFALSE; }; // keep multi-hit pixels, requires a timing window
 	std::map<Int_t,Double_t> LETimestamps; // map with leading edge timestamps
 	void ScanEvent() { TTrbAnalysisBase::ScanEvent(); HitMatching(); }; // analyse a single event and extract hit information
 	void SetCanvasStyle(TCanvas *canThisCanvas);
@@ -105,6 +106,7 @@ public:
 	void ShowPixelCentreMaps(); // show 2D histogram with pixel centre coordinates
 	void ShowPixelMap(); // show 2D histogram with pixel numbers (MAPMT channel)
 	void ShowReadoutMap(); // show 2D histogram with readout channel numbers
+	void SkipMultiHits() { bSkipMultiHits=kTRUE; }; // skip multi-hit pixels
 	/* some magic ROOT stuff... */
 	ClassDef(TTrbEventDisplay,1);
 

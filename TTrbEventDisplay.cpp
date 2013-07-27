@@ -163,32 +163,36 @@ Int_t TTrbEventDisplay::HitMatching(){
 				//TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
 				//}
 				fSyncLETime = TrbData->Hits_fTime[CurLeadEdge->second] - TrbData->Hits_fTime[GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second])];
-				LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
+				if(bUseTimeWindow){
+					if(fSyncLETime>TimingWindow.first && fSyncLETime<TimingWindow.second)
+						LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
+				}
+				else{
+					LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
+					
+				}
 				CurrentTdcHit = TrailingEdges.second;
 				break;
 			default: // multiple hits
 				++nMultipleHits;
-				if(bSkipMultiHits){ // user decision to skip multiple hits
+				if(bSkipMultiHits || !bUseTimeWindow){ // user decision to skip multiple hits
 					CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
 					continue; // skip rest of loop
 				}
 				// need to get iterators to leading and trailing edges
 				//cout << "Matching multi hits now..." << endl;
 				// loop over hits
-				//do{
-				//	TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
-				//	TempPixelHit.nChannelA = CurLeadEdge->first;
-				//	TempPixelHit.nChannelB = CurTrailEdge->first;
-				//	TempPixelHit.fTimeOverThreshold = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
-				//	TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
-				//	TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
-				//	MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
-				//	++CurLeadEdge;
-				//	++CurTrailEdge;
+				do{
+					TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
+					fSyncLETime = TrbData->Hits_fTime[CurLeadEdge->second] - TrbData->Hits_fTime[GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second])];
+					if(fSyncLETime>TimingWindow.first && fSyncLETime<TimingWindow.second) // check that hit is within user-defined timing window
+						LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
+					++CurLeadEdge;
+					++CurTrailEdge;
 
-				//} while (CurLeadEdge!=LeadingEdges.second);
-				//CurrentTdcHit = TrailingEdges.second;
-				//break;
+				} while (CurLeadEdge!=LeadingEdges.second);
+				CurrentTdcHit = TrailingEdges.second;
+				break;
 		}
 	}
 	//cout << MatchedHits.size() << endl;
@@ -348,11 +352,11 @@ void TTrbEventDisplay::Show(Int_t nUserEventId){
 		(*CurrentPmt)->ReadSparseData(LETimestamps);
 		vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 		for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
-			if(bUseTimeWindow){ // apply timing cut
-				if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
-					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
-			}
-			else // no timing window set
+			//if(bUseTimeWindow){ // apply timing cut
+			//	if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second)
+			//		hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
+			//}
+			//else // no timing window set
 				hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,CurrentPixel->fAmplitude);
 		} // end of loop over all PMT pixels
 	} // end of loop over all MAPMTs in this setup
@@ -397,12 +401,12 @@ void TTrbEventDisplay::Show(UInt_t nUserStart, UInt_t nUserStop){
 			(*CurrentPmt)->ReadSparseData(LETimestamps);
 			vector<MAPMT_PIXEL> Hits = (*CurrentPmt)->GetHitPixels();
 			for(std::vector<MAPMT_PIXEL>::const_iterator CurrentPixel=Hits.begin(); CurrentPixel!=Hits.end(); CurrentPixel++){ // begin loop over all PMT pixels
-				if(bUseTimeWindow){ // apply timing cut
-					if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second){
-						hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
-					}
-				}
-				else // no timing window set
+				//if(bUseTimeWindow){ // apply timing cut
+				//	if(CurrentPixel->fAmplitude>TimingWindow.first&&CurrentPixel->fAmplitude<TimingWindow.second){
+				//		hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
+				//	}
+				//}
+				//else // no timing window set
 					hEventMap.Fill(CurrentPixel->fX,CurrentPixel->fY,1.0);
 			} // end of loop over all PMT pixels
 			Hits.clear();
