@@ -89,7 +89,6 @@ protected:
 	Bool_t FillPixelMap(); // fill 2D histogram with pixel number
 	Bool_t FillReadoutMap(); // fill 2D histogram with readout channel number
 	Int_t HitMatching(); // match leading and trailing edge timestamps, returning the number of channels with multiple hits
-	void KeepMultiHits() { bSkipMultiHits=kFALSE; }; // keep multi-hit pixels, requires a timing window
 	std::map<Int_t,Double_t> LETimestamps; // map with leading edge timestamps
 	void ScanEvent() { TTrbAnalysisBase::ScanEvent(); HitMatching(); }; // analyse a single event and extract hit information
 	void SetCanvasStyle(TCanvas *canThisCanvas);
@@ -98,6 +97,7 @@ public:
 	virtual ~TTrbEventDisplay(); // standard destructor
 	Int_t GetNPixels() const { return (nNumberOfPixels); }; // get number of pixels in setup
 	Int_t GetNPmts() const { return (nNumberOfPmts); }; // get number of MAPMTs in setup
+	void KeepMultiHits() { bSkipMultiHits=kFALSE; }; // keep multi-hit pixels, requires a timing window
 	void PrintLETimestamps() const; // print list of synchronised leading edge timestamps of hits to screen
 	void ResetTimingWindow() { TimingWindow.first=0.0; TimingWindow.second=0.0; bUseTimeWindow=kFALSE; }; // reset timing window
 	void SetTimingWindow( Double_t fUserLow, Double_t fUserUpper); // set timing window for event hit selection
