@@ -50,13 +50,13 @@ void TTrbAnalysisBase::ComputeMappingTable(){
 	if(TdcAddresses.empty())
 		return;
 	// loop over all TDC addresses
-	std::map< UInt_t,UInt_t >::const_iterator FirstTdcAddress = TdcAddresses.begin();
-	std::map< UInt_t,UInt_t >::const_iterator LastTdcAddress = TdcAddresses.end();
-	for(std::map< UInt_t,UInt_t >::const_iterator CurrentTdc=FirstTdcAddress; CurrentTdc!=LastTdcAddress; ++CurrentTdc){ // begin loop over all TDC addresses
+	std::map< UInt_t,TrbTdcSetupModel >::const_iterator FirstTdcAddress = TdcAddresses.begin();
+	std::map< UInt_t,TrbTdcSetupModel >::const_iterator LastTdcAddress = TdcAddresses.end();
+	for(std::map< UInt_t,TrbTdcSetupModel >::const_iterator CurrentTdc=FirstTdcAddress; CurrentTdc!=LastTdcAddress; ++CurrentTdc){ // begin loop over all TDC addresses
 		UInt_t nTdcIndex = (UInt_t)distance(FirstTdcAddress,CurrentTdc);
-		for(UInt_t i=0; i<CurrentTdc->second; ++i){ // begin loop over all TDC channels
-			UInt_t nSeqId = nTdcIndex * CurrentTdc->second + i;
-			MappingTable.insert(make_pair(make_pair(CurrentTdc->first,i+nTdcOffset),nSeqId));
+		for(UInt_t i=0; i<CurrentTdc->second.nTdcSize; ++i){ // begin loop over all TDC channels
+			UInt_t nSeqId = nTdcIndex * CurrentTdc->second.nTdcSize + i;
+			MappingTable.insert(make_pair(make_pair(CurrentTdc->first,i+CurrentTdc->second.nTdcOffset),nSeqId));
 		} // end of loop over all TDC channels
 	} // end of loop over all TDC addresses
 	if(bVerboseMode){
@@ -68,13 +68,6 @@ void TTrbAnalysisBase::ComputeMappingTable(){
 Bool_t TTrbAnalysisBase::ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
 	std::pair< UInt_t,UInt_t > TempPair (nUserTrbAddress, nUserTdcChannel); // create pair consisting of FPGA address and TDC channel
 	return ((Bool_t)(ExcludedChannels.insert(TempPair)).second);
-
-	//std::vector< pair< UInt_t,UInt_t > >::iterator CheckPair; // iterator on vector containing excluded channel addresses
-	//CheckPair = find(ExcludedChannels.begin(),ExcludedChannels.end(),TempPair); // check if channel is already excluded
-	//if(CheckPair!=ExcludedChannels.end())
-	//	return (kFALSE);
-	//ExcludedChannels.push_back(TempPair); // enter this channel into vector
-	//return(kTRUE);
 }
 
 UInt_t TTrbAnalysisBase::ExcludeChannels(string UserFilename){
@@ -134,6 +127,28 @@ Int_t TTrbAnalysisBase::GetSeqId(UInt_t nUserTdcAddress, UInt_t nUserTdcChannel)
 	return (RequestedEntry->second);
 }
 
+Int_t TTrbAnalysisBase::GetTdcAddress(UInt_t nArrayIndex) const {
+	if(!(nArrayIndex<TrbData->Hits_))
+		return (-1);
+	return (TrbData->Hits_nTrbAddress[nArrayIndex]);
+}
+
+Int_t TTrbAnalysisBase::GetTdcOffset(UInt_t nUserTdcAddress) const {
+	std::map< UInt_t,TrbTdcSetupModel >::const_iterator UserTdc = TdcAddresses.find(nUserTdcAddress);
+	if(UserTdc==TdcAddresses.end()) // this TDC address does not exist
+		return (-1);
+	else
+		return ((Int_t)UserTdc->second.nTdcOffset);
+}
+
+Int_t TTrbAnalysisBase::GetTdcSize(UInt_t nUserTdcAddress) const {
+	std::map< UInt_t,TrbTdcSetupModel >::const_iterator UserTdc = TdcAddresses.find(nUserTdcAddress);
+	if(UserTdc==TdcAddresses.end()) // this TDC address does not exist
+		return (-1);
+	else
+		return ((Int_t)UserTdc->second.nTdcSize);
+}
+
 Int_t TTrbAnalysisBase::GetTdcSyncIndex(UInt_t nTdcAddress) const {
 	if(EvtSyncTimestamps.empty())
 		return (-1);
@@ -151,12 +166,18 @@ Double_t TTrbAnalysisBase::GetTdcSyncTimestamp(UInt_t nTdcAddress) const {
 		return (TrbData->Hits_fTime[nTempSyncIndex]);
 }
 
+Double_t TTrbAnalysisBase::GetTime(UInt_t nArrayIndex) const{
+	if(!(nArrayIndex<TrbData->Hits_))
+		return (-1.0);
+	return (TrbData->Hits_fTime[nArrayIndex]);
+}
+
 void TTrbAnalysisBase::Init(){ // initialise object variables
 	cout << "This is TTrbAnalysisBase::Init()..." << endl;
 	RawData = NULL; // initialise pointer to RooT file
 	TrbData = NULL; // initialise pointer TTree with raw data
-	nTdcDefaultSize	= 0; // these need to be variables set by the user
-	nTdcOffset		= 0; // see above, need to change this later
+	nTdcDefaultSize		= 0; // these need to be variables set by the user
+	nTdcDefaultOffset	= 0; // see above, need to change this later
 
 	bTreeIsOpen = kFALSE;
 	bCanAnalyse	= kFALSE;
@@ -197,7 +218,7 @@ void TTrbAnalysisBase::PrintExcludedChannels() const {
 	std::set< std::pair< UInt_t,UInt_t > >::const_iterator FirstIndex = ExcludedChannels.begin();
 	std::set< std::pair< UInt_t,UInt_t > >::const_iterator LastIndex = ExcludedChannels.end();
 	for(std::set< std::pair< UInt_t,UInt_t > >::const_iterator CurIndex=FirstIndex; CurIndex!=LastIndex; ++CurIndex){
-		cout << distance(FirstIndex,CurIndex) << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second << endl;
+		cout << distance(FirstIndex,CurIndex) << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second << "\t" << GetSeqId(CurIndex->first,CurIndex->second) << endl;
 		//++nTdcIndex;
 	}
 	cout << "+++++++++++++++++++++++++++" << endl;
@@ -224,11 +245,10 @@ void TTrbAnalysisBase::PrintTdcAddresses() const {
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "+++    TDC ADDRESSES    +++" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
-	std::map< UInt_t,UInt_t >::const_iterator FirstIndex = TdcAddresses.begin();
-	std::map< UInt_t,UInt_t >::const_iterator LastIndex = TdcAddresses.end();
-	for(std::map< UInt_t,UInt_t >::const_iterator CurIndex=FirstIndex; CurIndex!=LastIndex; ++CurIndex){
-		cout << distance(FirstIndex,CurIndex) << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second << endl;
-		//++nTdcIndex;
+	std::map< UInt_t,TrbTdcSetupModel >::const_iterator FirstIndex = TdcAddresses.begin();
+	std::map< UInt_t,TrbTdcSetupModel >::const_iterator LastIndex = TdcAddresses.end();
+	for(std::map< UInt_t,TrbTdcSetupModel >::const_iterator CurIndex=FirstIndex; CurIndex!=LastIndex; ++CurIndex){
+		cout << distance(FirstIndex,CurIndex) << "\t" << hex << CurIndex->first << dec << "\t" << CurIndex->second.nTdcSize << "\t" << CurIndex->second.nTdcOffset << endl;
 	}
 	cout << "+++++++++++++++++++++++++++" << endl;
 }
@@ -274,25 +294,26 @@ void TTrbAnalysisBase::ScanEvent(){
 			continue; // skip rest of loop
 		}
 		std::pair< UInt_t,UInt_t > TempChanAddress (TrbData->Hits_nTrbAddress[nCurEvtIndex],TrbData->Hits_nTdcChannel[nCurEvtIndex]); // create address pair consisting of FPGA address and TDC channel ID
-//		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),TempChanAddress)!=ExcludedChannels.end()){ // channel found in exclusion list
+		std::map< UInt_t,TrbTdcSetupModel >::const_iterator CurrentTdc = TdcAddresses.find(TempChanAddress.first); // find TDC address in address list
+		if(CurrentTdc==TdcAddresses.end()) // if TDC address is not in address list, skip entry
+			continue; // skip rest of loop
 		if(ExcludedChannels.find(TempChanAddress)!=ExcludedChannels.end()){ // channel found in exclusion list
 			continue; // skip rest of loop
 		}
 		if(TrbData->Hits_bIsRefChannel[nCurEvtIndex]){ // check for TDC reference channels
-			if(TdcAddresses.find(TempChanAddress.first)!=TdcAddresses.end())
-				if(!EvtSyncTimestamps.insert(make_pair(TempChanAddress.first,(UInt_t)nCurEvtIndex)).second){
-					cout << "ERROR filling sync timestamps!" << endl;
-					cout << TempChanAddress.first << "\t" << TempChanAddress.second << "\t" << nCurEvtIndex << endl;
-				} // fill TDC address and array index into map
+			if(!EvtSyncTimestamps.insert(make_pair(TempChanAddress.first,(UInt_t)nCurEvtIndex)).second){
+				cout << "ERROR filling sync timestamps!" << endl;
+				cout << TempChanAddress.first << "\t" << TempChanAddress.second << "\t" << nCurEvtIndex << endl;
+			} // fill TDC address and array index into map
 			continue; // skip rest of loop
 		}
-		else if(TrbData->Hits_nTdcChannel[nCurEvtIndex]<nTdcOffset){ // skip this entry as it is not part of the active TDC channels
+		else if(TrbData->Hits_nTdcChannel[nCurEvtIndex]<CurrentTdc->second.nTdcOffset){ // skip this entry as it is not part of the active TDC channels
 			continue; // skip rest of loop
 		}
 		else{
 			Int_t nTempSeqId = GetSeqId(TempChanAddress.first,TempChanAddress.second);
 			if(nTempSeqId<0){ // channel address not found in mapping table (should not happen)
-				continue;
+				continue; // skip inserting hit
 			}
 			EvtTdcHits.insert(make_pair((UInt_t)nTempSeqId,(UInt_t)nCurEvtIndex));
 		}
@@ -325,19 +346,28 @@ Int_t TTrbAnalysisBase::SetTdcAddresses(string cUserTdcAddressesFile){ // set TR
 			continue;
 		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode);
 		UInt_t nTempTdcAddress = (UInt_t)strtoul(tokens.at(0).c_str(),NULL,16); // decode FPGA address, expected to be hexadecimal
-		UInt_t nTempTdcSize;
+		TrbTdcSetupModel TempTdcDefinition;
+		TempTdcDefinition.nTdcSize		= nTdcDefaultSize;
+		TempTdcDefinition.nTdcOffset	= nTdcDefaultOffset;
 		switch (tokens.size()) {
 			case 1: // we only expect one address per line
 				if(nTdcDefaultSize<1)
 					continue; // skip as TDC has no channels
-				TdcAddresses.insert(make_pair(nTempTdcAddress,nTdcDefaultSize));
+				TdcAddresses.insert(make_pair(nTempTdcAddress,TempTdcDefinition));
 				break;
 			case 2: // first token is TDC address, second token is number of TDC channels
-				nTempTdcSize = (UInt_t)strtoul(tokens.at(1).c_str(),NULL,10); // size of TDC
-				if(nTempTdcSize<1)
+				TempTdcDefinition.nTdcSize = (UInt_t)strtoul(tokens.at(1).c_str(),NULL,10); // size of TDC
+				if(TempTdcDefinition.nTdcSize<1)
 					continue; // skip as TDC has no channels
-				TdcAddresses.insert(make_pair(nTempTdcAddress,nTempTdcSize));
-			default: // anything with more than one token per line will be ignored!
+				TdcAddresses.insert(make_pair(nTempTdcAddress,TempTdcDefinition));
+			case 3: // first token is TDC address, second token is TDC size and third token is channel offset
+				TempTdcDefinition.nTdcSize = (UInt_t)strtoul(tokens.at(1).c_str(),NULL,10); // size of TDC
+				if(TempTdcDefinition.nTdcSize<1)
+					continue; // skip as TDC has no channels
+				TempTdcDefinition.nTdcOffset = (UInt_t)strtoul(tokens.at(2).c_str(),NULL,10); // TDC channel offset
+				TdcAddresses.insert(make_pair(nTempTdcAddress,TempTdcDefinition));
+				break;
+			default: // anything with more than two tokens per line will be ignored!
 				continue; // do nothing
 		}
 	} // end loop over input file

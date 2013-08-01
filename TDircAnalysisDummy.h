@@ -32,6 +32,7 @@ protected:
 
 public:
 	TDircAnalysisDummy(string cUserDataFilename, string UserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // standard constructor
+	TDircAnalysisDummy(string cUserDataFilename, string UserTdcAddressFile); // constructor, all TDC defintions in text file
 	virtual ~TDircAnalysisDummy(); // standard destructor
 	void Analyse(string cUserAnalysisFilename); // analysis routine goes here, this method is needed!
 

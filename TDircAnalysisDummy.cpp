@@ -7,6 +7,11 @@ TDircAnalysisDummy::TDircAnalysisDummy(string cUserDataFilename, string cUserTdc
 	Init();
 }
 
+TDircAnalysisDummy::TDircAnalysisDummy(string cUserDataFilename, string cUserTdcAddressFile) : TDircAnalysisBase(cUserDataFilename, cUserTdcAddressFile) {
+	cout << "Initialising TDircAnalysisDummy..." << endl;
+	Init();
+}
+
 TDircAnalysisDummy::~TDircAnalysisDummy(){
 
 }
@@ -26,6 +31,8 @@ void TDircAnalysisDummy::Analyse(string cUserAnalysisFilename){
 
 	TH1D hEvtMultiplicity("hEvtMultiplicity","hEvtMultiplicity;",16,-0.5,15.5); // number of hit pixels per event
 	TH1D hPixelHits("hPixelHits","hPixelHits; pixel ID; frequency",(Int_t)GetSizeOfMapTable()+2,-0.5,GetSizeOfMapTable()+1.5); // distribution of pixel hits
+	TH1D hMultiHitPixels("hMultiHitPixels","hMultiHitPixels; no of channels with mult hits per event; frequency",20,-0.5,19.5);
+	TH1D hLETiming("hLETiming","Synchronised Leading Edge Timing; sync LE time (ns); frequency",5000,-1000.0,0.0); // synchronised leading edge time of all channels
 	// main analysis loop
 	Int_t nEvents = GetNEvents();
 	Int_t nFraction = nEvents * 0.1;
@@ -62,11 +69,13 @@ void TDircAnalysisDummy::Analyse(string cUserAnalysisFilename){
 		hEvtStats.Fill((Double_t)NO_MATCH_ERR);
 		//PrintMatchedHits();
 		hEvtMultiplicity.Fill((Double_t)MatchedHits.size());
+		hMultiHitPixels.Fill((Double_t)GetNMultiHits());
 		std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator FirstHit = MatchedHits.begin();
 		std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator LastHit = MatchedHits.end();
 		for(std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator CurHit=FirstHit; CurHit!=LastHit; ++CurHit){ // begin of loop over all matched hits
 			hPixelHits.Fill(CurHit->second.nChannelA);
 			hPixelHits.Fill(CurHit->second.nChannelB);
+			hLETiming.Fill(CurHit->second.fSyncLETime);
 		} // end of loop over all matched hits
 	} // end of loop over all events
 	cout << endl;
