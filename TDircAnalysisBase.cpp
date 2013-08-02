@@ -25,14 +25,27 @@ TDircAnalysisBase::~TDircAnalysisBase(){
 	cout << "This is the destructor of TDircAnalysisBase class..." << endl;
 }
 
-std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator TDircAnalysisBase::FindHitByValue(UInt_t nUserSeqId) const {
+std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TDircAnalysisBase::FindHitByValue(UInt_t nUserSeqId) const {
 	if(MatchedHits.empty())
 		return MatchedHits.end();
-	std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator TempIt=MatchedHits.begin();
+	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TempIt=MatchedHits.begin();
 	while (TempIt!=MatchedHits.end() && TempIt->second.nChannelA!=nUserSeqId){
 		++TempIt;
 	} 
 	return (TempIt);
+}
+
+Bool_t TDircAnalysisBase::GetTriggerTime(Double_t &fTriggerTime) const { // return calibrated time of trigger channel
+	fTriggerTime = 0.0;
+	if(MatchedHits.empty()||!bTrigChanIsSet){ // no matched hits
+		return (kFALSE);
+	}
+	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TriggerHit = FindHitByValue(nTriggerSeqId);
+	if(TriggerHit==MatchedHits.end()){ // trigger channel not found in matched hit list
+		return (kFALSE);
+	}
+	fTriggerTime = TriggerHit->second.fSyncLETime;
+	return (kTRUE);
 }
 
 void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timestamps, returning the number of channels with multiple hits
@@ -47,7 +60,7 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 		return;
 	std::multimap< UInt_t,UInt_t >::const_iterator CurrentTdcHit=EvtTdcHits.begin();
 	while(CurrentTdcHit!=EvtTdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
-		TrbPixelHit TempPixelHit;
+		PixelHitModel TempPixelHit;
 		TempPixelHit.bHasSyncTime = kFALSE;
 		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > LeadingEdges;
 		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > TrailingEdges;
@@ -143,22 +156,24 @@ void TDircAnalysisBase::Init(){
 	MatchedHits.clear(); // clear map containing the matched hits
 	bSkipMultiHits	= kTRUE;
 	bApplyTimingCut = kFALSE;
+	bTrigChanIsSet	= kFALSE;
 	bVerboseMode	= kFALSE;
 	nMultiHitChan = 0;
+	nTriggerSeqId = -1;
 }
 
 
 void TDircAnalysisBase::PrintMatchedHits() const {
 	if(MatchedHits.empty())
 		return;
-	std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator FirstEntry = MatchedHits.begin();
-	std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator LastEntry = MatchedHits.end();
+	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator FirstEntry = MatchedHits.begin();
+	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator LastEntry = MatchedHits.end();
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "+++  Matched TDC Hits   +++" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << MatchedHits.size() << " MATCHED TDC HITS FOUND" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
-	for(std::map< std::pair< Int_t,Int_t >,TrbPixelHit >::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){ // begin loop over all event hit entries
+	for(std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){ // begin loop over all event hit entries
 		cout << distance(FirstEntry,CurEntry) << "\t" << CurEntry->first.first << " , " << CurEntry->first.second << "\t" << CurEntry->second.nChannelA  << " , " << CurEntry->second.nChannelB << "\t" << CurEntry->second.fSyncLETime  << "\t" <<CurEntry->second.fTimeOverThreshold << endl;
 	} // end of loop over all event hit entries
 	cout << "+++++++++++++++++++++++++++" << endl;
@@ -184,6 +199,29 @@ void TDircAnalysisBase::PrintTimingWindow() const {
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "t_0: " << TimingWindow.first << "\t t_1: " << TimingWindow.second << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
+}
+
+void TDircAnalysisBase::PrintTriggerAddress() const {
+	if(!bTrigChanIsSet) // trigger channel is not set
+		return;
+	cout << "+++++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++    Trigger Channel Address    +++" << endl;
+	cout << "+++++++++++++++++++++++++++++++++++++" << endl;
+	cout << hex << TriggerChannelAddress.first << dec << "\t" << TriggerChannelAddress.second << "\t" << nTriggerSeqId << endl;
+	cout << "+++++++++++++++++++++++++++++++++++++" << endl;
+}
+
+Bool_t TDircAnalysisBase::SetTriggerChannel(UInt_t nUserTdcAddress, UInt_t nUserTdcChannel) { // set trigger channel address
+	Int_t nTempSeqId = GetSeqId(nUserTdcAddress,nUserTdcChannel);
+	if(nTempSeqId<0){ // channel address does not exist
+
+		bTrigChanIsSet = kFALSE;
+		return (bTrigChanIsSet);
+	}
+	nTriggerSeqId = nTempSeqId;
+	TriggerChannelAddress = std::make_pair(nUserTdcAddress,nUserTdcChannel);
+	bTrigChanIsSet = kTRUE;
+	return (bTrigChanIsSet);
 }
 
 void TDircAnalysisBase::Show(){
