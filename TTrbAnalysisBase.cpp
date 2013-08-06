@@ -9,8 +9,8 @@ TTrbAnalysisBase::TTrbAnalysisBase(string cUserDataFilename, Bool_t bUserVerbose
 
 TTrbAnalysisBase::~TTrbAnalysisBase(){
 	cout << "This is the destructor of the TTrbAnalysisBase class..." << endl;
-	delete TrbData;
-	TrbData = NULL;
+	//delete TrbData;
+	//TrbData = NULL;
 	delete RawData;
 	RawData = NULL;
 }
