@@ -20,7 +20,6 @@ void TDircAnalysisDummy::Analyse(string cUserAnalysisFilename){
 	TFile *AnalysisOut = new TFile(cUserAnalysisFilename.c_str(),"RECREATE"); // open RooT file for analysis results
 	// define histograms
 	TH1D hEvtStats("hEvtStats","hEvtStats; ; frequency",15,-0.5,14.5);
-	enum DQCuts {NO_CUTS,DECODE_ERR,RNDM_BIT_ERR,SYNC_ERR,NO_HITS_ERR,NO_MATCH_ERR,NO_TRIG_ERR}; //empty TDC cut,missing reference signal cut,laser trig missing,};
 	hEvtStats.GetXaxis()->SetBinLabel(NO_CUTS+1,"no cuts");
 	hEvtStats.GetXaxis()->SetBinLabel(DECODE_ERR+1,"decoding error");
 	hEvtStats.GetXaxis()->SetBinLabel(RNDM_BIT_ERR+1,"random bit error");

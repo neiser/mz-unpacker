@@ -29,7 +29,7 @@ class TDircAnalysisDummy : public TDircAnalysisBase {
 private:
 	void Init();
 protected:
-
+	enum DQCuts {NO_CUTS,DECODE_ERR,RNDM_BIT_ERR,SYNC_ERR,NO_HITS_ERR,NO_MATCH_ERR,NO_TRIG_ERR}; //empty TDC cut,missing reference signal cut,laser trig missing,};
 public:
 	TDircAnalysisDummy(string cUserDataFilename, string UserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // standard constructor
 	TDircAnalysisDummy(string cUserDataFilename, string UserTdcAddressFile); // constructor, all TDC defintions in text file

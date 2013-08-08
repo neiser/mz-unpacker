@@ -35,6 +35,19 @@ std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TDircAnalysis
 	return (TempIt);
 }
 
+Int_t TDircAnalysisBase::GetChanMultiplicity(UInt_t nSeqChanId) const { // count hits in given channel
+	if((nSeqChanId%2)!=0){
+		nSeqChanId -= 1;
+	}
+	std::map< UInt_t,Int_t >::const_iterator SeekChannel = EvtChanMultiplicity.find(nSeqChanId);
+
+	if(SeekChannel!=EvtChanMultiplicity.end()){ // channel exists in map
+		return (SeekChannel->second);
+	}
+	else // channel does not exist in map
+		return (0);
+}
+
 Bool_t TDircAnalysisBase::GetTriggerTime(Double_t &fTriggerTime) const { // return calibrated time of trigger channel
 	fTriggerTime = 0.0;
 	if(MatchedHits.empty()||!bTrigChanIsSet){ // no matched hits
@@ -56,6 +69,7 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 	Int_t nMultipleHits = 0;
 	nMultiHitChan		= 0;
 	MatchedHits.clear(); // clear map containing matched hits
+	EvtChanMultiplicity.clear();
 	if(EvtTdcHits.empty()) // no TDC hits available
 		return;
 	std::multimap< UInt_t,UInt_t >::const_iterator CurrentTdcHit=EvtTdcHits.begin();
@@ -87,6 +101,7 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 		std::pair< Int_t,Int_t > TempHitIndices;
 		std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= (bSwapEdges) ? TrailingEdges.first : LeadingEdges.first;
 		std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = (bSwapEdges) ? LeadingEdges.first : TrailingEdges.first;
+		std::pair<std::map<UInt_t,Int_t>::iterator,bool> ret;
 		switch(nMultLeadEdge){
 			case 1: // single hit
 				//if()
@@ -107,6 +122,10 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 					}
 				}
 				MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
+				ret = EvtChanMultiplicity.insert(make_pair(TempPixelHit.nChannelA,1)); // try to insert this pair into multiplicity map
+				if(!ret.second){ // insertion failed, key already exists so we need to increment its value
+					ret.first->second += 1;
+				}
 				//}
 				CurrentTdcHit = TrailingEdges.second;
 				break; // end of single hits only case
@@ -137,6 +156,10 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 				
 					}
 					MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
+					ret = EvtChanMultiplicity.insert(make_pair(TempPixelHit.nChannelA,1)); // try to insert this pair into multiplicity map
+					if(!ret.second){ // insertion failed, key already exists so we need to increment its value
+						ret.first->second += 1;
+					}
 					++CurLeadEdge;
 					++CurTrailEdge;
 
@@ -154,6 +177,7 @@ void TDircAnalysisBase::Init(){
 	cout << "This is TDircAnalysisBase::Init()..." << endl;
 	SwapList.clear(); // clear list of TDC addresses which are being swapped
 	MatchedHits.clear(); // clear map containing the matched hits
+	EvtChanMultiplicity.clear();
 	bSkipMultiHits	= kTRUE;
 	bApplyTimingCut = kFALSE;
 	bTrigChanIsSet	= kFALSE;
@@ -162,6 +186,26 @@ void TDircAnalysisBase::Init(){
 	nTriggerSeqId = -1;
 }
 
+Bool_t TDircAnalysisBase::IsChannel(const PixelHitModel &CurrentHit, UInt_t nSeqChanId) const {
+	if((CurrentHit.nChannelA == nSeqChanId) || (CurrentHit.nChannelB == nSeqChanId))
+		return (kTRUE);
+	else
+		return (kFALSE);
+}
+
+void TDircAnalysisBase::PrintChanMultiplicity() const {
+	if(EvtChanMultiplicity.empty())
+		return;
+	std::map< UInt_t,Int_t >::const_iterator FirstChannel	= EvtChanMultiplicity.begin();
+	std::map< UInt_t,Int_t >::const_iterator LastChannel	= EvtChanMultiplicity.end();
+	cout << "++++++++++++++++++++++++++++++" << endl;
+	cout << "+++  Channel Multiplicity  +++" << endl;
+	cout << "++++++++++++++++++++++++++++++" << endl;
+	for(std::map< UInt_t,Int_t >::const_iterator CurChannel=FirstChannel; CurChannel!=LastChannel; ++CurChannel){
+		cout << CurChannel->first << "\t" << CurChannel->second << endl;
+	}
+	cout << "++++++++++++++++++++++++++++++" << endl;
+}
 
 void TDircAnalysisBase::PrintMatchedHits() const {
 	if(MatchedHits.empty())

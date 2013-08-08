@@ -39,7 +39,6 @@ struct PixelHitModel{
 
 class TDircAnalysisBase : public TTrbAnalysisBase {
 private:
-	void Init();
 	Bool_t bSkipMultiHits; // flag indicating treatment of multiple hits in a channel, standard setting is true, i.e. skipping channels with multiple hits
 	Bool_t bApplyTimingCut; // flag indicating user set timing window for hit matching
 	Bool_t bTrigChanIsSet; // flag indicating trigger channel has been set
@@ -48,9 +47,12 @@ private:
 	Int_t nTriggerSeqId; // sequential channel ID of trigger channel
 	std::pair< Double_t,Double_t> TimingWindow; // lower and upper time value for timing cut
 	std::pair< UInt_t,UInt_t > TriggerChannelAddress; // address of trigger channel, first TDC address, second TDC channel
+	void Init();
+	Bool_t IsChannel(const PixelHitModel &CurrentHit, UInt_t nSeqChanId) const;
 protected:
 	std::set< UInt_t > SwapList; // list of TDC addresses where we need to swap leading and trailing edges
 	std::map< std::pair< Int_t,Int_t >,PixelHitModel > MatchedHits; // map containing indices of leading and trailing timestamp information
+	std::map< UInt_t,Int_t > EvtChanMultiplicity; // map containing sequential channel ID and multiplicity per event
 	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator FindHitByValue(UInt_t nUserSeqId) const;
 	void HitMatching(); // match leading and trailing edge timestamps
 public:
@@ -65,9 +67,11 @@ public:
 	void ClearSwapList() { SwapList.clear(); }; // clear list of TDC addresses marked to swap edges
 	void ClearVerboseMode() { bSkipMultiHits = kFALSE; }; // switch off verbose mode
 	void KeepMultiHits() { bSkipMultiHits = kFALSE; }; // enables hit matching with multi-hits
+	Int_t GetChanMultiplicity(UInt_t nSeqChanId) const; // count hits in given channel
 	UInt_t GetNMatchedHits() const { return ((UInt_t)MatchedHits.size()); }; // get number of matched TDC hits, i.e. leading and trailing edge
 	UInt_t GetNMultiHits() const { return (nMultiHitChan); }; // get number of channels with multiple hits in event
 	Bool_t GetTriggerTime(Double_t &fTriggerTime) const; // return calibrated time of trigger channel
+	void PrintChanMultiplicity() const; // print channel multiplicity for this event
 	void PrintMatchedHits() const; // print list of matched hit to screen
 	void PrintSwapList() const; // print list of TDC addresses that are in the swap edges list
 	void PrintTimingWindow() const; // print timing window values to terminal
