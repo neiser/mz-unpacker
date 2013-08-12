@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <list>
 #include <map>
 #include <string>
 #include <utility>
@@ -31,10 +32,22 @@ struct PixelHitModel{
 		Double_t fTimeOverThreshold; // time-over-threshold
 		Int_t nSyncIndex; // array index of synchronisation timestamp for this hit
 		Bool_t bHasSyncTime; // flag indicating correct sync timestamp
+		UInt_t nChannelAIndex; // array index of data entry in tree
+		UInt_t nChannelBIndex; // array index of data entry in tree
+
+		PixelHitModel() {};
+		//bool operator < (const PixelHitModel &b) const { return fSyncLETime < b.fSyncLETime; };
+		friend ostream& operator << (ostream &s, const PixelHitModel &a) {
+			s << a.nChannelA << "\t" << a.nChannelB << "\t" << a.fSyncLETime << "\t" << a.fTimeOverThreshold << "\t" << a.nSyncIndex;
+			return s;
+		};
+		UInt_t GetLeadEdgeChan() const { return nChannelA; };
+		UInt_t GetTrailEdgeChan() const { return nChannelB; };
 	};
 
 // MISSING ITEMS
 // - reference channel, e.g. trigger signal
+// - trigger timing window?
 // - multiplicity per channel
 
 class TDircAnalysisBase : public TTrbAnalysisBase {
@@ -51,9 +64,7 @@ private:
 	Bool_t IsChannel(const PixelHitModel &CurrentHit, UInt_t nSeqChanId) const;
 protected:
 	std::set< UInt_t > SwapList; // list of TDC addresses where we need to swap leading and trailing edges
-	std::map< std::pair< Int_t,Int_t >,PixelHitModel > MatchedHits; // map containing indices of leading and trailing timestamp information
-	std::map< UInt_t,Int_t > EvtChanMultiplicity; // map containing sequential channel ID and multiplicity per event
-	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator FindHitByValue(UInt_t nUserSeqId) const;
+	std::map< UInt_t,std::list<PixelHitModel> > EvtReconHits; // map storing reconstructed hits
 	void HitMatching(); // match leading and trailing edge timestamps
 public:
 	TDircAnalysisBase(string cUserDataFilename); // constructor
@@ -67,12 +78,13 @@ public:
 	void ClearSwapList() { SwapList.clear(); }; // clear list of TDC addresses marked to swap edges
 	void ClearVerboseMode() { bSkipMultiHits = kFALSE; }; // switch off verbose mode
 	void KeepMultiHits() { bSkipMultiHits = kFALSE; }; // enables hit matching with multi-hits
-	Int_t GetChanMultiplicity(UInt_t nSeqChanId) const; // count hits in given channel
-	UInt_t GetNMatchedHits() const { return ((UInt_t)MatchedHits.size()); }; // get number of matched TDC hits, i.e. leading and trailing edge
+	UInt_t GetChanMultiplicity(UInt_t nSeqChanId) const; // count hits in given channel
+	UInt_t GetNMatchedHits() const; // get number of matched TDC hits, i.e. leading and trailing edge
 	UInt_t GetNMultiHits() const { return (nMultiHitChan); }; // get number of channels with multiple hits in event
 	Bool_t GetTriggerTime(Double_t &fTriggerTime) const; // return calibrated time of trigger channel
 	void PrintChanMultiplicity() const; // print channel multiplicity for this event
-	void PrintMatchedHits() const; // print list of matched hit to screen
+	//void PrintMatchedHits() const; // print list of matched hit to screen
+	void PrintReconHits() const;
 	void PrintSwapList() const; // print list of TDC addresses that are in the swap edges list
 	void PrintTimingWindow() const; // print timing window values to terminal
 	void PrintTriggerAddress() const; // print trigger channel address to terminal

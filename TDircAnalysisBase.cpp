@@ -25,39 +25,40 @@ TDircAnalysisBase::~TDircAnalysisBase(){
 	cout << "This is the destructor of TDircAnalysisBase class..." << endl;
 }
 
-std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TDircAnalysisBase::FindHitByValue(UInt_t nUserSeqId) const {
-	if(MatchedHits.empty())
-		return MatchedHits.end();
-	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TempIt=MatchedHits.begin();
-	while (TempIt!=MatchedHits.end() && TempIt->second.nChannelA!=nUserSeqId){
-		++TempIt;
-	} 
-	return (TempIt);
-}
 
-Int_t TDircAnalysisBase::GetChanMultiplicity(UInt_t nSeqChanId) const { // count hits in given channel
-	if((nSeqChanId%2)!=0){
-		nSeqChanId -= 1;
-	}
-	std::map< UInt_t,Int_t >::const_iterator SeekChannel = EvtChanMultiplicity.find(nSeqChanId);
-
-	if(SeekChannel!=EvtChanMultiplicity.end()){ // channel exists in map
-		return (SeekChannel->second);
+UInt_t TDircAnalysisBase::GetChanMultiplicity(UInt_t nSeqChanId) const { // count hits in given channel
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator SeekChannel = EvtReconHits.find(nSeqChanId);
+	if(SeekChannel!=EvtReconHits.end()){ // channel exists in map
+		return ((Int_t)SeekChannel->second.size());
 	}
 	else // channel does not exist in map
 		return (0);
 }
 
+UInt_t TDircAnalysisBase::GetNMatchedHits() const {
+	UInt_t nTempNMatchedHits = 0;
+	if(EvtReconHits.empty()){
+		return (nTempNMatchedHits);
+	}
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChan	= EvtReconHits.begin();
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChan	= EvtReconHits.end();
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator CurChan;
+	for(CurChan=FirstChan; CurChan!=LastChan; ++CurChan){ // begin of loop over all hit channels
+		nTempNMatchedHits += GetChanMultiplicity(CurChan->first);
+	} // end of loop over all hit channels
+	return (nTempNMatchedHits);
+}
+
 Bool_t TDircAnalysisBase::GetTriggerTime(Double_t &fTriggerTime) const { // return calibrated time of trigger channel
 	fTriggerTime = 0.0;
-	if(MatchedHits.empty()||!bTrigChanIsSet){ // no matched hits
+	if(EvtReconHits.empty()||!bTrigChanIsSet){ // no matched hits
 		return (kFALSE);
 	}
-	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator TriggerHit = FindHitByValue(nTriggerSeqId);
-	if(TriggerHit==MatchedHits.end()){ // trigger channel not found in matched hit list
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator TriggerHit = EvtReconHits.find(nTriggerSeqId);
+	if(TriggerHit==EvtReconHits.end()){ // trigger channel not found in matched hit list
 		return (kFALSE);
 	}
-	fTriggerTime = TriggerHit->second.fSyncLETime;
+	fTriggerTime = TriggerHit->second.begin()->fSyncLETime;
 	return (kTRUE);
 }
 
@@ -68,12 +69,13 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 		return;
 	Int_t nMultipleHits = 0;
 	nMultiHitChan		= 0;
-	MatchedHits.clear(); // clear map containing matched hits
-	EvtChanMultiplicity.clear();
+	EvtReconHits.clear();
 	if(EvtTdcHits.empty()) // no TDC hits available
 		return;
+	std::list< PixelHitModel > TempReconHits; // use this to store reconstructed hits
 	std::multimap< UInt_t,UInt_t >::const_iterator CurrentTdcHit=EvtTdcHits.begin();
 	while(CurrentTdcHit!=EvtTdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
+		TempReconHits.clear();
 		PixelHitModel TempPixelHit;
 		TempPixelHit.bHasSyncTime = kFALSE;
 		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > LeadingEdges;
@@ -97,23 +99,22 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 			}
 			continue; // skip rest of loop
 		}
+		// check if we have to swap edges
 		Bool_t bSwapEdges = (SwapList.find(GetTdcAddress(LeadingEdges.first->second))!=SwapList.end()) ? kTRUE : kFALSE;
-		std::pair< Int_t,Int_t > TempHitIndices;
 		std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= (bSwapEdges) ? TrailingEdges.first : LeadingEdges.first;
 		std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = (bSwapEdges) ? LeadingEdges.first : TrailingEdges.first;
 		std::pair<std::map<UInt_t,Int_t>::iterator,bool> ret;
-		switch(nMultLeadEdge){
+		switch(nMultLeadEdge){ // begin of switch block
 			case 1: // single hit
-				//if()
-				TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second); // here we have the array indices of the leading and trailing edge
-				// check if we have to swap goes here...
+				TempPixelHit.nChannelAIndex = CurLeadEdge->second;
+				TempPixelHit.nChannelBIndex = CurTrailEdge->second;
 				TempPixelHit.nChannelA = CurLeadEdge->first; // get unique channel ID of leading edge
 				TempPixelHit.nChannelB = CurTrailEdge->first; // get unique channel ID of trailing edge
-				TempPixelHit.fTimeOverThreshold = GetTime(TempHitIndices.second) - GetTime(TempHitIndices.first); // compute time-over-threshold
-				TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempHitIndices.first)); // get array index of corresponding synchronisation timestamp
+				TempPixelHit.fTimeOverThreshold = GetTime(TempPixelHit.nChannelBIndex) - GetTime(TempPixelHit.nChannelAIndex); // compute time-over-threshold
+				TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex)); // get array index of corresponding synchronisation timestamp
 				TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
 				if(TempPixelHit.bHasSyncTime){
-					TempPixelHit.fSyncLETime = GetTime(TempHitIndices.first) - GetTdcSyncTimestamp(GetTdcAddress(TempHitIndices.first));
+					TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex));
 					if(bApplyTimingCut){ // check timing of leading edge
 						if(TempPixelHit.fSyncLETime<TimingWindow.first || TempPixelHit.fSyncLETime>TimingWindow.second){ // check if hit is outwith timing window
 							CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
@@ -121,12 +122,8 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 						}
 					}
 				}
-				MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
-				ret = EvtChanMultiplicity.insert(make_pair(TempPixelHit.nChannelA,1)); // try to insert this pair into multiplicity map
-				if(!ret.second){ // insertion failed, key already exists so we need to increment its value
-					ret.first->second += 1;
-				}
-				//}
+				TempReconHits.push_back(TempPixelHit);
+				EvtReconHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits)); // enter this combination into pixel hit map
 				CurrentTdcHit = TrailingEdges.second;
 				break; // end of single hits only case
 			default: // multiple hits
@@ -136,16 +133,16 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 					continue; // skip rest of loop
 				}
 				// need to get iterators to leading and trailing edges
-				//cout << "Matching multi hits now..." << endl;
 				do{ // begin of loop over hits
-					TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
+					TempPixelHit.nChannelAIndex = CurLeadEdge->second;
+					TempPixelHit.nChannelBIndex = CurTrailEdge->second;
 					TempPixelHit.nChannelA = CurLeadEdge->first;
 					TempPixelHit.nChannelB = CurTrailEdge->first;
-					TempPixelHit.fTimeOverThreshold = GetTime(TempHitIndices.second) - GetTime(TempHitIndices.first); // compute time-over-threshold
-					TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
+					TempPixelHit.fTimeOverThreshold = GetTime(TempPixelHit.nChannelBIndex) - GetTime(TempPixelHit.nChannelAIndex); // compute time-over-threshold
+					TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex));
 					TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
 					if(TempPixelHit.bHasSyncTime){
-						TempPixelHit.fSyncLETime = GetTime(TempHitIndices.first) - GetTdcSyncTimestamp(GetTdcAddress(TempHitIndices.first));
+						TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex));
 						if(bApplyTimingCut){ // check timing of leading edge
 							if(TempPixelHit.fSyncLETime<TimingWindow.first || TempPixelHit.fSyncLETime>TimingWindow.second){
 								++CurLeadEdge;
@@ -155,29 +152,25 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 						}
 				
 					}
-					MatchedHits.insert(make_pair(TempHitIndices,TempPixelHit)); // enter this combination into pixel hit map
-					ret = EvtChanMultiplicity.insert(make_pair(TempPixelHit.nChannelA,1)); // try to insert this pair into multiplicity map
-					if(!ret.second){ // insertion failed, key already exists so we need to increment its value
-						ret.first->second += 1;
-					}
+					TempReconHits.push_back(TempPixelHit); 
 					++CurLeadEdge;
 					++CurTrailEdge;
-
 				} while (CurLeadEdge!=((bSwapEdges)? TrailingEdges.second : LeadingEdges.second)); // end of loop over all hits
+				if(!TempReconHits.empty())
+					EvtReconHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits)); // enter this combination into pixel hit map
 				CurrentTdcHit = TrailingEdges.second;
 				break;
-		}
-	}
+		} // end of switch block
+	} // end of loop over all TDC hits (excluding reference channels & user exclude list)
 	if(bVerboseMode){
-		cout << MatchedHits.size() << endl;
+		cout << EvtReconHits.size() << endl;
 	}
 }
 
 void TDircAnalysisBase::Init(){
 	cout << "This is TDircAnalysisBase::Init()..." << endl;
 	SwapList.clear(); // clear list of TDC addresses which are being swapped
-	MatchedHits.clear(); // clear map containing the matched hits
-	EvtChanMultiplicity.clear();
+	EvtReconHits.clear();
 	bSkipMultiHits	= kTRUE;
 	bApplyTimingCut = kFALSE;
 	bTrigChanIsSet	= kFALSE;
@@ -194,33 +187,50 @@ Bool_t TDircAnalysisBase::IsChannel(const PixelHitModel &CurrentHit, UInt_t nSeq
 }
 
 void TDircAnalysisBase::PrintChanMultiplicity() const {
-	if(EvtChanMultiplicity.empty())
+	if(EvtReconHits.empty())
 		return;
-	std::map< UInt_t,Int_t >::const_iterator FirstChannel	= EvtChanMultiplicity.begin();
-	std::map< UInt_t,Int_t >::const_iterator LastChannel	= EvtChanMultiplicity.end();
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel	= EvtReconHits.begin();
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChannel		= EvtReconHits.end();
 	cout << "++++++++++++++++++++++++++++++" << endl;
 	cout << "+++  Channel Multiplicity  +++" << endl;
 	cout << "++++++++++++++++++++++++++++++" << endl;
-	for(std::map< UInt_t,Int_t >::const_iterator CurChannel=FirstChannel; CurChannel!=LastChannel; ++CurChannel){
-		cout << CurChannel->first << "\t" << CurChannel->second << endl;
+	for(std::map< UInt_t,std::list<PixelHitModel> >::const_iterator CurChannel=FirstChannel; CurChannel!=LastChannel; ++CurChannel){
+		cout << CurChannel->first << "\t" << CurChannel->second.size() << endl;
 	}
 	cout << "++++++++++++++++++++++++++++++" << endl;
 }
 
-void TDircAnalysisBase::PrintMatchedHits() const {
-	if(MatchedHits.empty())
+//void TDircAnalysisBase::PrintMatchedHits() const {
+//	if(MatchedHits.empty())
+//		return;
+//	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator FirstEntry = MatchedHits.begin();
+//	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator LastEntry = MatchedHits.end();
+//	cout << "+++++++++++++++++++++++++++" << endl;
+//	cout << "+++  Matched TDC Hits   +++" << endl;
+//	cout << "+++++++++++++++++++++++++++" << endl;
+//	cout << MatchedHits.size() << " MATCHED TDC HITS FOUND" << endl;
+//	cout << "+++++++++++++++++++++++++++" << endl;
+//	for(std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){ // begin loop over all event hit entries
+//		cout << distance(FirstEntry,CurEntry) << "\t" << CurEntry->first.first << " , " << CurEntry->first.second << "\t" << CurEntry->second.nChannelA  << " , " << CurEntry->second.nChannelB << "\t" << CurEntry->second.fSyncLETime  << "\t" <<CurEntry->second.fTimeOverThreshold << endl;
+//	} // end of loop over all event hit entries
+//	cout << "+++++++++++++++++++++++++++" << endl;
+//}
+
+void TDircAnalysisBase::PrintReconHits() const {
+	if(EvtReconHits.empty())
 		return;
-	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator FirstEntry = MatchedHits.begin();
-	std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator LastEntry = MatchedHits.end();
-	cout << "+++++++++++++++++++++++++++" << endl;
-	cout << "+++  Matched TDC Hits   +++" << endl;
-	cout << "+++++++++++++++++++++++++++" << endl;
-	cout << MatchedHits.size() << " MATCHED TDC HITS FOUND" << endl;
-	cout << "+++++++++++++++++++++++++++" << endl;
-	for(std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){ // begin loop over all event hit entries
-		cout << distance(FirstEntry,CurEntry) << "\t" << CurEntry->first.first << " , " << CurEntry->first.second << "\t" << CurEntry->second.nChannelA  << " , " << CurEntry->second.nChannelB << "\t" << CurEntry->second.fSyncLETime  << "\t" <<CurEntry->second.fTimeOverThreshold << endl;
-	} // end of loop over all event hit entries
-	cout << "+++++++++++++++++++++++++++" << endl;
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstEntry	= EvtReconHits.begin();
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastEntry	= EvtReconHits.end();
+	cout << "++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++  Reconstructed TDC Hits  +++" << endl;
+	cout << "++++++++++++++++++++++++++++++++" << endl;
+	for(std::map< UInt_t,std::list<PixelHitModel> >::const_iterator CurEntry=FirstEntry; CurEntry!=LastEntry; ++CurEntry){
+		cout << CurEntry->first << "\t" << CurEntry->second.size() << endl;
+		for(std::list<PixelHitModel>::const_iterator CurHit=CurEntry->second.begin(); CurHit!=CurEntry->second.end(); ++CurHit){
+			cout << "\t" << *CurHit << endl; 
+		}
+	}
+	cout << "++++++++++++++++++++++++++++++++" << endl;
 }
 
 void TDircAnalysisBase::PrintSwapList() const {
