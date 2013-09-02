@@ -360,6 +360,7 @@ Int_t TTrbAnalysisBase::SetTdcAddresses(string cUserTdcAddressesFile){ // set TR
 				if(TempTdcDefinition.nTdcSize<1)
 					continue; // skip as TDC has no channels
 				TdcAddresses.insert(make_pair(nTempTdcAddress,TempTdcDefinition));
+				break;
 			case 3: // first token is TDC address, second token is TDC size and third token is channel offset
 				TempTdcDefinition.nTdcSize = (UInt_t)strtoul(tokens.at(1).c_str(),NULL,10); // size of TDC
 				if(TempTdcDefinition.nTdcSize<1)
