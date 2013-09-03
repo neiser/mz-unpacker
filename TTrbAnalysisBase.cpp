@@ -7,12 +7,18 @@ TTrbAnalysisBase::TTrbAnalysisBase(string cUserDataFilename, Bool_t bUserVerbose
 	OpenTree(); // open tree with data
 }
 
+TTrbAnalysisBase::TTrbAnalysisBase(TChain &UserChain, Bool_t bUserVerboseMode, string cUserTreeName) : TObject(), bVerboseMode(bUserVerboseMode), cTreeName(cUserTreeName) { // constructor
+	Init(); // initialise variables
+	bIsChain = kTRUE;
+	OpenTree(&UserChain); // open tree with data
+}
+
 TTrbAnalysisBase::~TTrbAnalysisBase(){
 	cout << "This is the destructor of the TTrbAnalysisBase class..." << endl;
-	//delete TrbData;
-	//TrbData = NULL;
-	delete RawData;
-	RawData = NULL;
+	if(!bIsChain){
+		delete RawData;
+		RawData = NULL;
+	}
 }
 
 Bool_t TTrbAnalysisBase::CheckRandomBits(){
@@ -179,6 +185,7 @@ void TTrbAnalysisBase::Init(){ // initialise object variables
 	nTdcDefaultSize		= 0; // these need to be variables set by the user
 	nTdcDefaultOffset	= 0; // see above, need to change this later
 
+	bIsChain	= kFALSE;
 	bTreeIsOpen = kFALSE;
 	bCanAnalyse	= kFALSE;
 	bDoHitMatching = kFALSE; // do not match hits in the TDC, i.e. leading and trailing edges
@@ -202,6 +209,15 @@ void TTrbAnalysisBase::OpenTree(){ // open file and retrieve pointer to tree
 		return;
 	}
 	TrbData = new TTrbDataTree((TTree*)RawData->Get(cTreeName.c_str()));
+	if (TrbData==NULL){
+		cerr << "Error opening Tree " << cTreeName << endl;
+		return;
+	}
+	bTreeIsOpen = kTRUE;
+}
+
+void TTrbAnalysisBase::OpenTree(TTree *UserTree){
+	TrbData = new TTrbDataTree(UserTree);
 	if (TrbData==NULL){
 		cerr << "Error opening Tree " << cTreeName << endl;
 		return;

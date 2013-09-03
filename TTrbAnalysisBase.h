@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "TChain.h"
 #include "TFile.h"
 #include "TH1D.h"
 #include "TH2D.h"
@@ -35,12 +36,14 @@ struct TrbTdcSetupModel{
 class TTrbAnalysisBase : public TObject{
 private:
 	Bool_t bCanAnalyse; // flag indicating if all necessary information is available to proceed with analysis
+	Bool_t bIsChain;
 	Bool_t bTreeIsOpen; // flag indicating tree pointer is valid
 	Bool_t bVerboseMode;
 	string cDataFilename; // name of data file
 	string cTreeName; // name of tree, standard is "T"
 	TFile *RawData; // pointer to RooT file containing Tree with raw data
 	void OpenTree();
+	void OpenTree(TTree *UserTree);
 protected:
 	// flags indicating status of base class
 	Bool_t bDoHitMatching; // flag to control event treatment
@@ -61,6 +64,7 @@ protected:
 	void UpdateStatus(); // this function checks if all necessary information is available to perform an analysis
 public:
 	TTrbAnalysisBase(string cUserDataFilename, Bool_t bUserVerboseMode=kFALSE, string cUserTreeName="T"); // constructor
+	TTrbAnalysisBase(TChain &UserChain, Bool_t bUserVerboseMode=kFALSE, string cUserTreeName="T"); // constructor
 	//string cUserTdcAddressesFile
 	virtual ~TTrbAnalysisBase(); // destructor
 	//void Analyse(string cUserAnalysisFilename); // analysis routine
@@ -73,7 +77,7 @@ public:
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel) from analysis
 	virtual Int_t GetEntry(Long64_t nEntryIndex); // get entry from ROOT Tree and store event values in local variables
 	Bool_t GetHitMatchingFlag() const { return (bDoHitMatching); };
-	Int_t GetNEvents() const { return ((Int_t)TrbData->fChain->GetEntriesFast()); }; // get number of events in RooT tree
+	Int_t GetNEvents() const { return ((Int_t)TrbData->fChain->GetEntries()); }; // get number of events in RooT tree
 	UInt_t GetNSyncTimestamps() const { return ((UInt_t)EvtSyncTimestamps.size()); }; // get number of TDC sync timestamps found in event
 	UInt_t GetNTdcs() const { return ((UInt_t)TdcAddresses.size()); }; // number of TDCs in setup
 	UInt_t GetNTdcHits() const { return ((UInt_t)EvtTdcHits.size()); }; // get number of TDC hits per event
