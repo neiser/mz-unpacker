@@ -39,6 +39,7 @@ protected:
 	void FillDQHistogram(TH1D& hDataQuality);
 	void WriteLogfileHeader(); // write status information to log file
 public:
+	TDircAnalysisPostdoc(TChain &UserChain);
 	TDircAnalysisPostdoc(string cUserDataFilename, string UserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // standard constructor
 	TDircAnalysisPostdoc(string cUserDataFilename, string UserTdcAddressFile); // constructor, all TDC defintions in text file
 	virtual ~TDircAnalysisPostdoc(); // standard destructor

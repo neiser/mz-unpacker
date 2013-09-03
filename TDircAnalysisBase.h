@@ -42,6 +42,8 @@ struct PixelHitModel{
 			return s;
 		};
 		UInt_t GetLeadEdgeChan() const { return nChannelA; };
+		Double_t GetLeadEdgeTime() const { return fSyncLETime; };
+		Double_t GetToT() const { return fTimeOverThreshold; };
 		UInt_t GetTrailEdgeChan() const { return nChannelB; };
 	};
 
@@ -68,6 +70,7 @@ protected:
 	void HitMatching(); // match leading and trailing edge timestamps
 public:
 	TDircAnalysisBase(string cUserDataFilename); // constructor
+	TDircAnalysisBase(TChain &UserChain); // constructor
 	TDircAnalysisBase(string cUserDataFilename, string cUserTdcAddressFile); // constructor
 	TDircAnalysisBase(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // constructor
 	~TDircAnalysisBase();
@@ -81,6 +84,8 @@ public:
 	UInt_t GetChanMultiplicity(UInt_t nSeqChanId) const; // count hits in given channel
 	UInt_t GetNMatchedHits() const; // get number of matched TDC hits, i.e. leading and trailing edge
 	UInt_t GetNMultiHits() const { return (nMultiHitChan); }; // get number of channels with multiple hits in event
+	Int_t GetTriggerChannel() const { return (nTriggerSeqId); }; // return seq ID of trigger channel, -1 if it is not set
+	Bool_t GetTriggerStatus() const { return (bTrigChanIsSet); }; // return trigger channle status flag
 	Bool_t GetTriggerTime(Double_t &fTriggerTime) const; // return calibrated time of trigger channel
 	void PrintChanMultiplicity() const; // print channel multiplicity for this event
 	//void PrintMatchedHits() const; // print list of matched hit to screen

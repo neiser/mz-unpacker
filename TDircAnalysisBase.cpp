@@ -8,6 +8,12 @@ TDircAnalysisBase::TDircAnalysisBase(string cUserDataFilename) : TTrbAnalysisBas
 	Init();
 }
 
+TDircAnalysisBase::TDircAnalysisBase(TChain &UserChain) : TTrbAnalysisBase(UserChain) {
+	// do nothing so far...
+	cout << "This is the constructor of TDircAnalysisBase class..." << endl;
+	Init();
+}
+
 TDircAnalysisBase::TDircAnalysisBase(string cUserDataFilename, string cUserTdcAddressFile) : TTrbAnalysisBase(cUserDataFilename){
 	Init();
 	cout << SetTdcAddresses(cUserTdcAddressFile) << " TDC addresses registered" << endl;

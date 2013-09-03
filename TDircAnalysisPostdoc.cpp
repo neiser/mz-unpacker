@@ -2,7 +2,12 @@
 
 ClassImp(TDircAnalysisPostdoc);
 
-TDircAnalysisPostdoc::TDircAnalysisPostdoc(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth) : TDircAnalysisBase(cUserDataFilename, cUserTdcAddressFile,nUserTdcOffset,nUserTdcWidth) {
+TDircAnalysisPostdoc::TDircAnalysisPostdoc(TChain &UserChain) : TDircAnalysisBase(UserChain){
+	cout << "Initialising TDircAnalysisPostdoc..." << endl;
+	Init();
+}
+
+TDircAnalysisPostdoc::TDircAnalysisPostdoc(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth) : TDircAnalysisBase(cUserDataFilename,cUserTdcAddressFile,nUserTdcOffset,nUserTdcWidth) {
 	cout << "Initialising TDircAnalysisPostdoc..." << endl;
 	Init();
 }
