@@ -36,7 +36,7 @@ struct TrbTdcSetupModel{
 class TTrbAnalysisBase : public TObject{
 private:
 	Bool_t bCanAnalyse; // flag indicating if all necessary information is available to proceed with analysis
-	Bool_t bIsChain;
+	Bool_t bIsChain; // flag indicating using a TChain as data source
 	Bool_t bTreeIsOpen; // flag indicating tree pointer is valid
 	Bool_t bVerboseMode;
 	string cDataFilename; // name of data file
@@ -75,6 +75,7 @@ public:
 	void EnableHitMatching() { bDoHitMatching = kTRUE; }; // switch on hit matching
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from analysis
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel) from analysis
+	Bool_t GetChannelAddress(Int_t nUserSeqId, Int_t &nTdcAdress, Int_t &nTdcChan) const; // return channel TDC address and number given a seq ID
 	virtual Int_t GetEntry(Long64_t nEntryIndex); // get entry from ROOT Tree and store event values in local variables
 	Bool_t GetHitMatchingFlag() const { return (bDoHitMatching); };
 	Int_t GetNEvents() const { return ((Int_t)TrbData->fChain->GetEntries()); }; // get number of events in RooT tree

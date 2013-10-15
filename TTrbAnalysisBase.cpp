@@ -112,6 +112,29 @@ UInt_t TTrbAnalysisBase::ExcludeChannels(string UserFilename){
 	return(nExcludedChannels);
 }
 
+Bool_t TTrbAnalysisBase::GetChannelAddress(Int_t nUserSeqId, Int_t &nTdcAdress, Int_t &nTdcChan) const {
+	if(nUserSeqId>GetSizeOfMapTable()||MappingTable.empty()){ // requested ID is outwith mapping table range
+		nTdcAdress	= -1;
+		nTdcChan	= -1;
+		return (kFALSE);
+	}
+	std::map< std::pair< UInt_t,UInt_t >,UInt_t >::const_iterator FirstId =  MappingTable.begin();
+	std::map< std::pair< UInt_t,UInt_t >,UInt_t >::const_iterator LastId =  MappingTable.end();
+	std::map< std::pair< UInt_t,UInt_t >,UInt_t >::const_iterator CurId;
+	for(CurId=FirstId; CurId!=LastId; ++CurId){ // begin loop over mapping table
+		if(CurId->second==nUserSeqId)
+			break;
+	} // end of loop over mapping table
+	if(CurId==LastId){ // sequential ID was not found in mapping table (should never happen)
+		nTdcAdress	= -1;
+		nTdcChan	= -1;
+		return (kFALSE);
+	}
+	nTdcAdress	= CurId->first.first;
+	nTdcChan	= CurId->first.second;
+	return (kTRUE);
+}
+
 Int_t TTrbAnalysisBase::GetEntry(Long64_t nEntryIndex){
 	// Get event entry from TTree object and perform basic analysis tasks
 	//ClearEventMaps(); // reset all event-level variables and maps
@@ -226,8 +249,10 @@ void TTrbAnalysisBase::OpenTree(TTree *UserTree){
 }
 
 void TTrbAnalysisBase::PrintExcludedChannels() const {
-	if(ExcludedChannels.empty())
+	if(ExcludedChannels.empty()){
+		cout << "Excluded channel list is empty" << endl;
 		return;
+	}
 	cout << "+++++++++++++++++++++++++++" << endl;
 	cout << "+++  EXCLUDED CHANNELS  +++" << endl;
 	cout << "+++++++++++++++++++++++++++" << endl;
