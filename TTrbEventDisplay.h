@@ -94,6 +94,7 @@ protected:
 	void SetCanvasStyle(TCanvas *canThisCanvas);
 public:
 	TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, string cUserDataFilename); // standard constructor
+	TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, TChain &UserChain); // standard constructor
 	virtual ~TTrbEventDisplay(); // standard destructor
 	Int_t GetNPixels() const { return (nNumberOfPixels); }; // get number of pixels in setup
 	Int_t GetNPmts() const { return (nNumberOfPmts); }; // get number of MAPMTs in setup

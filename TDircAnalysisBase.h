@@ -67,9 +67,11 @@ private:
 	void Init();
 	Bool_t IsChannel(const PixelHitModel &CurrentHit, UInt_t nSeqChanId) const;
 protected:
+	Bool_t bHitMatchingError; // indicate error at hit matching stage, i.e. number of leading and trailing edges do not match
 	std::set< UInt_t > SwapList; // list of TDC addresses where we need to swap leading and trailing edges
 	std::map< UInt_t,std::list<PixelHitModel> > EvtReconHits; // map storing reconstructed hits
 	std::list<PixelHitModel> EvtTriggerHits; // map storing reconstructed trigger hits
+	std::list<UInt_t> EvtHitMatchErrChan; // list containing channel IDs of the channels where hit matching failed
 	void HitMatching(); // match leading and trailing edge timestamps
 public:
 	TDircAnalysisBase(string cUserDataFilename); // constructor

@@ -45,12 +45,14 @@ void TDircAnalysisPostdoc::Analyse(string cUserAnalysisFilename){
 	TH1D hTriggerMultiplicity("hTriggerMultiplicity","Trigger Channel Hit Multiplicity; hit multiplicity per event; frequency",16,-0.5,15.5);
 	TH1D hTriggerTime("hTriggerTime","hTriggerTime;trigger LE (ns); frequency",2500,-500.0,0.0);
 	TH1D hTriggerToT("hTriggerToT","Trigger Channel Time-over-Threshold; Time-over-Threshold (ns); frequency",1000,-1.0,50.0);
+	TH1D hHitMatchingErrChan("hHitMatchingErrChan","Hit Matching Error Channels; channel ID; frequency",(Int_t)GetSizeOfMapTable()+2,-0.5,GetSizeOfMapTable()+1.5);
 	// main analysis loop
 	Bool_t bTrigChanIsSet = GetTriggerStatus();
 	Int_t nEvents	= GetNEvents();
 	Int_t nFraction = nEvents * 0.1;
 	LogFileBuffer << "Number of raw triggers: " << nEvents << endl;
 	Int_t nAccEvents = 0;
+	Int_t nHitMatchingErr = 0; // number of events with errors during hit matching stage
 	time_t StartTime;
 	time(&StartTime);
 	for(Int_t i=0; i<nEvents; i++){ // begin loop over all events
@@ -61,6 +63,12 @@ void TDircAnalysisPostdoc::Analyse(string cUserAnalysisFilename){
 		// compute progress
 		if(i%nFraction==0){
 			cout << (i/nFraction)*(1.0/0.1) << "% of events analysed...\r" ;
+		}
+		if(bHitMatchingError){
+			nHitMatchingErr++;
+			for(std::list<UInt_t>::const_iterator ThisChannel=EvtHitMatchErrChan.begin(); ThisChannel!=EvtHitMatchErrChan.end(); ++ThisChannel){
+				hHitMatchingErrChan.Fill((Double_t)*ThisChannel);
+			}
 		}
 		DoDataQualityCheck();
 		FillDQHistogram(hEvtStats);
@@ -103,6 +111,7 @@ void TDircAnalysisPostdoc::Analyse(string cUserAnalysisFilename){
 	Double_t fAnalysisTime = difftime(StopTime,StartTime);
 	cout << "Analysis took " << fAnalysisTime << " seconds to complete" << endl;
 	cout << endl;
+	LogFileBuffer << "Number of events with error during hit matching: " << nHitMatchingErr << endl;
 	LogFileBuffer << "Number of accepted triggers: " << nAccEvents << endl;
 	LogFileBuffer << "Analysis duration " << fAnalysisTime << " seconds" << endl;
 	AnalysisOut->Write(); // write all histograms in memeory to this file

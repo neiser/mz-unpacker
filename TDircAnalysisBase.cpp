@@ -74,6 +74,8 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 	// match leading and trailing edge timestamps
 	// use EvtTdcHits multimap from TTrbAnalysisBase as starting point
 	// always keep trigger channel hits???
+	bHitMatchingError = kFALSE; // initialise hit matching error flag
+	EvtHitMatchErrChan.clear(); // clear list of channels where hit matching failed
 	if(!GetStatus()) // TTrbAnalysisBase object not properly initialised, do not match hits
 		return;
 	Bool_t bIsTrigChan	= kFALSE;
@@ -104,6 +106,11 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 		UInt_t nMultLeadEdge = (UInt_t) std::distance(LeadingEdges.first,LeadingEdges.second); // count hits for this channel
 		UInt_t nMultTrailEdge = (UInt_t) std::distance(TrailingEdges.first,TrailingEdges.second);
 		if(nMultLeadEdge!=nMultTrailEdge){ //mismatch of leading & trailing edge multiplicities
+			bHitMatchingError = kTRUE;
+			if(nMultLeadEdge>0)
+				EvtHitMatchErrChan.push_back(LeadingEdges.first->first);
+			if(nMultTrailEdge>0)
+				EvtHitMatchErrChan.push_back(TrailingEdges.first->first);
 			CurrentTdcHit = TrailingEdges.second; // skip these entries
 			if(bVerboseMode){ 
 				cout << "Mismatch of leading and trailing edge hits!" << endl;
@@ -218,11 +225,13 @@ void TDircAnalysisBase::Init(){
 	SwapList.clear(); // clear list of TDC addresses which are being swapped
 	EvtReconHits.clear(); // clear map of reconstructed hits
 	EvtTriggerHits.clear(); // clear map of reconstructed trigger hits
+	EvtHitMatchErrChan.clear();
 	bSkipMultiHits	= kTRUE;
 	bApplyTimingCut = kFALSE;
 	bApplyTrigCut	= kFALSE;
 	bTrigChanIsSet	= kFALSE;
 	bVerboseMode	= kFALSE;
+	bHitMatchingError	= kFALSE;
 	nMultiHitChan = 0;
 	nTriggerSeqId = -1;
 }
