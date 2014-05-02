@@ -36,8 +36,8 @@
 class TTrbUnpacker : public TObject{
 	//friend class TTrbEventData;
 private:
-	ifstream InputHldFile; // input file stream object to read from raw HLD file
-	ofstream LogFile; // output file stream object for log file
+	std::ifstream InputHldFile; // input file stream object to read from raw HLD file
+	std::ofstream LogFile; // output file stream object for log file
 	//streambuf *ClogBackup; // rdbuf backup of standard clog, will redirect clog to log file
 	TFile* OutputRootFile; // pointer to ROOT file for storing decoded data
 	TTree* OutputTree; // pointer to ROOT TTree object for data storage
@@ -56,7 +56,7 @@ private:
 	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
 	Int_t SetHubAddresses(string cUserHubAddressesFile); // set HUB addresses using list in file
 	void CheckHubTdcAddresses();
-	//void WriteSettingsToLog();
+
 protected:
 	string cHldFilename; // HLD file name as provided by the user
 	string cLogFilename; // log file name derived from HLD file name
@@ -67,6 +67,7 @@ protected:
 	TRB_SETUP TrbSettings;
 	Bool_t bSkipSubEvents;
 	Bool_t bVerboseMode;
+	void WriteSettingsToLog();
 	
 public:
 	TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,

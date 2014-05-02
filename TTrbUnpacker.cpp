@@ -82,7 +82,7 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 	TClonesArray Hits;
 	Hits.SetClass("TTrbHit",1000); // declare that TTrbHits are being stored in the TClonesArray
 	UInt_t nDecodedEvents = 0; // counter of decoded events
-	RewindFile(); // set get pointer to beginning of HLD file
+	RewindFile(); // set get-pointer to beginning of HLD file
 	if(nUserOffset>nEvtIndex.size()) {// user offset outside invent index range
 		cerr << "Offset exceeds number of events" << endl;
 		return 0;
@@ -91,9 +91,9 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		nUserEvents=nEvtIndex.size()-nUserOffset;
 	InputHldFile.seekg(nEvtIndex.at(nUserOffset),ios::beg); // set file get pointer to first event
 	Bool_t bLogUnpacking = OpenLogFile(); // open log file
-	(void)bLogUnpacking;
-	//if(bLogUnpacking)
-	//	WriteSettingsToLog();
+	//(void)bLogUnpacking;
+	if(bLogUnpacking)
+		WriteSettingsToLog();
 	//PrintTdcAddresses(bLogUnpacking);
 	if(!OpenRootFile()){
 		cerr << "Error open RooT file " << cRootFilename << " !" << endl;
@@ -117,6 +117,10 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		nDecodedEvents++;
 		OutputTree->Fill();
 	}
+	// write information to log file
+	LogFile << "First event:\t" << nUserOffset << endl;
+	LogFile << "No of decoded events:\t" << nUserEvents << endl;
+	// write out put to disk
 	cout << "Writing Tree to disk..." << endl;
 	OutputRootFile = OutputTree->GetCurrentFile();
 	OutputRootFile->Write();
@@ -195,11 +199,11 @@ Bool_t TTrbUnpacker::OpenRootFile(){
 }
 
 void TTrbUnpacker::PrintSubEventId(){
-	cout << "Sub event ID is: " << hex << TrbSettings.nSubEventId << dec << endl;
+	cout << "Sub event ID is: " << hex << showbase << TrbSettings.nSubEventId << dec << endl;
 }
 
 void TTrbUnpacker::PrintCtsAddress(){
-	cout << "Trigger Control System (TCS) is at 0x" << hex << TrbSettings.nCtsAddress << dec << endl;
+	cout << "Trigger Control System (TCS) is at " << hex << showbase << TrbSettings.nCtsAddress << dec << endl;
 }
 
 
@@ -305,11 +309,14 @@ Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 			continue;
 		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode); 
 		switch (tokens.size()) {
+			case 0: // no tokens on this line
+				continue; // do nothing
 			case 1: 
 				cTdcAddresses.push_back(tokens.at(0));
 				break;
 			default:
-				continue; // do nothing
+				cTdcAddresses.push_back(tokens.at(0));
+				//continue; // do nothing
 		}
 	} // end loop over input file
 	UserInputFile.close();
@@ -341,15 +348,28 @@ void TTrbUnpacker::CheckHubTdcAddresses() {
 }
 
 
-//void TTrbUnpacker::WriteSettingsToLog(){
-//	clog << "+++++++++++++++++++++++++++++++" << endl;
-//	clog << "+++ TRBv3 Unpacker Settings +++" << endl;
-//	clog << "+++++++++++++++++++++++++++++++" << endl;
-//	clog << "Subevent ID: " << TrbSettings.nSubEventId << dec << endl;
-//	clog << "Reference Channel ID: " << TrbSettings.nTdcRefChannel << endl;
-//	clog << "TRB board addresses:" <<  endl;
+void TTrbUnpacker::WriteSettingsToLog(){
+	if(!LogFile.is_open()) // log file is not open
+		return;
+	LogFile << "+++++++++++++++++++++++++++++++" << endl;
+	LogFile << "+++ TRBv3 Unpacker Settings +++" << endl;
+	LogFile << "+++++++++++++++++++++++++++++++" << endl;
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup	= std::cout.rdbuf();
+	psbuf	= LogFile.rdbuf();
+	std::cout.rdbuf(psbuf);         // assign streambuf to cout
+	// print status information to logfile
+	PrintUnpackerSettings();
+	//LogFile << "Subevent ID: " << hex << TrbSettings.nSubEventId << dec << endl;
+	//LogFile << "Reference Channel ID: " << TrbSettings.nTdcRefChannel << endl;
+	//LogFile << "TRB board addresses:" <<  endl;
 //	for(std::vector<UInt_t>::const_iterator CurrentTrbUInt=TrbSettings.nTdcAddress.begin(); CurrentTrbUInt!=TrbSettings.nTdcAddress.end(); CurrentTrbUInt++){
 //		clog << hex << *CurrentTrbUInt << dec << endl;
 //	}
-//	clog << "+++++++++++++++++++++++++++++++" << endl;
-//}
+	LogFile << "+++++++++++++++++++++++++++++++" << endl;
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
+}

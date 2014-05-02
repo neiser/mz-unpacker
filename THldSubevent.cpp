@@ -272,7 +272,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 		
 		UInt_t CurrentDataWord = nTrbData[i]; 
 		if(bVerboseMode)
-			cout << "i=" <<i<<" Data: "<<setfill('0') << setw(8)<<hex<<CurrentDataWord<<endl;
+			cout << "i=" << i <<" Data: " << setfill('0') << setw(8) << hex << CurrentDataWord << dec << endl;
 		if(nTdcWords==0) {			
 			// look for DataWord with matching TrbAddress
 			nTrbAddress = CurrentDataWord & 0xFFFF;
@@ -301,7 +301,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 				// this information is not used at the moment,
 				// so we skip payload to exclude misidentifaction as an endpoint word
 				if(bVerboseMode)
-					cout << "Found CTS readout packet, skipping it (" << nTrbWords << " words)" << endl;
+					cout << "Found CTS readout packet, skipping it (" << dec << nTrbWords << " words)" << endl;
 				i += nTrbWords;
 				bFoundCtsPacket = kTRUE;
 				continue; // skip rest of loop, should bring us to the end of the loop

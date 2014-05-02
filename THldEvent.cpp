@@ -91,10 +91,11 @@ Bool_t THldEvent::ReadIt(){
 			bHasSubEvent = kFALSE;
 		}
 		if(SubEventData->GetNBytes() != nDataBytes){
-			cerr << "Error: Bytes read in SubEvent decoder does not match Event Header information!" << endl;
-			HldFile->ignore(nDataBytes-SubEventData->GetNBytes());
-			Hits->Clear();
-			bHasSubEvent = kFALSE;
+			if(bVerboseMode)
+				cerr << "Error: Bytes read in SubEvent decoder (" << SubEventData->GetNBytes() << ") does not match Event Header information (" << nDataBytes << ")!" << endl;
+			HldFile->ignore(nDataBytes-SubEventData->GetNBytes()); // skip bytes between end of suevent and start of next event
+			//Hits->Clear();
+			//bHasSubEvent = kFALSE;
 		}
 	}
 	SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts
