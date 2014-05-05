@@ -1,5 +1,24 @@
 #include "myUtilities.h"
 
+
+Int_t Combinations(UInt_t nElements, UInt_t nSampleSize){
+	if(nElements<1 || nSampleSize<1){
+		return (-1);
+	}
+	if(nSampleSize>nElements){
+		return (-1);
+	}
+	UInt_t nNominator = 1;
+	UInt_t nDenominator = 1;
+	for(UInt_t i=nElements; i>0; --i){
+		if(i>(nElements-nSampleSize))
+			nNominator *= i;
+		if(i<(nSampleSize+1))
+			nDenominator*= i;
+	}
+	return (nNominator/nDenominator);
+}
+
 UInt_t HexStringToInt(string cUserString){
 	if(cUserString.empty())
 		return (0);
