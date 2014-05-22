@@ -64,7 +64,7 @@ void TDircAnalysisDummy::Analyse(string cUserAnalysisFilename){
 			continue; // skip rest of loop
 		}
 		hEvtStats.Fill((Double_t)NO_HITS_ERR);
-		if(MatchedHits.empty()){
+		if(EvtReconHits.empty()){
 			continue; // skip rest of loop
 		}
 		hEvtStats.Fill((Double_t)NO_MATCH_ERR);
@@ -73,18 +73,22 @@ void TDircAnalysisDummy::Analyse(string cUserAnalysisFilename){
 			continue;
 		}
 		hEvtStats.Fill((Double_t)NO_TRIG_ERR);
-		//PrintMatchedHits();
 		hEvtMultiplicity.Fill((Double_t)GetNMatchedHits());
 		hMultiHitPixels.Fill((Double_t)GetNMultiHits());
 		hTriggerTime.Fill(fTrigTime);
-		std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator FirstHit = MatchedHits.begin();
-		std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator LastHit = MatchedHits.end();
-		for(std::map< std::pair< Int_t,Int_t >,PixelHitModel >::const_iterator CurHit=FirstHit; CurHit!=LastHit; ++CurHit){ // begin of loop over all matched hits
-			hPixelHits.Fill((Double_t)CurHit->second.nChannelA);
-			hPixelHits.Fill((Double_t)CurHit->second.nChannelB);
-			hLETiming.Fill(CurHit->second.fSyncLETime);
-			hHitToT.Fill((Double_t)CurHit->second.nChannelA,CurHit->second.fTimeOverThreshold);
-		} // end of loop over all matched hits
+		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel = EvtReconHits.begin();
+		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChannel = EvtReconHits.end();
+		for(std::map< UInt_t,std::list<PixelHitModel> >::const_iterator CurChannel=FirstChannel; CurChannel!=LastChannel; ++CurChannel){ // begin of loop over all channels with hits
+			std::list<PixelHitModel>::const_iterator FirstHit	= CurChannel->second.begin();
+			std::list<PixelHitModel>::const_iterator LastHit	= CurChannel->second.end();
+			std::list<PixelHitModel>::const_iterator CurHit;
+			for(CurHit=FirstHit; CurHit!=LastHit; ++CurHit){ // begin of loop over all hits in this channel
+				hPixelHits.Fill((Double_t)CurHit->GetLeadEdgeChan());
+				hPixelHits.Fill((Double_t)CurHit->GetTrailEdgeChan());
+				hLETiming.Fill(CurHit->GetLeadEdgeTime());
+				hHitToT.Fill((Double_t)CurHit->GetLeadEdgeChan(),CurHit->GetToT());
+			} // end of loop over hits in this channel
+		} // end of loop over all channels with hits
 	} // end of loop over all events
 	cout << endl;
 	AnalysisOut->Write(); // write all histograms in memeory to this file
