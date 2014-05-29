@@ -21,22 +21,38 @@ TGsiTreeConverter::~TGsiTreeConverter(){
 		delete[] EventData.fLeadingEdge;
 		EventData.fLeadingEdge = NULL;
 	}
-	if(EventData.fTot!=NULL){
-		delete[] EventData.fTot;
-		EventData.fTot = NULL;
-	}
-	if(EventData.nTdcId!=NULL){
-		delete[] EventData.nTdcId;
-		EventData.nTdcId = NULL;
-	}
-	if(EventData.nTdcChan!=NULL){
-		delete[] EventData.nTdcChan;
-		EventData.nTdcChan = NULL;
-	}
-	if(EventData.bIsValid!=NULL){
-		delete[] EventData.bIsValid;
-		EventData.bIsValid = NULL;
-	}
+	CleanUp();
+}
+
+void TGsiTreeConverter::AddBranches(){
+	if(OnlineTree==NULL) // TTree does not exist
+		return; // do nothing and return
+	// declare tree leafs
+	stringstream cLeafList; // string to store leaf type declaration
+	// leading edge data
+	cLeafList << "fLeadingEdge[" << GetSizeOfMapTable() << "]/D";
+	OnlineTree->Branch("fLeadingEdge",EventData.fLeadingEdge,cLeafList.str().c_str());
+	// time-over-threshold data
+	cLeafList.str(""); // clear leaf descriptor
+	cLeafList << "fTot[" << GetSizeOfMapTable() << "]/D";
+	OnlineTree->Branch("fTot",EventData.fTot,cLeafList.str().c_str());
+	// TDC ID data
+	cLeafList.str(""); // clear leaf descriptor
+	cLeafList << "nTdcId[" << GetSizeOfMapTable() << "]/i";
+	OnlineTree->Branch("nTdcId",EventData.nTdcId,cLeafList.str().c_str());
+	// TDC channel data
+	cLeafList.str(""); // clear leaf descriptor
+	cLeafList << "nTdcChan[" << GetSizeOfMapTable() << "]/i";
+	OnlineTree->Branch("nTdcChan",EventData.nTdcChan,cLeafList.str().c_str());
+	// MCP ID data
+	cLeafList.str(""); // clear leaf descriptor
+	cLeafList << "nMcpId[" << GetSizeOfMapTable() << "]/i";
+	OnlineTree->Branch("nMcpId",EventData.nMcpId,cLeafList.str().c_str());
+	// data valid flag
+	cLeafList.str(""); // clear leaf descriptor
+	cLeafList << "bValid[" << GetSizeOfMapTable() << "]/O";
+	OnlineTree->Branch("bValid",EventData.bIsValid,cLeafList.str().c_str());
+
 }
 
 void TGsiTreeConverter::Analyse(string cUserAnalysisFilename){
@@ -120,39 +136,48 @@ void TGsiTreeConverter::Analyse(string cUserAnalysisFilename){
 	delete AnalysisOut; // close RooT file and delete pointer
 }
 
+void TGsiTreeConverter::CleanUp(){ // delete arrays holding data for tree conversion
+	if(EventData.fTot!=NULL){
+		delete[] EventData.fTot;
+		EventData.fTot = NULL;
+	}
+	if(EventData.nTdcId!=NULL){
+		delete[] EventData.nTdcId;
+		EventData.nTdcId = NULL;
+	}
+	if(EventData.nTdcChan!=NULL){
+		delete[] EventData.nTdcChan;
+		EventData.nTdcChan = NULL;
+	}
+	if(EventData.nMcpId!=NULL){
+		delete[] EventData.nMcpId;
+		EventData.nMcpId = NULL;
+	}
+	if(EventData.bIsValid!=NULL){
+		delete[] EventData.bIsValid;
+		EventData.bIsValid = NULL;
+	}
+}
+
 void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename){
 	// declare array size based on mapping table size
 	EventData.fLeadingEdge	= new Double_t[GetSizeOfMapTable()];
 	EventData.fTot			= new Double_t[GetSizeOfMapTable()];
 	EventData.nTdcId		= new UInt_t[GetSizeOfMapTable()];
 	EventData.nTdcChan		= new UInt_t[GetSizeOfMapTable()];
+	EventData.nMcpId		= new UInt_t[GetSizeOfMapTable()];
 	EventData.bIsValid		= new Bool_t[GetSizeOfMapTable()];
 	// open ROOT output file
 	OutputFile = new TFile(cUserAnalysisFilename.c_str(),"RECREATE"); // open RooT file for analysis results
 	// create ROOT tree
-	OnlineTree = new TTree("T","Compact Tree for GSI Online Analysis");
+	OnlineTree = new TTree("K","Compact Tree for GSI Online Analysis");
 	//OnlineTree->SetDirectory(0); // remove this tree from current directory
-	// declare tree leafs
-	stringstream cLeafList;
-	cLeafList << "fLeadingEdge[" << GetSizeOfMapTable() << "]/D";
-	//OnlineTree->Branch("online",&EventData,"fLeadingEdge/D:fTot:nMcpId/I");
-	OnlineTree->Branch("fLeadingEdge",EventData.fLeadingEdge,cLeafList.str().c_str());
-	cLeafList.str(""); // clear leaf descriptor
-	cLeafList << "fTot[" << GetSizeOfMapTable() << "]/D";
-	OnlineTree->Branch("fTot",EventData.fTot,cLeafList.str().c_str());
-	cLeafList.str(""); // clear leaf descriptor
-	cLeafList << "nTdcId[" << GetSizeOfMapTable() << "]/i";
-	OnlineTree->Branch("nTdcId",EventData.nTdcId,cLeafList.str().c_str());
-	cLeafList.str(""); // clear leaf descriptor
-	cLeafList << "nTdcChan[" << GetSizeOfMapTable() << "]/i";
-	OnlineTree->Branch("nTdcChan",EventData.nTdcChan,cLeafList.str().c_str());
-	cLeafList.str(""); // clear leaf descriptor
-	cLeafList << "bValid[" << GetSizeOfMapTable() << "]/O";
-	OnlineTree->Branch("bValid",EventData.bIsValid,cLeafList.str().c_str());
+	AddBranches(); // add branches for storing data
 	// loop over data and fill into trees
 	Int_t nEvents = GetNEvents();
 	Int_t nFraction = nEvents * 0.1;
 	for(Int_t i=0; i<nEvents; i++){ // begin loop over all events
+		InitArrays();
 		// first, get event data
 		if (GetEntry(i)<1){ // this entry is not valid
 			continue; // skip rest of loop
@@ -161,6 +186,7 @@ void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename){
 		if(i%nFraction==0){
 			cout << (i/nFraction)*(1.0/0.1) << "% of events converted...\r" ;
 		}
+		// need to reset all data arrays first!!!
 		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel = EvtReconHits.begin();
 		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChannel	 = EvtReconHits.end();
 		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator CurChannel;
@@ -176,20 +202,31 @@ void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename){
 		} // end of loop over all matched hits in this event
 		OnlineTree->Fill(); // write data to tree memory
 	} // end of loop over all entries
-	OutputFile->Write();
-	delete OutputFile;
+	delete OutputFile; // delete file object, this triggers writing of the tree to disc and properly closing the file
 	OnlineTree = NULL;
 	OutputFile = NULL;
-
+	CleanUp();
 }
 
 
 void TGsiTreeConverter::Init(){
 	OnlineTree = NULL;
 	OutputFile = NULL;
-	EventData.fLeadingEdge = NULL;
-	EventData.fTot = NULL;
-	EventData.nTdcId = NULL;
-	EventData.nTdcChan = NULL;
-	EventData.bIsValid = NULL;
+	EventData.fLeadingEdge	= NULL;
+	EventData.fTot			= NULL;
+	EventData.nTdcId		= NULL;
+	EventData.nTdcChan		= NULL;
+	EventData.nMcpId		= NULL;
+	EventData.bIsValid		= NULL;
+}
+
+void TGsiTreeConverter::InitArrays(){
+	for(Int_t i=0; i<GetSizeOfMapTable(); ++i){
+		EventData.fLeadingEdge[i]	= -9999.0;
+		EventData.fTot[i]			= -9999.0;
+		EventData.nTdcId[i]			= 0;
+		EventData.nTdcChan[i]		= 0;
+		EventData.nMcpId[i]			= 0;
+		EventData.bIsValid[i]		= kFALSE;
+	}
 }
