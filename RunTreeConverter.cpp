@@ -2,5 +2,5 @@ void RunTreeConverter(string cUserDataFile, string cUserTdcAddresses, string cUs
 	gROOT->ProcessLine(".x BuildGsiTreeConverter.cpp");
 	TGsiTreeConverter a(cUserDataFile,cUserTdcAddresses);
 	a.KeepMultiHits();
-	a.ConvertTree(cUserOutFile);
+	a.ConvertTree(cUserOutFile,0,1000);
 }

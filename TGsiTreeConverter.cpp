@@ -159,14 +159,18 @@ void TGsiTreeConverter::CleanUp(){ // delete arrays holding data for tree conver
 	}
 }
 
-void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename){
+void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename, UInt_t nStartIndex, UInt_t nStopIndex){
+	if(nStartIndex > nStopIndex) // check if start and stop index are in the right order
+		std::swap(nStartIndex,nStopIndex);
+	if(nStopIndex>(UInt_t)nEvtsInTree) // check if stop index is within range of event numbers
+		nStopIndex = (UInt_t)nEvtsInTree;
 	// declare array size based on mapping table size
-	EventData.fLeadingEdge	= new Double_t[GetSizeOfMapTable()];
-	EventData.fTot			= new Double_t[GetSizeOfMapTable()];
-	EventData.nTdcId		= new UInt_t[GetSizeOfMapTable()];
-	EventData.nTdcChan		= new UInt_t[GetSizeOfMapTable()];
-	EventData.nMcpId		= new UInt_t[GetSizeOfMapTable()];
-	EventData.bIsValid		= new Bool_t[GetSizeOfMapTable()];
+	EventData.fLeadingEdge	= new Double_t[nArraySize];
+	EventData.fTot			= new Double_t[nArraySize];
+	EventData.nTdcId		= new UInt_t[nArraySize];
+	EventData.nTdcChan		= new UInt_t[nArraySize];
+	EventData.nMcpId		= new UInt_t[nArraySize];
+	EventData.bIsValid		= new Bool_t[nArraySize];
 	// open ROOT output file
 	OutputFile = new TFile(cUserAnalysisFilename.c_str(),"RECREATE"); // open RooT file for analysis results
 	// create ROOT tree
@@ -174,9 +178,8 @@ void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename){
 	//OnlineTree->SetDirectory(0); // remove this tree from current directory
 	AddBranches(); // add branches for storing data
 	// loop over data and fill into trees
-	Int_t nEvents = GetNEvents();
-	Int_t nFraction = nEvents * 0.1;
-	for(Int_t i=0; i<nEvents; i++){ // begin loop over all events
+	Int_t nFraction = (nStopIndex-nStartIndex) * 0.1;
+	for(Int_t i=nStartIndex; i<nStopIndex; i++){ // begin loop over all events
 		InitArrays();
 		// first, get event data
 		if (GetEntry(i)<1){ // this entry is not valid
@@ -202,6 +205,7 @@ void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename){
 		} // end of loop over all matched hits in this event
 		OnlineTree->Fill(); // write data to tree memory
 	} // end of loop over all entries
+	OutputFile->Write("",TObject::kOverwrite);
 	delete OutputFile; // delete file object, this triggers writing of the tree to disc and properly closing the file
 	OnlineTree = NULL;
 	OutputFile = NULL;
@@ -218,10 +222,13 @@ void TGsiTreeConverter::Init(){
 	EventData.nTdcChan		= NULL;
 	EventData.nMcpId		= NULL;
 	EventData.bIsValid		= NULL;
+
+	nEvtsInTree = GetNEvents();
+	nArraySize	= GetSizeOfMapTable();
 }
 
 void TGsiTreeConverter::InitArrays(){
-	for(Int_t i=0; i<GetSizeOfMapTable(); ++i){
+	for(Int_t i=0; i<nArraySize; ++i){
 		EventData.fLeadingEdge[i]	= -9999.0;
 		EventData.fTot[i]			= -9999.0;
 		EventData.nTdcId[i]			= 0;

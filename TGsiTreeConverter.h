@@ -49,6 +49,8 @@ private:
 	TFile *OutputFile; // file for storing converted tree
 	TTree *OnlineTree; // this tree will be used to store the online data for fast analysis
 	GsiDataModel EventData;
+	UInt_t nArraySize;
+	Int_t nEvtsInTree;
 	void CleanUp(); // delete arrays holding data for tree conversion
 	void Init();
 	void InitArrays(); // initialise data arrays
@@ -63,7 +65,8 @@ public:
 	virtual ~TGsiTreeConverter(); // standard destructor
 	void Analyse(string cUserAnalysisFilename); // analysis routine goes here, this method is needed!
 
-	void ConvertTree(string cUserAnalysisFilename); // extract relevant data and write into GSI online tree
+	void ConvertTree(string cUserAnalysisFilename) { ConvertTree(cUserAnalysisFilename,0,(UInt_t)nEvtsInTree-1); }; // extract relevant data and write into GSI online tree
+	void ConvertTree(string cUserAnalysisFilename, UInt_t nStartIndex, UInt_t nStopIndex); // extract data from start to stop index and convert into non-sparsified arrays
 
 	/* some magic ROOT stuff... */
 	ClassDef(TGsiTreeConverter,1);
