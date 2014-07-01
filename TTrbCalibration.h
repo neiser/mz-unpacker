@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <list>
 #include <map>
 #include <sstream>
 #include <string>
@@ -74,6 +75,7 @@ private:
 	void WriteToFile(); // write calibrations histograms to file
 protected:
 	std::vector< pair< UInt_t,UInt_t > > ExcludedChannels; // list of channels excluded from calibration(needs to be provided by user)
+	std::list<std::pair<UInt_t,UInt_t>> MissingChannels; // list of channels missing in calibration map 
 	Bool_t bVerboseMode; // flag controlling verbose mode
 	Double_t fBinThreshold; // threshold for bin entries in TDC fine time histogram
 	Long64_t nEventsMax; // maximum number of events in TTree
@@ -96,6 +98,7 @@ public:
 	UInt_t GetNExclChannels() const { return ((UInt_t)ExcludedChannels.size()); };
 	UInt_t GetNRefChannels() const { return ((UInt_t)TdcRefChannels.size()); }; // get number of reference channels
 	void PrintExcludedChannels() const;
+	void PrintMissingChannels() const;
 	void PrintRefChannels() const;
 	void SetCalibrationMethod(Int_t nUserCalibrationType) { nCalibrationType=nUserCalibrationType; };
 	void SetStatsLimit(UInt_t nUserLimit) { nEntriesMin=nUserLimit; };

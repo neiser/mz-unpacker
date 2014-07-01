@@ -35,19 +35,14 @@ TTrbFineTime::TTrbFineTime(const TTrbFineTime &a) : TObject(a) { // copy constru
 	BinWidthTable			= a.BinWidthTable;
 }
 
-TTrbFineTime::TTrbFineTime(const TGraph &grUserCalibration) : TObject(), bCalibrationIsValid(kTRUE),
-		bTableIsComputed(kTRUE) {
-	Int_t nTempLength = grUserCalibration.GetN();
+TTrbFineTime::TTrbFineTime(const TGraph &grUserCalibration) : TObject(), bCalibrationIsValid(kTRUE), bTableIsComputed(kTRUE) {
+	Int_t nTempLength = grUserCalibration.GetN(); // get length of data arrays
 			//cout << nTempLength << endl;
-	Double_t *fTempX = grUserCalibration.GetX();
-	Double_t *fTempY = grUserCalibration.GetY();
-			//std::vector<Double_t> fBin;
-			//fBin.reserve(nTempLength);
-	for(Int_t i=0; i<nTempLength; ++i){
-		CalibrationTable.insert(std::make_pair((UInt_t)fTempX[i],fTempY[i]));
-			//	fBin.push_back(fTempX[i]);
-	}
-			//cout << fBin.size() << " " << fBin.at(0) << " " << fTempX[nTempLength-1] << endl;
+	Double_t *fTempX = grUserCalibration.GetX(); // get pointer to Fine Time bin number array
+	Double_t *fTempY = grUserCalibration.GetY(); //  get pointer to calibrated Fine Time array
+	for(Int_t i=0; i<nTempLength; ++i){ // begin of loop over calibration data arrays
+		CalibrationTable.insert(std::make_pair((UInt_t)fTempX[i],fTempY[i])); // insert data pairs into calibration table
+	} // end of loop over calibration data arrays
 }
 
 

@@ -16,7 +16,7 @@ TTrbCalibration::TTrbCalibration(string cUserDataFilename, Int_t nUserCalibratio
 
 TTrbCalibration::~TTrbCalibration() {
 	delete TrbData;
-	delete CalibrationOutfile;
+	/*delete CalibrationOutfile;*/
 	//if(!TdcCalibrationData.empty())
 	//	DeleteCalibrationPlots();
 }
@@ -41,10 +41,10 @@ void TTrbCalibration::ApplyTdcCalibration(){
 		if(TrbData->GetEntry(nEntryIndex)<1) // check if entry exists and is valid
 			continue; // skip rest of loop
 		// copy event related data
-		HLD_HEADER TempEvtHeader = { TrbData->nEvtSize ,TrbData->nEvtDecoding, TrbData->nEvtId, TrbData->nEvtSeqNr, TrbData->nEvtDate, TrbData->nEvtTime, TrbData->nEvtRun, TrbData->nEvtPad };
-		CurrentEventData->AddEvtHeader(TempEvtHeader);
-		SUB_HEADER TempSubEvtHeader = { TrbData->nSubEvtSize, TrbData->nSubEvtDecoding, TrbData->nSubEvtId, TrbData->nSubEvtTrigger };
-		CurrentEventData->AddSubEvt(TempSubEvtHeader,TrbData->nSebErrCode,TrbData->nTrbs,TrbData->nTdcs,TrbData->nSubEvtDecError);
+		HLD_HEADER TempEvtHeader = { TrbData->nEvtSize ,TrbData->nEvtDecoding, TrbData->nEvtId, TrbData->nEvtSeqNr, TrbData->nEvtDate, TrbData->nEvtTime, TrbData->nEvtRun, TrbData->nEvtPad }; // copy event header data into temporary structure
+		CurrentEventData->AddEvtHeader(TempEvtHeader); // add event header to event data
+		SUB_HEADER TempSubEvtHeader = { TrbData->nSubEvtSize, TrbData->nSubEvtDecoding, TrbData->nSubEvtId, TrbData->nSubEvtTrigger }; // copy subevent header data into temporary structure
+		CurrentEventData->AddSubEvt(TempSubEvtHeader,TrbData->nSebErrCode,TrbData->nTrbs,TrbData->nTdcs,TrbData->nSubEvtDecError); // add subevent header data to event data
 		// calibrate fine time
 		for(Int_t nHitIndex=0; nHitIndex<TrbData->Hits_; nHitIndex++){ // begin of loop over hits
 			// copy existing hit data
@@ -54,14 +54,13 @@ void TTrbCalibration::ApplyTdcCalibration(){
 			                TrbData->Hits_nSignalEdge[nHitIndex],TrbData->Hits_nEpochCounter[nHitIndex],
 			                TrbData->Hits_nCoarseTime[nHitIndex],
 			                TrbData->Hits_nFineTime[nHitIndex],TrbData->Hits_bIsRefChannel[nHitIndex]);
-			Double_t fHitTime = -1.0;
+			Double_t fHitTime = -1.0; // set standard value (there are no unphysical values)
 			std::pair< UInt_t,UInt_t > TdcChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); // extract TDC channel address
 			std::map< std::pair< UInt_t,UInt_t >,TTrbFineTime >::const_iterator FindTdcChannel = ChannelCalibrations.find(TdcChanAddress); // find channel address in calibration map
 			if(FindTdcChannel!=ChannelCalibrations.end()){ // check if channel is calibrated
 				// first calculate time roughly, including epoch counter, which counts the overflows of coarse time
 				// we don't use << binary operator due to overflow
-				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2.0,COARSE_TIME_BITS)
-				                                              + TrbData->Hits_nCoarseTime[nHitIndex]);
+				Double_t fHitTimeCoarse = CLOCK_CYCLE_LENGTH*(TrbData->Hits_nEpochCounter[nHitIndex]*pow(2.0,COARSE_TIME_BITS) + TrbData->Hits_nCoarseTime[nHitIndex]);
 				// Have a look, which calibration for the fine time we use...
 				// Any yes, fine time needs to be SUBTRACTED, see TDC documentation!
 				if(FindTdcChannel->second.IsCalibrated()) { // channel calibration is valid, then use it
@@ -75,6 +74,10 @@ void TTrbCalibration::ApplyTdcCalibration(){
 				}
 				// fHitTime could be -1 if no calibration could be found
 				CurrentHit->SetCalibratedTime(fHitTime); // add calibrated time to hit information
+			}
+			else{ // could NOT find channel in calibration map
+				if(std::find(MissingChannels.begin(),MissingChannels.end(),TdcChanAddress)==MissingChannels.end())
+					MissingChannels.push_back(TdcChanAddress);
 			}
 		} // end of loop over hits
 		OutputTree->Fill();
@@ -122,15 +125,16 @@ std::pair<UInt_t,UInt_t> TTrbCalibration::DecodeChannelId(string cGraphName){
 		cTemp.clear(); // clear error flags (IMPORTANT)
 		cTemp.str(tokens.at(3));
 		cTemp >> dec >> nTdcChan;
-		cout << hex << nTdcId << " " << dec << nTdcChan << endl;
+		//cout << hex << nTdcId << " " << dec << nTdcChan << endl;
 	}
 	return (std::make_pair(nTdcId,nTdcChan));
 }
 
 void TTrbCalibration::DoTdcCalibration(){
-	// tell ROOT that we manage TH1D memory management by ourselves
+	// tell ROOT that we manage TH1D memory by ourselves
 	// this solves the segfault when quitting ROOT (on Linux)
 	TH1D::AddDirectory(kFALSE);
+	CalibrationOutfile = new TFile(cCalibrationFilename.c_str(),"RECREATE"); // need to change the creation of this file
 
 	cout << "Starting TDC Calibration..." << endl;
 	cout << "Working on \"" << cInputFilename << "\"..." << endl;
@@ -155,10 +159,11 @@ void TTrbCalibration::DoTdcCalibration(){
 
 	cout << "Writing calibration tables to disk..." << endl;
 	WriteToFile(); // write TDC fine time histograms to file
+	delete CalibrationOutfile; // close calibration data ROOT file
+	CalibrationOutfile = NULL;
 	// after all that we need to loop over data again and generate calibrated timestamps
 	cout << "Applying calibration..." << endl;
 	ApplyTdcCalibration(); // apply TDC calibration to raw data
-
 	// switch back to standard memory management (i.e. managed by ROOT)
 	TH1D::AddDirectory(kTRUE);
 }
@@ -169,10 +174,10 @@ void TTrbCalibration::DoTdcCalibration(string cCalibrationFile){
 	if(CalibrationFile.IsZombie()){
 		exit(0);
 	};
-	TList *list = (TList*)CalibrationFile.GetListOfKeys();
+	TList *list = (TList*)CalibrationFile.GetListOfKeys(); // get list of keys, i.e. names of THs and TGraphs etc
 	TIter iter((TList*)list);
 	list->Sort();
-	//iter.Begin();
+	//iter.Begin(); // this should not be used (ROOT's idiotic idea of an iterator)
 	string cTempGraphName;
 	TObject *obj;
 	while(obj = iter()){
@@ -181,7 +186,7 @@ void TTrbCalibration::DoTdcCalibration(string cCalibrationFile){
 		string cCalibGraph = "grCalibrationTable";
 		size_t found = cTempGraphName.find(cCalibGraph);
 		if(found!=std::string::npos){
-			cout << cTempGraphName << endl;
+			//cout << cTempGraphName << endl;
 			std::pair<UInt_t,UInt_t> ChanAddress = DecodeChannelId(cTempGraphName);
 			TGraph *grTempCalib = (TGraph*)CalibrationFile.Get(cTempGraphName.c_str());
 			if(bVerboseMode)
@@ -195,12 +200,12 @@ void TTrbCalibration::DoTdcCalibration(string cCalibrationFile){
 			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert =
 				ChannelCalibrations.insert(make_pair(ChanAddress,temp));
 			if(insert.second){
-				insert.first->second.PrintStatus();
+				//insert.first->second.PrintStatus();
 				//cout << insert.first->second.GetCalibratedTime(100) << endl;
 			}
 		}
 	}
-	cout << ChannelCalibrations.size() << endl;
+	//cout << ChannelCalibrations.size() << endl;
 	ApplyTdcCalibration(); // apply TDC calibration to raw data
 	// switch back to standard memory management (i.e. managed by ROOT)
 	TH1D::AddDirectory(kTRUE);
@@ -325,9 +330,9 @@ void TTrbCalibration::Init(){
 	TrbData = NULL; // initialise pointer to data tree
 	TdcRefChannels.clear(); // clear reference channels ID map
 	ExcludedChannels.clear();
+	MissingChannels.clear();
 	fBinThreshold = 0.0; // set bin threshold to 0
 	cCalibrationFilename = cInputFilename + "_CalibrationData.root";
-	CalibrationOutfile = new TFile(cCalibrationFilename.c_str(),"RECREATE"); // need to change the creation of this file
 	cRootFilename	= cInputFilename + "_calibrated.root";
 	OutputRootFile	= NULL;
 	OutputTree		= NULL;
@@ -362,6 +367,13 @@ Bool_t TTrbCalibration::OpenTrbTree(string cUserDataFilename){
 
 void TTrbCalibration::PrintExcludedChannels() const {
 	for(std::vector< pair<UInt_t,UInt_t> >::const_iterator ChannelIndex=ExcludedChannels.begin(); ChannelIndex!=ExcludedChannels.end(); ChannelIndex++){
+		cout << hex << ChannelIndex->first << dec << " " << ChannelIndex->second << endl;
+	}
+}
+
+void TTrbCalibration::PrintMissingChannels() const {
+	std::list<std::pair<UInt_t,UInt_t>>::const_iterator ChannelIndex = MissingChannels.begin();
+	for(ChannelIndex; ChannelIndex!=MissingChannels.end(); ++ChannelIndex){
 		cout << hex << ChannelIndex->first << dec << " " << ChannelIndex->second << endl;
 	}
 }
