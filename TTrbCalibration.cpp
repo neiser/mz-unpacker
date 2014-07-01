@@ -110,6 +110,22 @@ Bool_t TTrbCalibration::CreateTree(){
 	return (!OutputTree->IsZombie());
 }
 
+std::pair<UInt_t,UInt_t> TTrbCalibration::DecodeChannelId(string cGraphName){
+	std::vector<string> tokens = LineParser(cGraphName,'_');
+	UInt_t nTdcId;
+	UInt_t nTdcChan;
+	if(tokens.size()==4){
+		std::istringstream cTemp;
+		cTemp.str(tokens.at(1));
+		cTemp >> hex >> nTdcId;
+		cTemp.str(""); // clear string
+		cTemp.clear(); // clear error flags (IMPORTANT)
+		cTemp.str(tokens.at(3));
+		cTemp >> dec >> nTdcChan;
+		cout << hex << nTdcId << " " << dec << nTdcChan << endl;
+	}
+	return (std::make_pair(nTdcId,nTdcChan));
+}
 
 void TTrbCalibration::DoTdcCalibration(){
 	// tell ROOT that we manage TH1D memory management by ourselves
@@ -146,6 +162,50 @@ void TTrbCalibration::DoTdcCalibration(){
 	// switch back to standard memory management (i.e. managed by ROOT)
 	TH1D::AddDirectory(kTRUE);
 }
+
+void TTrbCalibration::DoTdcCalibration(string cCalibrationFile){
+	TH1D::AddDirectory(kFALSE);
+	TFile CalibrationFile(cCalibrationFile.c_str());
+	if(CalibrationFile.IsZombie()){
+		exit(0);
+	};
+	TList *list = (TList*)CalibrationFile.GetListOfKeys();
+	TIter iter((TList*)list);
+	list->Sort();
+	//iter.Begin();
+	string cTempGraphName;
+	TObject *obj;
+	while(obj = iter()){
+		cTempGraphName = obj->GetName();
+		//cout << cTempGraphName << endl;
+		string cCalibGraph = "grCalibrationTable";
+		size_t found = cTempGraphName.find(cCalibGraph);
+		if(found!=std::string::npos){
+			cout << cTempGraphName << endl;
+			std::pair<UInt_t,UInt_t> ChanAddress = DecodeChannelId(cTempGraphName);
+			TGraph *grTempCalib = (TGraph*)CalibrationFile.Get(cTempGraphName.c_str());
+			if(bVerboseMode)
+				cout << "Creating new Fine Time object..." << endl;
+			TTrbFineTime temp(*grTempCalib);
+			temp.SetVerboseMode(bVerboseMode);
+			temp.SetChannelAddress(ChanAddress);
+			//temp.SetStatsLimit(nEntriesMin);
+			if(bVerboseMode)
+				cout << "Inserting temporary fine time object into map..." << endl;
+			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert =
+				ChannelCalibrations.insert(make_pair(ChanAddress,temp));
+			if(insert.second){
+				insert.first->second.PrintStatus();
+				//cout << insert.first->second.GetCalibratedTime(100) << endl;
+			}
+		}
+	}
+	cout << ChannelCalibrations.size() << endl;
+	ApplyTdcCalibration(); // apply TDC calibration to raw data
+	// switch back to standard memory management (i.e. managed by ROOT)
+	TH1D::AddDirectory(kTRUE);
+}
+
 
 Bool_t TTrbCalibration::ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel){
 	std::pair< UInt_t,UInt_t > TempPair (nUserTrbAddress, nUserTdcChannel); // create pair consisting of FPGA address and TDC channel
@@ -201,7 +261,7 @@ void TTrbCalibration::FillCalibrationTable(){
 }
 
 void TTrbCalibration::FillReferenceCalibrationTables(){
-	const Int_t nSubstituteCalibrationMethod = 0; // define substitute calibration type
+	const Int_t nSubstituteCalibrationMethod = 2; // define substitute calibration type (best option is static method)
 	if(!ReferenceCalibrations.empty())
 		ReferenceCalibrations.clear();
 	if(TdcRefChannels.empty())
@@ -242,7 +302,7 @@ void TTrbCalibration::FillFineTimeHistograms(){
 			TdcRefChannels.insert(ChanAddress); // try inserting channel into reference channel map (since it is a map, no duplicates are allowed)
 		}
 		ChannelRegistered = ChannelCalibrations.find(ChanAddress);
-		if(ChannelRegistered==ChannelCalibrations.end()){
+		if(ChannelRegistered==ChannelCalibrations.end()){ // this channel is not in the list yet, create a new TTrbFineTime object
 			if(bVerboseMode)
 				cout << "Creating new Fine Time object..." << endl;
 			TTrbFineTime temp;

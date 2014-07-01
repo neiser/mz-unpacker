@@ -35,6 +35,22 @@ TTrbFineTime::TTrbFineTime(const TTrbFineTime &a) : TObject(a) { // copy constru
 	BinWidthTable			= a.BinWidthTable;
 }
 
+TTrbFineTime::TTrbFineTime(const TGraph &grUserCalibration) : TObject(), bCalibrationIsValid(kTRUE),
+		bTableIsComputed(kTRUE) {
+	Int_t nTempLength = grUserCalibration.GetN();
+			//cout << nTempLength << endl;
+	Double_t *fTempX = grUserCalibration.GetX();
+	Double_t *fTempY = grUserCalibration.GetY();
+			//std::vector<Double_t> fBin;
+			//fBin.reserve(nTempLength);
+	for(Int_t i=0; i<nTempLength; ++i){
+		CalibrationTable.insert(std::make_pair((UInt_t)fTempX[i],fTempY[i]));
+			//	fBin.push_back(fTempX[i]);
+	}
+			//cout << fBin.size() << " " << fBin.at(0) << " " << fTempX[nTempLength-1] << endl;
+}
+
+
 TTrbFineTime::~TTrbFineTime(){ // standard destructor
 
 }
@@ -183,7 +199,7 @@ void TTrbFineTime::Init(){ // initialise object
 	CalibrationTable.clear(); // clear calibration table;
 	BinWidthTable.clear();
 	InitHistogram(); // initialise fine time histogram
-	fMinWidth = MIN_HISTOGRAM_WIDTH; // minimum fine time distribution width
+	fMinWidth	= MIN_HISTOGRAM_WIDTH; // minimum fine time distribution width
 	fClockCycle = CLOCK_CYCLE_LENGTH;
 }
 

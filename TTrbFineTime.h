@@ -71,6 +71,7 @@ protected:
 public:
 	TTrbFineTime(); // standard constructor
 	TTrbFineTime(const TTrbFineTime &a); // copy constructor
+	TTrbFineTime(const TGraph &grUserCalibration); // constructor using external calibration graph
 	~TTrbFineTime(); // standard destructor
 	void ComputeCalibrationTable(); // compute calibration constants
 	void FillHistogram(Int_t nUserFineTime) { hFineTimeDistribution.Fill((Double_t)nUserFineTime); }; // fill fine time histogram
