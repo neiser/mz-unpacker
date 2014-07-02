@@ -16,6 +16,10 @@ TTrbCalibration::TTrbCalibration(string cUserDataFilename, Int_t nUserCalibratio
 
 TTrbCalibration::~TTrbCalibration() {
 	delete TrbData;
+	if(CalibrationOutfile!=NULL){
+		delete CalibrationOutfile;
+		CalibrationOutfile = NULL;
+	}
 	/*delete CalibrationOutfile;*/
 	//if(!TdcCalibrationData.empty())
 	//	DeleteCalibrationPlots();
@@ -170,7 +174,7 @@ void TTrbCalibration::DoTdcCalibration(){
 
 void TTrbCalibration::DoTdcCalibration(string cCalibrationFile){
 	TH1D::AddDirectory(kFALSE);
-	TFile CalibrationFile(cCalibrationFile.c_str());
+	TFile CalibrationFile(cCalibrationFile.c_str()); // open external calibration file to load old calibration constants
 	if(CalibrationFile.IsZombie()){
 		exit(0);
 	};
@@ -205,6 +209,12 @@ void TTrbCalibration::DoTdcCalibration(string cCalibrationFile){
 			}
 		}
 	}
+	if(ChannelCalibrations.empty()) // check if calibration map is empty
+		exit (0); // exit program
+	OpenLogFile(); // open log file
+	LogFile << "Load calibration file: " << cCalibrationFile << endl;
+	WriteSettingsToLog();
+	CloseLogFile();
 	//cout << ChannelCalibrations.size() << endl;
 	ApplyTdcCalibration(); // apply TDC calibration to raw data
 	// switch back to standard memory management (i.e. managed by ROOT)
@@ -333,10 +343,26 @@ void TTrbCalibration::Init(){
 	MissingChannels.clear();
 	fBinThreshold = 0.0; // set bin threshold to 0
 	cCalibrationFilename = cInputFilename + "_CalibrationData.root";
+	CalibrationOutfile = NULL;
 	cRootFilename	= cInputFilename + "_calibrated.root";
+	cLogFilename	= cInputFilename + "_calibration_log.txt";
 	OutputRootFile	= NULL;
 	OutputTree		= NULL;
 	nEventsMax = 0;
+}
+
+Bool_t TTrbCalibration::OpenLogFile(){
+	if(LogFile.is_open()){ // check, if log file is already open
+		LogFile.close(); // close it then
+	}
+	time_t RawTime; // time structure
+	LogFile.open(cLogFilename.c_str(), ios::out);
+	LogFile << "++++++++++++++++++++++++++++++++++" << endl;
+	LogFile << "+++ TRBv3 Calibration  +++" << endl;
+	LogFile << "++++++++++++++++++++++++++++++++++" << endl;
+	time(&RawTime);
+	LogFile << "\t" << ctime(&RawTime) << endl;
+	return (!LogFile.fail());
 }
 
 
@@ -366,12 +392,22 @@ Bool_t TTrbCalibration::OpenTrbTree(string cUserDataFilename){
 }
 
 void TTrbCalibration::PrintExcludedChannels() const {
+	if(ExcludedChannels.empty())
+		return;
+	cout << "++++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+ TRBv3 TDC Excluded Channels List +" << endl;
+	cout << "++++++++++++++++++++++++++++++++++++" << endl;
 	for(std::vector< pair<UInt_t,UInt_t> >::const_iterator ChannelIndex=ExcludedChannels.begin(); ChannelIndex!=ExcludedChannels.end(); ChannelIndex++){
 		cout << hex << ChannelIndex->first << dec << " " << ChannelIndex->second << endl;
 	}
 }
 
 void TTrbCalibration::PrintMissingChannels() const {
+	if(MissingChannels.empty())
+		return;
+	cout << "+++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+ TRBv3 TDC Missing Channels List +" << endl;
+	cout << "+++++++++++++++++++++++++++++++++++" << endl;
 	std::list<std::pair<UInt_t,UInt_t>>::const_iterator ChannelIndex = MissingChannels.begin();
 	for(ChannelIndex; ChannelIndex!=MissingChannels.end(); ++ChannelIndex){
 		cout << hex << ChannelIndex->first << dec << " " << ChannelIndex->second << endl;
@@ -379,7 +415,8 @@ void TTrbCalibration::PrintMissingChannels() const {
 }
 
 void TTrbCalibration::PrintRefChannels() const {
-
+	if(TdcRefChannels.empty())
+		return;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+ TRBv3 TDC Reference Channel List +" << endl;
 	cout << "++++++++++++++++++++++++++++++++++++" << endl;
@@ -389,29 +426,43 @@ void TTrbCalibration::PrintRefChannels() const {
 
 }
 
+void TTrbCalibration::PrintSettings() const {
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++ Calibration Settings +++" << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	cout << "Number of Fine Time Bins:\t" << FINE_TIME_BINS << endl;
+	cout << "Clock cycle length:\t" << CLOCK_CYCLE_LENGTH << "ns" << endl;
+	cout << "Number of Coarse Time bits:\t" << COARSE_TIME_BITS << endl;
+	cout << "Min required statistics:\t" << nEntriesMin << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+}
+
+void TTrbCalibration::WriteSettingsToLog(){
+	if(!LogFile.is_open()) // log file is not open
+		return;
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup	= std::cout.rdbuf();
+	psbuf	= LogFile.rdbuf();
+	std::cout.rdbuf(psbuf);         // assign streambuf to cout
+	LogFile << "Input data file: " << cInputFilename << endl;
+	LogFile << "Output data file: " << cRootFilename << endl;
+	// print status information to logfile
+	PrintSettings();
+	PrintRefChannels();
+	PrintExcludedChannels();
+	PrintMissingChannels();
+	LogFile << "+++++++++++++++++++++++++++++++" << endl;
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
+}
+
+
 void TTrbCalibration::WriteToFile(){
 	CalibrationOutfile->cd(); // change to the output file
 	// write histograms and graphs to file
 	//for_each(TdcCalibrationData.begin(),TdcCalibrationData.end(),WriteHistogram);
 	for_each(ChannelCalibrations.begin(),ChannelCalibrations.end(),WriteHistogram);
-	// write statistics to tree
-	//UInt_t nTempTdcAddress;
-	//UInt_t nTempTdcChannel;
-	//TDC_CAL_STATS TempStats;
-	//TTree *CalibrationStats = new TTree("T","TRBv3 TDC Fine Time Calibration");
-	//CalibrationStats->Branch("nTdcAddress",&nTempTdcAddress);
-	//CalibrationStats->Branch("nTdcChannel",&nTempTdcChannel);
-	//CalibrationStats->Branch("nEntries",&TempStats.nEntries);
-	//CalibrationStats->Branch("fLowerEdge",&TempStats.fLowerEdge);
-	//CalibrationStats->Branch("fUpperEdge",&TempStats.fUpperEdge);
-	//CalibrationStats->Branch("fWidth",&TempStats.fWidth);
-	//for(std::map<std::pair<UInt_t,UInt_t>,TDC_CAL_DATA>::const_iterator CurChannel=TdcCalibrationData.begin(); CurChannel!=TdcCalibrationData.end(); CurChannel++){
-	//	nTempTdcAddress = CurChannel->first.first;
-	//	nTempTdcChannel = CurChannel->first.second;
-	//	TempStats = CurChannel->second.ChannelStats;
-	//	CalibrationStats->Fill();
-	//}
-	//CalibrationStats->Write();
-	//delete CalibrationStats;
-	//CalibrationStats = NULL;
 }

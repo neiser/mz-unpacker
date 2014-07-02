@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -41,29 +42,26 @@
 
 #define MIN_STATS 10000 // minimum number of entries in fine time histogram for a valid calibration (this is a guide only)
 
-struct TDC_CAL_STATS { // structure for storing TDC calibration statistics
-	Int_t nEntries;
-	Double_t fLowerEdge;
-	Double_t fUpperEdge;
-	Double_t fWidth;
-};
-
-
 // +++ class definition +++
 class TTrbCalibration : public TObject{
 private:
-	TFile *CalibrationOutfile;
+	TFile *CalibrationOutfile; // file for storing calibration plots, i.e. fine time distributions, calibration maps etc.
+	std::ofstream LogFile; // output file stream object for log file
 	TTrbDataTree *TrbData;
 	map<pair<UInt_t, UInt_t>, TTrbFineTime> ChannelCalibrations;
 	map<UInt_t, TTrbFineTime> ReferenceCalibrations; // calibration of reference channels to be used if channel's own calibration fails, TDC address is used as key, always use simple calibration method
 	map<UInt_t,UInt_t> TdcRefChannels; // TDC reference channel IDs (one per FPGA)
 	void ApplyTdcCalibration(); // apply TDC calibration to data
-	Bool_t CreateTree();
+	Bool_t CreateTree(); // create ROOT tree
+	
 	std::pair<UInt_t,UInt_t> DecodeChannelId(string cGraphName); // decode channel ID from graph name
+	void CloseLogFile() { if(LogFile.is_open()) LogFile.close(); }; // close log file
+	
 	void FillCalibrationTable(); // compute calibration look-up table
 	void FillFineTimeHistograms(); // fill fine time histograms
 	void FillReferenceCalibrationTables(); // compute calibration look-up tables for reference channels
 	void Init(); // initialise calibration object
+	Bool_t OpenLogFile(); // open logfile
 	Bool_t OpenRootFile();
 	Bool_t OpenTrbTree(string cUserDataFilename); // open HLD data TTree
 	static void PrintStatus(std::pair< std::pair< UInt_t,UInt_t >,TTrbFineTime > CurrentEntry){
@@ -72,6 +70,7 @@ private:
 			CurrentEntry.second.PrintStatus();
 		}
 	}
+	void WriteSettingsToLog(); // write calibration settings to log file
 	void WriteToFile(); // write calibrations histograms to file
 protected:
 	std::vector< pair< UInt_t,UInt_t > > ExcludedChannels; // list of channels excluded from calibration(needs to be provided by user)
@@ -82,8 +81,9 @@ protected:
 	UInt_t nEntriesMin; // minimum entries required for valid calibration
 	string cCalibrationFilename;
 	Int_t nCalibrationType;
-	string cInputFilename;
-	string cRootFilename;
+	string cInputFilename; // file name of input data file
+	string cRootFilename; //
+	string cLogFilename; // file name for logfile
 	TFile* OutputRootFile; // pointer to ROOT file for storing decoded data
 	TTree* OutputTree; // pointer to ROOT TTree object for data storage
 public:
@@ -100,7 +100,9 @@ public:
 	void PrintExcludedChannels() const;
 	void PrintMissingChannels() const;
 	void PrintRefChannels() const;
+	void PrintSettings() const;
 	void SetCalibrationMethod(Int_t nUserCalibrationType) { nCalibrationType=nUserCalibrationType; };
+	void SetLogfileName(string cUserFilename) { cLogFilename=cUserFilename; }; // set name of logfile
 	void SetStatsLimit(UInt_t nUserLimit) { nEntriesMin=nUserLimit; };
 	void VerboseModeOn() { bVerboseMode=kTRUE; };
 	static void WriteHistogram(std::pair< std::pair< UInt_t,UInt_t >,TTrbFineTime > CurrentEntry) { 
