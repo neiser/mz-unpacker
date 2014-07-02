@@ -49,17 +49,13 @@ private:
 	std::ofstream LogFile; // output file stream object for log file
 	TTrbDataTree *TrbData;
 	map<pair<UInt_t, UInt_t>, TTrbFineTime> ChannelCalibrations;
-	map<UInt_t, TTrbFineTime> ReferenceCalibrations; // calibration of reference channels to be used if channel's own calibration fails, TDC address is used as key, always use simple calibration method
-	map<UInt_t,UInt_t> TdcRefChannels; // TDC reference channel IDs (one per FPGA)
 	void ApplyTdcCalibration(); // apply TDC calibration to data
 	Bool_t CreateTree(); // create ROOT tree
 	
 	std::pair<UInt_t,UInt_t> DecodeChannelId(string cGraphName); // decode channel ID from graph name
 	void CloseLogFile() { if(LogFile.is_open()) LogFile.close(); }; // close log file
-	
 	void FillCalibrationTable(); // compute calibration look-up table
 	void FillFineTimeHistograms(); // fill fine time histograms
-	void FillReferenceCalibrationTables(); // compute calibration look-up tables for reference channels
 	void Init(); // initialise calibration object
 	Bool_t OpenLogFile(); // open logfile
 	Bool_t OpenRootFile();
@@ -94,12 +90,10 @@ public:
 	void DoTdcCalibration(string cCalibrationFile); // run TDC fine time calibration using calibration constants from file
 	Bool_t ExcludeChannel(UInt_t nUserTrbAddress, UInt_t nUserTdcChannel); // exclude channel from calibration
 	UInt_t ExcludeChannels(string UserFilename); // exclude channels stored in text file (first column is the FPGA address (hex) and second column is TDC channel)
-	UInt_t GetNChannels() const { return ((UInt_t)ReferenceCalibrations.size()); }; // get number of TDC channels 
+	UInt_t GetNChannels() const { return ((UInt_t)ChannelCalibrations.size()); }; // get number of TDC channels 
 	UInt_t GetNExclChannels() const { return ((UInt_t)ExcludedChannels.size()); };
-	UInt_t GetNRefChannels() const { return ((UInt_t)TdcRefChannels.size()); }; // get number of reference channels
 	void PrintExcludedChannels() const;
 	void PrintMissingChannels() const;
-	void PrintRefChannels() const;
 	void PrintSettings() const;
 	void SetCalibrationMethod(Int_t nUserCalibrationType) { nCalibrationType=nUserCalibrationType; };
 	void SetLogfileName(string cUserFilename) { cLogFilename=cUserFilename; }; // set name of logfile

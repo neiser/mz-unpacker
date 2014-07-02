@@ -39,7 +39,7 @@
 class TTrbFineTime : public TObject{
 private:
 	void AnalyseHistogram(); // extract information from fine time histogram needed during calibration
-	void CalibrationMode0(); // compute calibration table using simple method
+	void CalibrationMode0(); // compute calibration table using simple method (linear)
 	void CalibrationMode1(); // compute calibration table using advanced method
 	void CalibrationMode2(); // compute calibration table using static limits
 	void FillBinWidthGraph(); // fill fine time bin width graph

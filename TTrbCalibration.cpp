@@ -70,12 +70,6 @@ void TTrbCalibration::ApplyTdcCalibration(){
 				if(FindTdcChannel->second.IsCalibrated()) { // channel calibration is valid, then use it
 					fHitTime = fHitTimeCoarse - FindTdcChannel->second.GetCalibratedTime(TrbData->Hits_nFineTime[nHitIndex]);
 				}
-				else{ // need to use substitute calibration from reference channel on same FPGA/TRB endpoint
-					std::map< UInt_t, TTrbFineTime >::const_iterator SubIndex = ReferenceCalibrations.find(TrbData->Hits_nTrbAddress[nHitIndex]);
-					if(SubIndex!=ReferenceCalibrations.end()){
-						fHitTime = fHitTimeCoarse - SubIndex->second.GetCalibratedTime(TrbData->Hits_nFineTime[nHitIndex]);
-					}
-				}
 				// fHitTime could be -1 if no calibration could be found
 				CurrentHit->SetCalibratedTime(fHitTime); // add calibrated time to hit information
 			}
@@ -156,16 +150,17 @@ void TTrbCalibration::DoTdcCalibration(){
 	if(bVerboseMode)
 		cout << "Number of Calibration Channels: " << ChannelCalibrations.size() << endl;
 	cout << "Filling calibration tables..." << endl;
-	FillReferenceCalibrationTables(); // fill reference channel calibration tables first
+//	FillReferenceCalibrationTables(); // fill reference channel calibration tables first
 	FillCalibrationTable(); // fill TDC channel calibration tables
-	if(bVerboseMode)
-		PrintRefChannels(); // print addresses of found reference channels
-
 	cout << "Writing calibration tables to disk..." << endl;
 	WriteToFile(); // write TDC fine time histograms to file
 	delete CalibrationOutfile; // close calibration data ROOT file
 	CalibrationOutfile = NULL;
 	// after all that we need to loop over data again and generate calibrated timestamps
+	// write log file
+	OpenLogFile(); // open log file
+	WriteSettingsToLog();
+	CloseLogFile();
 	cout << "Applying calibration..." << endl;
 	ApplyTdcCalibration(); // apply TDC calibration to raw data
 	// switch back to standard memory management (i.e. managed by ROOT)
@@ -267,38 +262,13 @@ UInt_t TTrbCalibration::ExcludeChannels(string UserFilename){
 }
 
 void TTrbCalibration::FillCalibrationTable(){
-	for(std::map< std::pair< UInt_t, UInt_t >, TTrbFineTime >::iterator CurrentChannel=ChannelCalibrations.begin(); CurrentChannel!=ChannelCalibrations.end(); ++CurrentChannel){
+	std::map< std::pair< UInt_t, UInt_t >, TTrbFineTime >::iterator CurrentChannel;
+	for(CurrentChannel=ChannelCalibrations.begin(); CurrentChannel!=ChannelCalibrations.end(); ++CurrentChannel){ // begin loop over all TDC channels found
 		CurrentChannel->second.SetCalibrationMethod(nCalibrationType); // set calibration method type
 		CurrentChannel->second.ComputeCalibrationTable(); // compute calibration look-up tables
-	}
+	} // end of loop over all TDC channels found
 	if(bVerboseMode)
 		for_each(ChannelCalibrations.begin(),ChannelCalibrations.end(),PrintStatus); // print status of calibration for each channel
-}
-
-void TTrbCalibration::FillReferenceCalibrationTables(){
-	const Int_t nSubstituteCalibrationMethod = 2; // define substitute calibration type (best option is static method)
-	if(!ReferenceCalibrations.empty())
-		ReferenceCalibrations.clear();
-	if(TdcRefChannels.empty())
-		return;
-	std::map< std::pair< UInt_t, UInt_t >, TTrbFineTime >::const_iterator CopyThisChannel;
-	for(std::map< UInt_t,UInt_t >::const_iterator CopyRefChannel=TdcRefChannels.begin(); CopyRefChannel!=TdcRefChannels.end(); ++CopyRefChannel) {
-		CopyThisChannel = ChannelCalibrations.find(make_pair(CopyRefChannel->first,CopyRefChannel->second));
-		if(CopyThisChannel==ChannelCalibrations.end())
-			continue; // skip rest of loop, however this should never happen (so I need an error flag here)
-		ReferenceCalibrations.insert(make_pair(CopyRefChannel->first,CopyThisChannel->second));
-	}
-	if(bVerboseMode)
-		cout << "Number of Reference Calibrations: " << ReferenceCalibrations.size() << endl;
-	if(ReferenceCalibrations.empty()){
-		return;
-	}
-	for(std::map< UInt_t, TTrbFineTime >::iterator CurrentSubstitute=ReferenceCalibrations.begin(); CurrentSubstitute!=ReferenceCalibrations.end(); ++CurrentSubstitute){ // start of loop over all substitute calibrations
-		CurrentSubstitute->second.SetCalibrationMethod(nSubstituteCalibrationMethod); // set calibration method (has to be the simple version)
-		CurrentSubstitute->second.ComputeCalibrationTable(); // compute calibration look-up tables
-		if(bVerboseMode)
-			CurrentSubstitute->second.PrintStatus();
-	} // end of loop over all substitute calibrations
 }
 
 void TTrbCalibration::FillFineTimeHistograms(){
@@ -306,28 +276,23 @@ void TTrbCalibration::FillFineTimeHistograms(){
 	if(bVerboseMode)
 		cout << "Looping over hits in event..." << endl;
 	for(Int_t nHitIndex=0; nHitIndex<TrbData->Hits_; nHitIndex++){ // begin of loop over hits in this event
-		// create address pair consisting of FPGA address and TDC channel ID
-		pair<UInt_t,UInt_t> ChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]);
+		pair<UInt_t,UInt_t> ChanAddress (TrbData->Hits_nTrbAddress[nHitIndex],TrbData->Hits_nTdcChannel[nHitIndex]); // create address pair consisting of FPGA address and TDC channel ID
 		if(find(ExcludedChannels.begin(),ExcludedChannels.end(),ChanAddress)!=ExcludedChannels.end())
 			continue; // skip creation as this channel has been excluded
 		if(bVerboseMode)
-			cout << "Channel @ 0x" << hex << ChanAddress.first << dec << " No " << ChanAddress.second << endl;
-		// check for reference channels
-		if(TrbData->Hits_bIsRefChannel[nHitIndex]){
-			TdcRefChannels.insert(ChanAddress); // try inserting channel into reference channel map (since it is a map, no duplicates are allowed)
-		}
-		ChannelRegistered = ChannelCalibrations.find(ChanAddress);
-		if(ChannelRegistered==ChannelCalibrations.end()){ // this channel is not in the list yet, create a new TTrbFineTime object
+			cout << "Channel @ " << std::hex << std::showbase << ChanAddress.first << std::noshowbase << dec << " No " << ChanAddress.second << endl;
+		ChannelRegistered = ChannelCalibrations.find(ChanAddress); // try finding channel in calibration map
+		if(ChannelRegistered==ChannelCalibrations.end()){ // this channel is not in the list yet, so create a new TTrbFineTime object
 			if(bVerboseMode)
 				cout << "Creating new Fine Time object..." << endl;
-			TTrbFineTime temp;
-			temp.SetVerboseMode(bVerboseMode);
-			temp.SetChannelAddress(ChanAddress);
-			temp.SetStatsLimit(nEntriesMin);
+			TTrbFineTime temp; // create temporary fine time object
+			temp.SetVerboseMode(bVerboseMode); // set verbosity level
+			temp.SetChannelAddress(ChanAddress); // set channel address
+			temp.SetStatsLimit(nEntriesMin); // set min limit for statistics
 			if(bVerboseMode)
 				cout << "Inserting temporary fine time object into map..." << endl;
 			pair<map<pair<UInt_t,UInt_t>,TTrbFineTime>::iterator,bool> insert =
-				ChannelCalibrations.insert(make_pair(ChanAddress,temp));
+				ChannelCalibrations.insert(make_pair(ChanAddress,temp)); // enter fine time object into calibration map
 			ChannelRegistered = insert.first;
 		}
 		if(bVerboseMode)
@@ -338,7 +303,7 @@ void TTrbCalibration::FillFineTimeHistograms(){
 
 void TTrbCalibration::Init(){
 	TrbData = NULL; // initialise pointer to data tree
-	TdcRefChannels.clear(); // clear reference channels ID map
+	//TdcRefChannels.clear(); // clear reference channels ID map
 	ExcludedChannels.clear();
 	MissingChannels.clear();
 	fBinThreshold = 0.0; // set bin threshold to 0
@@ -414,18 +379,6 @@ void TTrbCalibration::PrintMissingChannels() const {
 	}
 }
 
-void TTrbCalibration::PrintRefChannels() const {
-	if(TdcRefChannels.empty())
-		return;
-	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-	cout << "+ TRBv3 TDC Reference Channel List +" << endl;
-	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-	for(std::map<UInt_t,UInt_t>::const_iterator MapIndex=TdcRefChannels.begin(); MapIndex!=TdcRefChannels.end(); MapIndex++)
-		cout << hex << MapIndex->first << dec << " " << MapIndex->second << " " << ReferenceCalibrations.find(MapIndex->first)->second.GetEntries() << endl;
-	cout << "++++++++++++++++++++++++++++++++++++" << endl;
-
-}
-
 void TTrbCalibration::PrintSettings() const {
 	cout << "++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+++ Calibration Settings +++" << endl;
@@ -449,7 +402,6 @@ void TTrbCalibration::WriteSettingsToLog(){
 	LogFile << "Output data file: " << cRootFilename << endl;
 	// print status information to logfile
 	PrintSettings();
-	PrintRefChannels();
 	PrintExcludedChannels();
 	PrintMissingChannels();
 	LogFile << "+++++++++++++++++++++++++++++++" << endl;
