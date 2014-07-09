@@ -112,6 +112,8 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		Hits.Clear("C"); // clear TRB hits array
 		if(!ThisEvent.ReadIt()){
 			break;
+			//ThisEvent.ReadIt();
+
 		}
 		CurrentEventData->Fill(ThisEvent);
 		nDecodedEvents++;

@@ -22,7 +22,7 @@ THldEvent::~THldEvent(){ // destructor
 void THldEvent::DecodeBaseEventSize(){
 	/*
 		The second header word contains information about the base event size unit;
-		It is encoded in the upper two bytes of this word, so wee need to shift everything by 16 bits to extract the information;
+		It is encoded in the upper two bytes of this word, so we need to shift everything by 16 bits to extract the information;
 	*/
 	nBaseEventSize = 1 << ((EventHeader.nDecoding >> 16) & 0xFF);
 }
@@ -90,12 +90,34 @@ Bool_t THldEvent::ReadIt(){
 			Hits->Clear();
 			bHasSubEvent = kFALSE;
 		}
-		if(SubEventData->GetNBytes() != nDataBytes){
+		size_t nBytesRead = SubEventData->GetNBytes();
+		size_t nBytesSkipped = 0;
+		cout << nBytesRead << " -> " << nDataBytes << endl;
+		size_t nBytesReadOld = nBytesRead;
+		if(nBytesRead != nDataBytes){
 			if(bVerboseMode)
 				cerr << "Error: Bytes read in SubEvent decoder (" << SubEventData->GetNBytes() << ") does not match Event Header information (" << nDataBytes << ")!" << endl;
-			HldFile->ignore(nDataBytes-SubEventData->GetNBytes()); // skip bytes between end of suevent and start of next event
+//			HldFile->ignore(nDataBytes-SubEventData->GetNBytes()); // skip bytes between end of suevent and start of next event
 			//Hits->Clear();
 			//bHasSubEvent = kFALSE;
+
+			if(nBytesRead%8){
+				HldFile->ignore(4);
+				nBytesSkipped += 4;
+			}
+			do{
+				SubEventData->Decode();
+				nBytesRead = SubEventData->GetNBytes();
+				cout << nBytesRead+nBytesSkipped << " -> " << nDataBytes << endl;
+				if((nDataBytes-(nBytesRead+nBytesSkipped))<8)
+					break;
+				if((nBytesRead-nBytesReadOld)%8){
+					HldFile->ignore(4);
+					nBytesSkipped += 4;
+					nBytesReadOld = nBytesRead;
+				}
+			}while((nBytesRead+nBytesSkipped) != nDataBytes);			
+			//SubEventData->Decode();
 		}
 	}
 	SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts

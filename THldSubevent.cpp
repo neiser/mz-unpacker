@@ -209,8 +209,8 @@ Bool_t THldSubEvent::ReadHeader(){ // read subevent header information
 	SwapHeaderWords(); // convert header words from big Endian to little Endian type
 	if(SubEventHeader.nEventId != TrbSettings->nSubEventId){ // check if subevent ID matches 
 		cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching " << TrbSettings->nSubEventId << dec << endl;
-		bIsValid = kFALSE;
-		return (kFALSE);
+		//bIsValid = kFALSE;
+		//return (kFALSE);
 	}
 	nDataBytes = SubEventHeader.nSize - sizeof(SUB_HEADER);
 	nDataWords = nDataBytes/sizeof(UInt_t);
@@ -235,7 +235,8 @@ Bool_t THldSubEvent::ReadTrailer() { // read subevent trailer information
 	if(SubEventTrailer.nSebError != SEB_ERROR_CODE){
 		if(bVerboseMode)
 			cout << "Error in Subevent Builder detected!" << endl;
-		bIsValid = kFALSE;
+		//bIsValid = kFALSE;
+		bIsValid = kTRUE;
 	}
 	else
 		bIsValid = kTRUE;
