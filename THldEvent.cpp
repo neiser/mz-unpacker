@@ -92,7 +92,6 @@ Bool_t THldEvent::ReadIt(){
 		}
 		size_t nBytesRead = SubEventData->GetNBytes();
 		size_t nBytesSkipped = 0;
-		cout << nBytesRead << " -> " << nDataBytes << endl;
 		size_t nBytesReadOld = nBytesRead;
 		if(nBytesRead != nDataBytes){
 			if(bVerboseMode)
@@ -108,7 +107,7 @@ Bool_t THldEvent::ReadIt(){
 			do{
 				SubEventData->Decode();
 				nBytesRead = SubEventData->GetNBytes();
-				cout << nBytesRead+nBytesSkipped << " -> " << nDataBytes << endl;
+				//cout << nBytesRead+nBytesSkipped << " -> " << nDataBytes << endl;
 				if((nDataBytes-(nBytesRead+nBytesSkipped))<8)
 					break;
 				if((nBytesRead-nBytesReadOld)%8){

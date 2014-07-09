@@ -208,7 +208,7 @@ Bool_t THldSubEvent::ReadHeader(){ // read subevent header information
 	}
 	SwapHeaderWords(); // convert header words from big Endian to little Endian type
 	if(SubEventHeader.nEventId != TrbSettings->nSubEventId){ // check if subevent ID matches 
-		cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching " << TrbSettings->nSubEventId << dec << endl;
+		//cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching " << TrbSettings->nSubEventId << dec << endl;
 		//bIsValid = kFALSE;
 		//return (kFALSE);
 	}
@@ -352,8 +352,8 @@ Bool_t THldSubEvent::ReadTrbData() {
 	}
 
 	if(!bFoundCtsPacket) {
-		cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
-		ErrorCode.set(6);
+		//cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
+		//ErrorCode.set(6);
 	}
 	
 	return ErrorCode.any() ? kFALSE : kTRUE;
