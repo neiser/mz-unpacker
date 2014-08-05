@@ -18,7 +18,7 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt
 		exit (-1);
 	}
 
-	TrbSettings.nSubEventId = cUserSubEventId;
+	TrbSettings.nSubEvtIds.push_back(cUserSubEventId);
 	TrbSettings.nCtsAddress = cUserCtsAddress;
 	
 	
@@ -39,6 +39,44 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt
 	SetRootFilename(); // set RooT output filename
 	SetLogFilename(); // set logfile name
 	IndexEvents(); // get positions of events within HLD file
+}
+
+TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventIdFile, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents): TObject(){
+	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
+		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
+		exit (-1);
+	}
+	bVerboseMode	= bUserVerboseMode; // set verbose mode flag
+	bSkipSubEvents	= bUserSkipSubEvents; // set skip subevents flag
+	Init(); // initialise variables
+	SetHldFilename(cUserHldFilename); // set HLD filename
+	if(!OpenHldFile()){ // open HLD file containing raw data
+		cerr << "Error open HLD file " << cHldFilename << " !" << endl;
+		exit (-1);
+	}
+	TrbSettings.nCtsAddress = cUserCtsAddress;
+	if(!cUserSubEventIdFile.empty() && SetSubEvtIds(cUserSubEventIdFile)<0) { // setting addresses of HUB TRB boards, can be empty! 
+		cerr << "Error decoding subevent IDs from file " << cUserSubEventIdFile << endl;
+		exit (-1);
+	}
+	if(!cUserHubAddressesFile.empty() && SetHubAddresses(cUserHubAddressesFile)<0) { // setting addresses of HUB TRB boards, can be empty! 
+		cerr << "Error decoding Hub addresses from file " << cUserHubAddressesFile << endl;
+		exit (-1);
+	}
+	if(SetTdcAddresses(cUserTdcAddressesFile)<1) { // setting addresses of TRB boards with TDC, need at least 1 address
+		cerr << "Error decoding TDC addresses from file " << cUserTdcAddressesFile << endl;
+		exit (-1);
+	}
+	CheckHubTdcAddresses(); // Check if HUBs and endpoints are consistent
+
+	TrbSettings.nTdcRefChannel = nUserTdcRefChannel;
+	
+	if(bVerboseMode)
+		PrintUnpackerSettings();
+	SetRootFilename(); // set RooT output filename
+	SetLogFilename(); // set logfile name
+	IndexEvents(); // get positions of events within HLD file
+
 }
 
 TTrbUnpacker::~TTrbUnpacker(){ // destructor
@@ -111,7 +149,7 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		//cout << i << endl;
 		Hits.Clear("C"); // clear TRB hits array
 		if(!ThisEvent.ReadIt()){
-			break;
+			break; // do I need to break here? I could just not fill this event and realign to next position?
 			//ThisEvent.ReadIt();
 
 		}
@@ -165,10 +203,10 @@ void TTrbUnpacker::Init(){ // initialise unpacker
 
 	cTdcAddresses.clear();
 	cTdcAddresses.reserve(NO_OF_TDC_ADDRESSES);
-	TrbSettings.nSubEventId = 0; // set subevent ID to 0 (should be 0x8C00 for TRBv3)
 	TrbSettings.nTdcRefChannel = 0; // set TDC reference channel to 0
 	TrbSettings.nTdcAddress.clear();
 	TrbSettings.nTdcAddress.reserve(NO_OF_TDC_ADDRESSES);
+	TrbSettings.nSubEvtIds.clear(); // set subevent ID to 0 (should be 0x8C00 for TRBv3)
 
 	OutputRootFile	= NULL;
 	OutputTree		= NULL;
@@ -200,9 +238,16 @@ Bool_t TTrbUnpacker::OpenRootFile(){
 	return (!OutputRootFile->IsZombie());
 }
 
-void TTrbUnpacker::PrintSubEventId(){
-	cout << "Sub event ID is: " << hex << showbase << TrbSettings.nSubEventId << dec << endl;
+
+void TTrbUnpacker::PrintSubEventIds(){
+	std::vector<UInt_t>::const_iterator CurrentSubEvtId;
+	CurrentSubEvtId = TrbSettings.nSubEvtIds.begin();
+	cout << "+++ Subevent IDs: " << endl;
+	for(;CurrentSubEvtId!=TrbSettings.nSubEvtIds.end(); CurrentSubEvtId++){
+		cout << hex << *CurrentSubEvtId << dec << endl;
+	}
 }
+
 
 void TTrbUnpacker::PrintCtsAddress(){
 	cout << "Trigger Control System (TCS) is at " << hex << showbase << TrbSettings.nCtsAddress << dec << endl;
@@ -254,7 +299,7 @@ void TTrbUnpacker::PrintTdcRefChannel(){
 }
 
 void TTrbUnpacker::PrintUnpackerSettings(){
-	PrintSubEventId();
+	PrintSubEventIds();
 	PrintCtsAddress();
 	PrintHubAddresses();
 	PrintTdcAddresses();
@@ -301,6 +346,34 @@ Int_t TTrbUnpacker::SetHubAddresses(string cUserHubAddressesFile){
 	return(cHubAddresses.size());
 }
 
+Int_t TTrbUnpacker::SetSubEvtIds(string cUserSubEvtIdFile){ // set subevent IDs using list in file
+	ifstream UserInputFile(cUserSubEvtIdFile.c_str(),ifstream::in);
+	std::vector<string> cSubEvtIds;
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ',bVerboseMode); 
+		switch (tokens.size()) {
+			case 0: // no tokens on this line
+				continue; // do nothing
+			case 1: 
+				cSubEvtIds.push_back(tokens.at(0));
+				break;
+			default:
+				cSubEvtIds.push_back(tokens.at(0));
+				//continue; // do nothing
+		}
+	} // end loop over input file
+	UserInputFile.close();
+	if(bVerboseMode){
+		cout << cSubEvtIds.size() << " Subevent IDs decoded." << endl;
+	}
+	TrbSettings.nSubEvtIds.resize(cSubEvtIds.size());
+	transform(cSubEvtIds.begin(),cSubEvtIds.end(),TrbSettings.nSubEvtIds.begin(),HexStringToInt);
+	return((Int_t)cSubEvtIds.size());
+}
 
 Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 	ifstream UserInputFile(cUserTdcAddressesFile.c_str(),ifstream::in);
@@ -363,7 +436,6 @@ void TTrbUnpacker::WriteSettingsToLog(){
 	std::cout.rdbuf(psbuf);         // assign streambuf to cout
 	// print status information to logfile
 	PrintUnpackerSettings();
-	//LogFile << "Subevent ID: " << hex << TrbSettings.nSubEventId << dec << endl;
 	//LogFile << "Reference Channel ID: " << TrbSettings.nTdcRefChannel << endl;
 	//LogFile << "TRB board addresses:" <<  endl;
 //	for(std::vector<UInt_t>::const_iterator CurrentTrbUInt=TrbSettings.nTdcAddress.begin(); CurrentTrbUInt!=TrbSettings.nTdcAddress.end(); CurrentTrbUInt++){
@@ -372,6 +444,6 @@ void TTrbUnpacker::WriteSettingsToLog(){
 	LogFile << "+++++++++++++++++++++++++++++++" << endl;
 	// reset cout buffer to terminal
 	std::cout.rdbuf(backup);        // restore cout's original streambuf
-	psbuf = NULL;
+	psbuf  = NULL;
 	backup = NULL;
 }

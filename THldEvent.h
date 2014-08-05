@@ -2,6 +2,7 @@
 #define _T_HLD_EVENT_H
 // +++ include header files +++
 #include <algorithm>
+#include <bitset>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -23,6 +24,7 @@ private:
 	ifstream* HldFile;
 	size_t nDataBytes;
 	size_t nDataWords;
+	//Bool_t CheckSubEvtErrState();
 	void DecodeBaseEventSize();
 	void Init();
 	Bool_t ReadHeader();

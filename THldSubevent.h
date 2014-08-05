@@ -20,7 +20,6 @@
 
 #define NO_ERR_BITS 8
 #define SEB_ERROR_CODE 0x00000001
-#define TRB_HEADER_MARKER 0xC0
 #define TDC_HEADER_MARKER 1 // 0b001, |MH> binary definitions work with gcc but not with VC++
 #define TDC_EPOCH_MARKER  3 // 0b011
 #define TDC_DEBUG_MARKER  2 // 0b010
@@ -32,7 +31,7 @@
 	BIT 3 -> No TDC data available
 	BIT 4 -> Wrong TDC data word (header word duplicated)
 	BIT 5 -> Skipping to many data words in TRB payload
-	BIT 6 -> No TCS trailer found
+	BIT 6 -> No CTS trailer found
 */
 
 /* +++ WORK TO DO +++
@@ -48,6 +47,7 @@ class THldSubEvent : public TObject{
  private:
 	ifstream* HldFile;
 	Bool_t CheckHubAddress(UInt_t& nUserHubAddress); // check decoded HUB address against user provided list
+	Bool_t CheckSubEvtId(UInt_t& nUserSubEvtId); // check decoded Subevent ID against user provided list
 	Bool_t CheckTdcAddress(UInt_t& nUserTdcAddress); // check decoded TDC address against user provided list
 	void DecodeBaseEventSize();
 	//Bool_t DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, UInt_t& nTdcRandomBits, UInt_t& nTdcErrorCode);

@@ -6,7 +6,6 @@ THldEvent::THldEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TC
 	HldFile		= UserHldFile;
 	TrbSettings = UserTrbSettings;
 	Hits		= UserArray;
-	//nSubEventId		= nUserSubEventId;
 	bVerboseMode	= bUserVerboseMode;
 	bSkipSubEvent	= bUserSkipSubEvent;
 	Init();
@@ -91,9 +90,14 @@ Bool_t THldEvent::ReadIt(){
 		do{ // loop over subevent data until all data is read
 			Bool_t bDecodeStatus = SubEventData->Decode(); // read in and decode subevent data
 			nBytesRead = SubEventData->GetNBytes(); // update number of bytes read from file
-			if(!bDecodeStatus){ // error while decoding HLD subevent
+			std::bitset<8> SubEvtErrCode = SubEventData->GetErrorStatus();
+			std::bitset<8> IgnoreErrCode (std::string("01000000"));
+			if(bVerboseMode)
+					cout << "Subevent Error code: " << SubEvtErrCode << endl;
+			//if(!bDecodeStatus){ // error while decoding HLD subevent
+			if((SubEvtErrCode&~IgnoreErrCode).any()){
 				cout << "Error decoding HLD subevent!" << endl;
-				Hits->Clear(); // clear hits array
+				//Hits->Clear(); // clear hits array
 				bHasSubEvent = kFALSE; 
 				HldFile->ignore(nDataBytes-nBytesRead); // ignore rest of event
 				break; // break from do-loop

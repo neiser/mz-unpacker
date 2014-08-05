@@ -25,6 +25,8 @@
 #define TREE_AUTOSAVE 300000000 // set to 300 MBytes
 
 
+
+
 /* +++ WORK TO DO +++
 - detailed error handling
 - check unpacker status before decoding
@@ -53,6 +55,7 @@ private:
 	void SetHldFilename(string cUserFilename) { cHldFilename=cUserFilename; };
 	void SetLogFilename();
 	void SetRootFilename(); // set file name of output RooT file
+	Int_t SetSubEvtIds(string cUserSubEvtIdFile); // set subevent IDs using list in file
 	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
 	Int_t SetHubAddresses(string cUserHubAddressesFile); // set HUB addresses using list in file
 	void CheckHubTdcAddresses();
@@ -70,13 +73,13 @@ protected:
 	void WriteSettingsToLog();
 	
 public:
-	TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
-	             UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
+	TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
+	TTrbUnpacker(string cUserHldFilename, string cUserSubEventIdFile, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file
 	Int_t GetEntryPositon(UInt_t nUserEvtIndex) const { return (nEvtIndex.at(nUserEvtIndex)); };
 	UInt_t GetHldEntries() const { return ((UInt_t)nEvtIndex.size()); }; // return size of event index vector
-	void PrintSubEventId();
+	void PrintSubEventIds();
 	void PrintCtsAddress();
 	void PrintHubAddresses(Bool_t bWriteToLog=kFALSE);
 	void PrintTdcAddresses(Bool_t bWriteToLog=kFALSE);

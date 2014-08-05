@@ -1,8 +1,6 @@
 #include "THldSubevent.h"
 #include <iomanip>
 
-//TClonesArray* THldSubEvent::TrbHits = 0;
-
 ClassImp(THldSubEvent);
 
 THldSubEvent::THldSubEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TClonesArray* UserArray, Bool_t bUserVerboseMode){ // constructor
@@ -23,11 +21,16 @@ Bool_t THldSubEvent::CheckHubAddress(UInt_t& nUserHubAddress){
 	return ( find(TrbSettings->nHubAddress.begin(),TrbSettings->nHubAddress.end(),nUserHubAddress) != TrbSettings->nHubAddress.end());
 }
 
+Bool_t THldSubEvent::CheckSubEvtId(UInt_t& nUserSubEvtId){
+	return ( find(TrbSettings->nSubEvtIds.begin(),TrbSettings->nSubEvtIds.end(),nUserSubEvtId) != TrbSettings->nSubEvtIds.end());
+}
+
 Bool_t THldSubEvent::CheckTdcAddress(UInt_t& nUserTdcAddress){
 	return ( find(TrbSettings->nTdcAddress.begin(),TrbSettings->nTdcAddress.end(),nUserTdcAddress) != TrbSettings->nTdcAddress.end());
 }
 
 Bool_t THldSubEvent::Decode(){ // decode subevent
+	ErrorCode.reset(); // reset error bit array
 	if(bVerboseMode)
 		cout << "Subevent: Reading header..." << endl;
 	if(!ReadHeader()){ // read subevent header
@@ -187,7 +190,6 @@ void THldSubEvent::PrintTrailer(){
 }
 
 void THldSubEvent::PrintTrbData() {
-	//std::vector<UInt_t>::iterator CurrentDataWord=nTrbData.begin();
 	cout << "+++ Trb Data +++";
 	for(size_t i=0;i<nTrbData.size();++i) {
 		if(i % 4 == 0)
@@ -207,12 +209,13 @@ Bool_t THldSubEvent::ReadHeader(){ // read subevent header information
 		return (kFALSE);
 	}
 	SwapHeaderWords(); // convert header words from big Endian to little Endian type
-	if(SubEventHeader.nEventId != TrbSettings->nSubEventId){ // check if subevent ID matches 
-		//cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching " << TrbSettings->nSubEventId << dec << endl;
-		//bIsValid = kFALSE;
-		//return (kFALSE);
+	if(!CheckSubEvtId(SubEventHeader.nEventId)){ // check if subevent ID matches 
+		cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching "  << dec << endl;
+		bIsValid = kFALSE;
+		ErrorCode.set(1);
+		return (kFALSE);
 	}
-	nDataBytes = SubEventHeader.nSize - sizeof(SUB_HEADER);
+	nDataBytes = SubEventHeader.nSize - sizeof(SUB_HEADER); // compute number of bytes in this subevent
 	nDataWords = nDataBytes/sizeof(UInt_t);
 	DecodeBaseEventSize();
 	if(bVerboseMode){
@@ -353,7 +356,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 
 	if(!bFoundCtsPacket) {
 		//cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
-		//ErrorCode.set(6);
+		ErrorCode.set(6);
 	}
 	
 	return ErrorCode.any() ? kFALSE : kTRUE;
