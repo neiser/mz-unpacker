@@ -26,7 +26,7 @@ private:
 	void DecodeBaseEventSize();
 	void Init();
 	Bool_t ReadHeader();
-	void SkipPaddingBytes(size_t nWordsRead);
+	size_t SkipPaddingBytes(size_t nWordsRead);
 	//Bool_t ReadSubEvent();
 protected:
 	HLD_HEADER EventHeader;
@@ -36,7 +36,6 @@ protected:
 	Bool_t bSkipSubEvent;
 	Bool_t bHasSubEvent;
 	size_t nBaseEventSize;
-	size_t nSkipBytes;
 	TClonesArray* Hits;
 	const TRB_SETUP* TrbSettings;
 public:

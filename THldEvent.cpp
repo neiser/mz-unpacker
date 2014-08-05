@@ -43,7 +43,6 @@ void THldEvent::Init(){
 	nBaseEventSize	= 0;
 	nDataBytes		= 0;
 	nDataWords		= 0;
-	nSkipBytes		= 0;
 
 	bIgnoreEvent = kFALSE;
 	bHasSubEvent = kFALSE; // no subevent data present
@@ -63,61 +62,49 @@ void THldEvent::PrintHeader(){
 }
 
 Bool_t THldEvent::ReadIt(){
-	if(SubEventData!=NULL){
+	if(SubEventData!=NULL){ // clear pointer to subevent object
 		delete SubEventData;
 		SubEventData = NULL;
 	}
 	if(!ReadHeader()){ // read HLD Event header information
-		return (kFALSE);
+		return (kFALSE); 
 	}
 	if(EventHeader.nSize == sizeof(HLD_HEADER)){ // check if event contains only header information
 		bHasSubEvent = kFALSE;
 		if(bVerboseMode)
 			cout << "HLD event " << EventHeader.nSeqNr << " contains only header information!" << endl;
-		SkipPaddingBytes(EventHeader.nSize);
+		SkipPaddingBytes(EventHeader.nSize); // skip padding bytes (should noy happen since header contains 8 data words)
 		return (kTRUE);
 	}
-	if(bSkipSubEvent){
+	if(bSkipSubEvent){ // skip subevent data on user request
 		HldFile->ignore(nDataBytes);
 	}
-	else{
+	else{ // event contains also subevent data
 		if(bVerboseMode)
 			cout << "Reading subevent data..." << endl;
 		bHasSubEvent = kTRUE;
-		SubEventData = new THldSubEvent(HldFile,TrbSettings,Hits,bVerboseMode);
-		if(!SubEventData->Decode()){ // error while decoding HLD subevent
-			cout << "Error decoding HLD subevent!" << endl;
-			Hits->Clear();
-			bHasSubEvent = kFALSE;
-		}
-		size_t nBytesRead = SubEventData->GetNBytes();
-		size_t nBytesSkipped = 0;
-		size_t nBytesReadOld = nBytesRead;
-		if(nBytesRead != nDataBytes){
-			if(bVerboseMode)
-				cerr << "Error: Bytes read in SubEvent decoder (" << SubEventData->GetNBytes() << ") does not match Event Header information (" << nDataBytes << ")!" << endl;
-//			HldFile->ignore(nDataBytes-SubEventData->GetNBytes()); // skip bytes between end of suevent and start of next event
-			//Hits->Clear();
-			//bHasSubEvent = kFALSE;
-
-			if(nBytesRead%8){
-				HldFile->ignore(4);
-				nBytesSkipped += 4;
+		SubEventData = new THldSubEvent(HldFile,TrbSettings,Hits,bVerboseMode); // create new subevent object
+		// variables to keep track of amount of data already read from file
+		size_t nBytesRead		= 0;
+		size_t nBytesSkipped	= 0;
+		size_t nBytesReadOld	= 0;
+		do{ // loop over subevent data until all data is read
+			Bool_t bDecodeStatus = SubEventData->Decode(); // read in and decode subevent data
+			nBytesRead = SubEventData->GetNBytes(); // update number of bytes read from file
+			if(!bDecodeStatus){ // error while decoding HLD subevent
+				cout << "Error decoding HLD subevent!" << endl;
+				Hits->Clear(); // clear hits array
+				bHasSubEvent = kFALSE; 
+				HldFile->ignore(nDataBytes-nBytesRead); // ignore rest of event
+				break; // break from do-loop
 			}
-			do{
-				SubEventData->Decode();
-				nBytesRead = SubEventData->GetNBytes();
-				//cout << nBytesRead+nBytesSkipped << " -> " << nDataBytes << endl;
-				if((nDataBytes-(nBytesRead+nBytesSkipped))<8)
-					break;
-				if((nBytesRead-nBytesReadOld)%8){
-					HldFile->ignore(4);
-					nBytesSkipped += 4;
-					nBytesReadOld = nBytesRead;
-				}
-			}while((nBytesRead+nBytesSkipped) != nDataBytes);			
-			//SubEventData->Decode();
-		}
+			if((nDataBytes-(nBytesRead+nBytesSkipped))<nBaseEventSize) // check if less than 8 Bytes need to be read (can only be padding)
+				break;
+			nBytesSkipped += SkipPaddingBytes((nBytesRead-nBytesReadOld));
+			nBytesReadOld = nBytesRead;
+			if(bVerboseMode)
+				cout << nDataBytes << ": " << nBytesRead << ", " << nBytesSkipped << endl;
+		}while((nBytesRead+nBytesSkipped) != nDataBytes);
 	}
 	SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts
 	return (kTRUE);
@@ -139,13 +126,14 @@ Bool_t THldEvent::ReadHeader(){
 	return (kTRUE);
 }
 
-void THldEvent::SkipPaddingBytes(size_t nBytesRead){
+size_t THldEvent::SkipPaddingBytes(size_t nBytesRead){
 	if(bVerboseMode)
 		cout << "Event base size is " << nBaseEventSize << " bytes" << endl;
-	nSkipBytes = nBaseEventSize * (size_t)((nBytesRead-1)/nBaseEventSize + 1) - nBytesRead;
+	size_t nSkipBytes = (size_t)nBytesRead%nBaseEventSize;
 	if(nSkipBytes>0){
 		HldFile->ignore(nSkipBytes);
 		if(bVerboseMode)
 			cout << "Skipping " << nSkipBytes << " bytes!" << endl;
 	}
+	return (nSkipBytes);
 }
