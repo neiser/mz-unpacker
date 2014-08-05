@@ -41,7 +41,8 @@ Bool_t THldSubEvent::Decode(){ // decode subevent
 		cout << "Subevent: Reading TRBv3 data..." << endl;
 
 	if(!ReadTrbData()){
-		cout << "ERROR parsing the TRBv3 data (CHECK THIS!)" << endl;
+		// need to implement to ignore this message if only CTS message is missing!
+		//cout << "ERROR parsing the TRBv3 data (CHECK THIS!)" << endl;
 		if(bVerboseMode)
 			PrintTrbData();
 		// still try reading the trailer of the subevent
@@ -209,18 +210,20 @@ Bool_t THldSubEvent::ReadHeader(){ // read subevent header information
 		return (kFALSE);
 	}
 	SwapHeaderWords(); // convert header words from big Endian to little Endian type
-	if(!CheckSubEvtId(SubEventHeader.nEventId)){ // check if subevent ID matches 
-		cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching "  << dec << endl;
-		bIsValid = kFALSE;
-		ErrorCode.set(1);
-		return (kFALSE);
-	}
 	nDataBytes = SubEventHeader.nSize - sizeof(SUB_HEADER); // compute number of bytes in this subevent
 	nDataWords = nDataBytes/sizeof(UInt_t);
 	DecodeBaseEventSize();
 	if(bVerboseMode){
 		PrintHeader();
 		cout << nDataBytes << ", " << nDataWords << ", " << nBaseEventSize << endl;
+	}
+	if(!CheckSubEvtId(SubEventHeader.nEventId)){ // check if subevent ID matches 
+		cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching "  << dec << endl;
+		bIsValid = kFALSE;
+		ErrorCode.set(1);
+		HldFile->ignore(nDataBytes);
+		nSubEventSize += HldFile->gcount();
+		return (kFALSE); // need to ignore data words belonging to this subevent ID
 	}
 	return (kTRUE);
 }
@@ -298,7 +301,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 				nTdcWords	= nTrbWords;
 				nTdcAddress = nTrbAddress;
 				if(bVerboseMode)
-					cout << "TDC Endpoint found at 0x" << setfill('0') << setw(4)
+					cout << "TDC Endpoint found at " << setfill('0') << setw(4)
 					     << hex << nTdcAddress << dec << ", Payload " << nTdcWords << endl;
 			}
 			else if(nTrbAddress==TrbSettings->nCtsAddress) {
