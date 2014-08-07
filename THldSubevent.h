@@ -46,13 +46,23 @@ class THldSubEvent : public TObject{
 	friend void ClearTdcHeader(TDC_HEADER& TdcHeader);
  private:
 	ifstream* HldFile;
-	Bool_t CheckHubAddress(UInt_t& nUserHubAddress); // check decoded HUB address against user provided list
-	Bool_t CheckSubEvtId(UInt_t& nUserSubEvtId); // check decoded Subevent ID against user provided list
-	Bool_t CheckTdcAddress(UInt_t& nUserTdcAddress); // check decoded TDC address against user provided list
-	void DecodeBaseEventSize();
-	//Bool_t DecodeTdcHeader(std::vector<UInt_t>::const_iterator DataWord, UInt_t& nTdcRandomBits, UInt_t& nTdcErrorCode);
-	Bool_t DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader);
-	Bool_t DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader);
+	enum DecodeErrors {SUBEVTID_ERR,CTS_MISS_ERR,HEADER_ERR,TRAIL_ERR,SEB_ERR,DATA_BLOCK_ERR}; //decoding error cases
+	/* Error bit definitions
+		+ SUBEVTID_ERR -> subevent ID not found in user list;
+		+ CTS_MISS_ERR -> no CTS package found in this subevent (can be ignored if GbE is used);
+		+ HEADER_ERR -> error while reading header data from file (this is considered fatal);
+		+ TRAIL_ERR -> error while reading trailer data from file (this is considered fatal);
+		+ SEB_ERR -> subevent builder error, indicated in TRB data stream, this data should be ignored;
+		+ DATA_BLOCK_ERR -> error while reading TDC data from input file (this is considered fatal);
+
+
+	*/
+	Bool_t CheckHubAddress(UInt_t& nUserHubAddress) const { return ( find(TrbSettings->nHubAddress.begin(),TrbSettings->nHubAddress.end(),nUserHubAddress) != TrbSettings->nHubAddress.end()); }; // check decoded HUB address against user provided list
+	Bool_t CheckSubEvtId(UInt_t& nUserSubEvtId) const { return ( find(TrbSettings->nSubEvtIds.begin(),TrbSettings->nSubEvtIds.end(),nUserSubEvtId) != TrbSettings->nSubEvtIds.end()); }; // check decoded Subevent ID against user provided list
+	Bool_t CheckTdcAddress(UInt_t& nUserTdcAddress) const { return ( find(TrbSettings->nTdcAddress.begin(),TrbSettings->nTdcAddress.end(),nUserTdcAddress) != TrbSettings->nTdcAddress.end()); }; // check decoded TDC address against user provided list
+	void DecodeBaseEventSize() { nBaseEventSize = 1 << ((SubEventHeader.nDecoding >> 16) & 0xFF); };
+	Bool_t DecodeTdcHeader(const UInt_t* DataWord, TDC_HEADER& TdcHeader); // decode TDC header information
+	Bool_t DecodeTdcWord(const UInt_t* DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader); // decode TDC data word
 	void Init(); // initialise variables etc.
 	Bool_t ReadHeader(); // read subevent header words
 	Bool_t ReadTrailer(); // read subevent trailer words
@@ -81,7 +91,7 @@ class THldSubEvent : public TObject{
 public:
 	THldSubEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TClonesArray* UserArray, Bool_t bUserVerboseMode=kFALSE); // constructor
 	~THldSubEvent(); // destructor
-	Bool_t Decode(); // read & decode TRB subevent data
+	const std::bitset<NO_ERR_BITS>* Decode(); // read & decode TRB subevent data
 	std::bitset<NO_ERR_BITS> GetErrorStatus() const { return (ErrorCode); };
 	size_t GetNBytes() { return (nSubEventSize); }; // get number of bytes read from HLD file
 	UInt_t GetNTdcHits() const { return (nTdcHits); };

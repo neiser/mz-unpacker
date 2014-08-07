@@ -18,6 +18,18 @@ THldEvent::~THldEvent(){ // destructor
 		delete SubEventData;
 }
 
+Bool_t THldEvent::CheckErrState(){
+	std::bitset<NO_ERR_BITS> IgnoreErrCode (std::string("00010011"));
+	if(SubEvtErrCode==NULL)
+		return (kFALSE);
+	if(bVerboseMode)
+		cout << "Subevent Error code: " << *SubEvtErrCode << endl;
+	if((*SubEvtErrCode&~IgnoreErrCode).any()){
+		return (kFALSE);
+	}
+	return (kTRUE);
+}
+
 void THldEvent::DecodeBaseEventSize(){
 	/*
 		The second header word contains information about the base event size unit;
@@ -45,6 +57,9 @@ void THldEvent::Init(){
 
 	bIgnoreEvent = kFALSE;
 	bHasSubEvent = kFALSE; // no subevent data present
+
+	SubEvtErrCode = NULL;
+	//IgnoreErrCode.set() (std::string("00000011"));
 }
 
 void THldEvent::PrintHeader(){
@@ -88,16 +103,10 @@ Bool_t THldEvent::ReadIt(){
 		size_t nBytesSkipped	= 0;
 		size_t nBytesReadOld	= 0;
 		do{ // loop over subevent data until all data is read
-			Bool_t bDecodeStatus = SubEventData->Decode(); // read in and decode subevent data
+			SubEvtErrCode = SubEventData->Decode(); // read in and decode subevent data
 			nBytesRead = SubEventData->GetNBytes(); // update number of bytes read from file
-			std::bitset<8> SubEvtErrCode = SubEventData->GetErrorStatus();
-			std::bitset<8> IgnoreErrCode (std::string("01000000"));
-			if(bVerboseMode)
-					cout << "Subevent Error code: " << SubEvtErrCode << endl;
-			//if(!bDecodeStatus){ // error while decoding HLD subevent
-			if((SubEvtErrCode&~IgnoreErrCode).any()){
-				cout << "Error decoding HLD subevent!" << endl;
-				//Hits->Clear(); // clear hits array
+			if(!CheckErrState()){
+				// need to remove hits from this subevent
 				bHasSubEvent = kFALSE; 
 				HldFile->ignore(nDataBytes-nBytesRead); // ignore rest of event
 				break; // break from do-loop

@@ -24,12 +24,13 @@ private:
 	ifstream* HldFile;
 	size_t nDataBytes;
 	size_t nDataWords;
-	//Bool_t CheckSubEvtErrState();
+	Bool_t CheckErrState();
 	void DecodeBaseEventSize();
 	void Init();
 	Bool_t ReadHeader();
 	size_t SkipPaddingBytes(size_t nWordsRead);
 	//Bool_t ReadSubEvent();
+	//std::bitset<NO_ERR_BITS> IgnoreErrCode;
 protected:
 	HLD_HEADER EventHeader;
 	THldSubEvent* SubEventData;
@@ -40,6 +41,7 @@ protected:
 	size_t nBaseEventSize;
 	TClonesArray* Hits;
 	const TRB_SETUP* TrbSettings;
+	const std::bitset<NO_ERR_BITS>* SubEvtErrCode;
 public:
 	THldEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TClonesArray* UserArray, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvent=kFALSE); // constructor
 	//THldEvent(ifstream* UserHldFile, UInt_t nUserSubEventId, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvent=kFALSE); // constructor
@@ -48,6 +50,7 @@ public:
 	size_t GetHeaderSize() const { return (sizeof(HLD_HEADER)); };
 	void PrintHeader();
 	Bool_t ReadIt();
+	//void SetErrorState(std::bitset<NO_ERR_BITS> UserErrState);
 	/* some magic ROOT stuff... */
 	ClassDef(THldEvent,1);
 };

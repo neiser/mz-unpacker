@@ -86,6 +86,25 @@ TTrbUnpacker::~TTrbUnpacker(){ // destructor
 	CloseLogFile(); // close logfile
 }
 
+void TTrbUnpacker::CheckHubTdcAddresses() {
+	if(TrbSettings.nHubAddress.empty())
+		return;
+	// we should find a matching hub address (regarding upper 28 bits)
+	// for each TDC endpoint. If we don't, print a WARNING!
+	for(unsigned i=0; i<TrbSettings.nTdcAddress.size(); i++) {
+		UInt_t TdcAddressUpper28bits = TrbSettings.nTdcAddress[i] & 0xFFF0;
+		Bool_t foundIt = kFALSE;
+		for(unsigned j=0; j<TrbSettings.nHubAddress.size(); j++) {
+			UInt_t hubAddress = TrbSettings.nHubAddress[j];
+			if(hubAddress == TdcAddressUpper28bits)
+				foundIt = kTRUE;
+		}
+		if(!foundIt)
+			cout << "WARNING: TDC endpoint address " << hex << TrbSettings.nTdcAddress[i]
+			     <<" not fitting to HUB addresses list (forgot to add Hub address?)" << endl;
+	}
+}
+
 Bool_t TTrbUnpacker::CloseHldFile(){ // close ifstream connected to HLD file
 	if(InputHldFile.is_open()){ // check if ifstream is connected to a file
 		InputHldFile.close(); // close connection to file
@@ -125,7 +144,7 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		cerr << "Offset exceeds number of events" << endl;
 		return 0;
 	}
-	if(nUserEvents==0)
+	if(nUserEvents==0) // decode all events from UserOffset onwards
 		nUserEvents=nEvtIndex.size()-nUserOffset;
 	InputHldFile.seekg(nEvtIndex.at(nUserOffset),ios::beg); // set file get pointer to first event
 	Bool_t bLogUnpacking = OpenLogFile(); // open log file
@@ -149,13 +168,16 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		//cout << i << endl;
 		Hits.Clear("C"); // clear TRB hits array
 		if(!ThisEvent.ReadIt()){
-			break; // do I need to break here? I could just not fill this event and realign to next position?
-			//ThisEvent.ReadIt();
-
+			// realign data stream to next event
+			if(!InputHldFile.good()) // error reading from file
+				break; // do I need to break here? I could just not fill this event and realign to next position?
+			else if(!RealignDatastream()) // try to realign data stream
+				break; // failed to realign, stop decoding
+			continue; // skip rest of loop, i.e. do not put this data into the output tree
 		}
-		CurrentEventData->Fill(ThisEvent);
+		CurrentEventData->Fill(ThisEvent); // fill tree branches with decoded hit data
 		nDecodedEvents++;
-		OutputTree->Fill();
+		OutputTree->Fill(); // fill output tree
 	}
 	// write information to log file
 	LogFile << "First event:\t" << nUserOffset << endl;
@@ -224,10 +246,6 @@ Bool_t TTrbUnpacker::OpenHldFile(){ // open HLD file and connect to isftream
 
 Bool_t TTrbUnpacker::OpenLogFile(){
 	LogFile.open(cLogFilename.c_str(), ios::out);
-	//if(LogFile.is_open()){
-	//	ClogBackup = clog.rdbuf();
-	//	clog.rdbuf(LogFile.rdbuf());
-	//}
 	return (!LogFile.fail());
 }
 
@@ -304,6 +322,32 @@ void TTrbUnpacker::PrintUnpackerSettings(){
 	PrintHubAddresses();
 	PrintTdcAddresses();
 	PrintTdcRefChannel();
+}
+
+Bool_t TTrbUnpacker::RealignDatastream(){
+	if(bVerboseMode){
+		cout << "Realigning data stream to next event..." << endl;
+	}
+	Int_t nCurrentStreamPos = InputHldFile.tellg(); // get current position in data stream
+	std::vector<Int_t>::iterator NextEvent;
+	NextEvent = std::find(nEvtIndex.begin(),nEvtIndex.end(),nCurrentStreamPos);
+	if(NextEvent!=nEvtIndex.end()){ // data stream already aligned, no action needed
+		if(bVerboseMode)
+			cout << nCurrentStreamPos << " -> " << *NextEvent << endl;
+		return (kTRUE);
+	}
+	else{
+		NextEvent = std::upper_bound(nEvtIndex.begin(),nEvtIndex.end(),nCurrentStreamPos);
+		if(NextEvent!=nEvtIndex.end()){
+			if(bVerboseMode)
+				cout << nCurrentStreamPos << " -> " << *NextEvent << endl;
+			InputHldFile.seekg(*NextEvent,ios::beg); // set file get pointer to next event
+		}
+		else{ // already at end of file
+			return (kFALSE);
+		}
+	}
+	return (kTRUE);
 }
 
 void TTrbUnpacker::SetLogFilename(){
@@ -402,26 +446,6 @@ Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 	transform(cTdcAddresses.begin(),cTdcAddresses.end(),TrbSettings.nTdcAddress.begin(),HexStringToInt);
 	return(cTdcAddresses.size());
 }
-
-void TTrbUnpacker::CheckHubTdcAddresses() {
-	if(TrbSettings.nHubAddress.empty())
-		return;
-	// we should find a matching hub address (regarding upper 28 bits)
-	// for each TDC endpoint. If we don't, print a WARNING!
-	for(unsigned i=0; i<TrbSettings.nTdcAddress.size(); i++) {
-		UInt_t TdcAddressUpper28bits = TrbSettings.nTdcAddress[i] & 0xFFF0;
-		Bool_t foundIt = kFALSE;
-		for(unsigned j=0; j<TrbSettings.nHubAddress.size(); j++) {
-			UInt_t hubAddress = TrbSettings.nHubAddress[j];
-			if(hubAddress == TdcAddressUpper28bits)
-				foundIt = kTRUE;
-		}
-		if(!foundIt)
-			cout << "WARNING: TDC endpoint address " << hex << TrbSettings.nTdcAddress[i]
-			     <<" not fitting to HUB addresses list (forgot to add Hub address?)" << endl;
-	}
-}
-
 
 void TTrbUnpacker::WriteSettingsToLog(){
 	if(!LogFile.is_open()) // log file is not open

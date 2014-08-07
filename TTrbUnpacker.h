@@ -70,6 +70,7 @@ protected:
 	TRB_SETUP TrbSettings;
 	Bool_t bSkipSubEvents;
 	Bool_t bVerboseMode;
+	Bool_t RealignDatastream();
 	void WriteSettingsToLog();
 	
 public:
