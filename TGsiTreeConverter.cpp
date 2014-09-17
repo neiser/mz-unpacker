@@ -116,7 +116,7 @@ void TGsiTreeConverter::Analyse(string cUserAnalysisFilename){
 		hEvtMultiplicity.Fill((Double_t)GetNMatchedHits());
 		hMultiHitPixels.Fill((Double_t)GetNMultiHits());
 		hTriggerTime.Fill(fTrigTime);
-		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel	= EvtReconHits.begin();
+		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel = EvtReconHits.begin();
 		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChannel	= EvtReconHits.end();
 		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator CurChannel;
 		for(CurChannel=FirstChannel; CurChannel!=LastChannel; ++CurChannel){ // begin of loop over all matched hits
