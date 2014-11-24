@@ -2,11 +2,11 @@
 #define _TRB_STRUCTS_H
 
 struct TRB_SETUP{
-	UInt_t nSubEventId; // subevent ID (should be 0x8c00)
 	UInt_t nTdcRefChannel; // TRBv3 TDC reference channel
 	UInt_t nCtsAddress; // TRB address of Central Trigger System (TCS), should be 0x0002
 	std::vector<UInt_t> nHubAddress; // vector of TRBv3 addresses of HUBs (can be empty)
 	std::vector<UInt_t> nTdcAddress; // vector of TRBv3 addresses of TDC endpoints
+	std::vector<UInt_t> nSubEvtIds; // vector of TRBv3 subevent IDs
 };
 
 struct HLD_HEADER { // HLD header description

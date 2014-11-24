@@ -2,6 +2,7 @@
 #define _T_TRBUNPACKER_H
 // +++ include header files +++
 #include <algorithm>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -23,6 +24,8 @@
 #define SIZE_OF_DATAWORD 4
 #define NO_OF_TDC_ADDRESSES 16
 #define TREE_AUTOSAVE 300000000 // set to 300 MBytes
+
+
 
 
 /* +++ WORK TO DO +++
@@ -53,6 +56,7 @@ private:
 	void SetHldFilename(string cUserFilename) { cHldFilename=cUserFilename; };
 	void SetLogFilename();
 	void SetRootFilename(); // set file name of output RooT file
+	Int_t SetSubEvtIds(string cUserSubEvtIdFile); // set subevent IDs using list in file
 	Int_t SetTdcAddresses(string cUserTdcAddressesFile); // set TDC addresses using list in file
 	Int_t SetHubAddresses(string cUserHubAddressesFile); // set HUB addresses using list in file
 	void CheckHubTdcAddresses();
@@ -67,16 +71,18 @@ protected:
 	TRB_SETUP TrbSettings;
 	Bool_t bSkipSubEvents;
 	Bool_t bVerboseMode;
+	Bool_t bApplyPadding;
+	Bool_t RealignDatastream();
 	void WriteSettingsToLog();
 	
 public:
-	TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile,
-	             UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
+	TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserPadding=kTRUE, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
+	TTrbUnpacker(string cUserHldFilename, string cUserSubEventIdFile, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserPadding=kTRUE, Bool_t bUserVerboseMode=kFALSE, Bool_t bUserSkipSubEvents=kFALSE); // constructor
 	~TTrbUnpacker(); // destructor
 	UInt_t Decode(UInt_t nUserEvents, UInt_t nUserOffset=0); // start decoding of HLD file
 	Int_t GetEntryPositon(UInt_t nUserEvtIndex) const { return (nEvtIndex.at(nUserEvtIndex)); };
 	UInt_t GetHldEntries() const { return ((UInt_t)nEvtIndex.size()); }; // return size of event index vector
-	void PrintSubEventId();
+	void PrintSubEventIds();
 	void PrintCtsAddress();
 	void PrintHubAddresses(Bool_t bWriteToLog=kFALSE);
 	void PrintTdcAddresses(Bool_t bWriteToLog=kFALSE);

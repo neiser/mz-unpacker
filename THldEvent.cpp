@@ -6,7 +6,6 @@ THldEvent::THldEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TC
 	HldFile		= UserHldFile;
 	TrbSettings = UserTrbSettings;
 	Hits		= UserArray;
-	//nSubEventId		= nUserSubEventId;
 	bVerboseMode	= bUserVerboseMode;
 	bSkipSubEvent	= bUserSkipSubEvent;
 	Init();
@@ -19,10 +18,22 @@ THldEvent::~THldEvent(){ // destructor
 		delete SubEventData;
 }
 
+Bool_t THldEvent::CheckErrState(){
+	std::bitset<NO_ERR_BITS> IgnoreErrCode (std::string("00010011"));
+	if(SubEvtErrCode==NULL)
+		return (kFALSE);
+	if(bVerboseMode)
+		cout << "Subevent Error code: " << *SubEvtErrCode << endl;
+	if((*SubEvtErrCode&~IgnoreErrCode).any()){
+		return (kFALSE);
+	}
+	return (kTRUE);
+}
+
 void THldEvent::DecodeBaseEventSize(){
 	/*
 		The second header word contains information about the base event size unit;
-		It is encoded in the upper two bytes of this word, so wee need to shift everything by 16 bits to extract the information;
+		It is encoded in the upper two bytes of this word, so we need to shift everything by 16 bits to extract the information;
 	*/
 	nBaseEventSize = 1 << ((EventHeader.nDecoding >> 16) & 0xFF);
 }
@@ -43,10 +54,12 @@ void THldEvent::Init(){
 	nBaseEventSize	= 0;
 	nDataBytes		= 0;
 	nDataWords		= 0;
-	nSkipBytes		= 0;
 
 	bIgnoreEvent = kFALSE;
 	bHasSubEvent = kFALSE; // no subevent data present
+
+	SubEvtErrCode = NULL;
+	//IgnoreErrCode.set() (std::string("00000011"));
 }
 
 void THldEvent::PrintHeader(){
@@ -62,43 +75,52 @@ void THldEvent::PrintHeader(){
 	cout << "++++++++++++++++++++++++" << endl;
 }
 
-Bool_t THldEvent::ReadIt(){
-	if(SubEventData!=NULL){
+Bool_t THldEvent::ReadIt(Bool_t bApplyPadding){
+	if(SubEventData!=NULL){ // clear pointer to subevent object
 		delete SubEventData;
 		SubEventData = NULL;
 	}
 	if(!ReadHeader()){ // read HLD Event header information
-		return (kFALSE);
+		return (kFALSE); 
 	}
 	if(EventHeader.nSize == sizeof(HLD_HEADER)){ // check if event contains only header information
 		bHasSubEvent = kFALSE;
 		if(bVerboseMode)
 			cout << "HLD event " << EventHeader.nSeqNr << " contains only header information!" << endl;
-		SkipPaddingBytes(EventHeader.nSize);
+		SkipPaddingBytes(EventHeader.nSize); // skip padding bytes (should noy happen since header contains 8 data words)
 		return (kTRUE);
 	}
-	if(bSkipSubEvent){
+	if(bSkipSubEvent){ // skip subevent data on user request
 		HldFile->ignore(nDataBytes);
 	}
-	else{
+	else{ // event contains also subevent data
 		if(bVerboseMode)
 			cout << "Reading subevent data..." << endl;
 		bHasSubEvent = kTRUE;
-		SubEventData = new THldSubEvent(HldFile,TrbSettings,Hits,bVerboseMode);
-		if(!SubEventData->Decode()){ // error while decoding HLD subevent
-			cout << "Error decoding HLD subevent!" << endl;
-			Hits->Clear();
-			bHasSubEvent = kFALSE;
-		}
-		if(SubEventData->GetNBytes() != nDataBytes){
+		SubEventData = new THldSubEvent(HldFile,TrbSettings,Hits,bVerboseMode); // create new subevent object
+		// variables to keep track of amount of data already read from file
+		size_t nBytesRead		= 0;
+		size_t nBytesSkipped	= 0;
+		size_t nBytesReadOld	= 0;
+		do{ // loop over subevent data until all data is read
+			SubEvtErrCode = SubEventData->Decode(); // read in and decode subevent data
+			nBytesRead = SubEventData->GetNBytes(); // update number of bytes read from file
+			if(!CheckErrState()){
+				// need to remove hits from this subevent
+				bHasSubEvent = kFALSE; 
+				HldFile->ignore(nDataBytes-nBytesRead); // ignore rest of event
+				break; // break from do-loop
+			}
+			if((nDataBytes-(nBytesRead+nBytesSkipped))<nBaseEventSize) // check if less than 8 Bytes need to be read (can only be padding)
+				break;
+			nBytesSkipped += SkipPaddingBytes((nBytesRead-nBytesReadOld));
+			nBytesReadOld = nBytesRead;
 			if(bVerboseMode)
-				cerr << "Error: Bytes read in SubEvent decoder (" << SubEventData->GetNBytes() << ") does not match Event Header information (" << nDataBytes << ")!" << endl;
-			HldFile->ignore(nDataBytes-SubEventData->GetNBytes()); // skip bytes between end of suevent and start of next event
-			//Hits->Clear();
-			//bHasSubEvent = kFALSE;
-		}
+				cout << nDataBytes << ": " << nBytesRead << ", " << nBytesSkipped << endl;
+		}while((nBytesRead+nBytesSkipped) != nDataBytes);
 	}
-	SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts
+	if(bApplyPadding)
+		SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts
 	return (kTRUE);
 }
 
@@ -118,13 +140,14 @@ Bool_t THldEvent::ReadHeader(){
 	return (kTRUE);
 }
 
-void THldEvent::SkipPaddingBytes(size_t nBytesRead){
+size_t THldEvent::SkipPaddingBytes(size_t nBytesRead){
 	if(bVerboseMode)
 		cout << "Event base size is " << nBaseEventSize << " bytes" << endl;
-	nSkipBytes = nBaseEventSize * (size_t)((nBytesRead-1)/nBaseEventSize + 1) - nBytesRead;
+	size_t nSkipBytes = (size_t)nBytesRead%nBaseEventSize;
 	if(nSkipBytes>0){
 		HldFile->ignore(nSkipBytes);
 		if(bVerboseMode)
 			cout << "Skipping " << nSkipBytes << " bytes!" << endl;
 	}
+	return (nSkipBytes);
 }

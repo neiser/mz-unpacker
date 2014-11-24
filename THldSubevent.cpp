@@ -1,14 +1,12 @@
 #include "THldSubevent.h"
 #include <iomanip>
 
-//TClonesArray* THldSubEvent::TrbHits = 0;
-
 ClassImp(THldSubEvent);
 
 THldSubEvent::THldSubEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettings, TClonesArray* UserArray, Bool_t bUserVerboseMode){ // constructor
 	HldFile			= UserHldFile; // set pointer to HLD file input stream
 	TrbSettings		= UserTrbSettings; // set pointer to TRB setup structure
-	Hits			= UserArray;
+	Hits			= UserArray; // set pointer to TClonesArray to store hit information
 	bVerboseMode	= bUserVerboseMode; // set verbose mode flag
 	Init(); // initialise variables
 }
@@ -16,45 +14,31 @@ THldSubEvent::THldSubEvent(ifstream* UserHldFile, const TRB_SETUP* UserTrbSettin
 THldSubEvent::~THldSubEvent(){ // destructor
 	if(bVerboseMode)
 		cout << "Calling THldSubEvent destructor..." << endl;
-	//delete TrbHits;
 }
 
-Bool_t THldSubEvent::CheckHubAddress(UInt_t& nUserHubAddress){
-	return ( find(TrbSettings->nHubAddress.begin(),TrbSettings->nHubAddress.end(),nUserHubAddress) != TrbSettings->nHubAddress.end());
-}
-
-Bool_t THldSubEvent::CheckTdcAddress(UInt_t& nUserTdcAddress){
-	return ( find(TrbSettings->nTdcAddress.begin(),TrbSettings->nTdcAddress.end(),nUserTdcAddress) != TrbSettings->nTdcAddress.end());
-}
-
-Bool_t THldSubEvent::Decode(){ // decode subevent
+const std::bitset<NO_ERR_BITS>* THldSubEvent::Decode(){ // decode subevent
+	ErrorCode.reset(); // reset error bit array
 	if(bVerboseMode)
 		cout << "Subevent: Reading header..." << endl;
 	if(!ReadHeader()){ // read subevent header
-		return (kFALSE);
+		return (&ErrorCode);
 	}
-	// read TRBv3 header word (4 bytes)
-	if(bVerboseMode)
-		cout << "Subevent: Reading TRBv3 data..." << endl;
-
-	if(!ReadTrbData()){
-		cout << "ERROR parsing the TRBv3 data (CHECK THIS!)" << endl;
-		if(bVerboseMode)
-			PrintTrbData();
-		// still try reading the trailer of the subevent
-		ReadTrailer();			
-		return (kFALSE);
+	if(bVerboseMode){
+		cout << "Subevent "<< hex << SubEventHeader.nEventId << dec << ": Reading TRBv3 data..." << endl;
+	}
+	if(!ReadTrbData()){ // read all TDC data (TDC header, EPOCH counter, TDC time)
+		// need to implement to ignore this message if only CTS message is missing!
+		if(!(ErrorCode.count()==1&&ErrorCode.test(CTS_MISS_ERR))){
+			cerr << "ERROR parsing TRBv3 data (CHECK THIS!)" << endl;
+			if(bVerboseMode)
+				PrintTrbData();
+		}
 	}
 	if(bVerboseMode){
 		cout << nTdcHits << " TDC Hits found in subevent" << endl;
 	}
-	// need to know the number of TRBv3 boards in this setup and their addresses
-	// read TDC header word (4 bytes)
-	// read subevent trailer
-	if(!ReadTrailer())
-		return (kFALSE);
-	
-	return (kTRUE);
+	ReadTrailer(); // read subevent trailer
+	return (&ErrorCode);
 }
 
 void ClearTdcHeader(TDC_HEADER& TdcHeader){
@@ -62,17 +46,13 @@ void ClearTdcHeader(TDC_HEADER& TdcHeader){
 	TdcHeader.nErrorBits	= 0;
 }
 
-void THldSubEvent::DecodeBaseEventSize(){
-	nBaseEventSize = 1 << ((SubEventHeader.nDecoding >> 16) & 0xFF);
-}
-
-Bool_t THldSubEvent::DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader){
+Bool_t THldSubEvent::DecodeTdcHeader(const UInt_t* DataWord, TDC_HEADER& TdcHeader){
 	ClearTdcHeader(TdcHeader);
-	if(((DataWord>>29) & 0x7) != TDC_HEADER_MARKER) { // check 3 bits reserved for TDC header marker
+	if(((*DataWord>>29) & 0x7) != TDC_HEADER_MARKER) { // check 3 bits reserved for TDC header marker
 		return (kFALSE);
 	}
-	TdcHeader.nRandomBits	= (DataWord>>16) & 0xFF;
-	TdcHeader.nErrorBits	= DataWord & 0xFFFF;
+	TdcHeader.nRandomBits	= (*DataWord>>16) & 0xFF;
+	TdcHeader.nErrorBits	= *DataWord & 0xFFFF;
 	nTdcLastChannelNo = -1; // reset the last channel number...
 	if(bVerboseMode){
 		cout << "TDC Header word found!" << endl;
@@ -82,18 +62,16 @@ Bool_t THldSubEvent::DecodeTdcHeader(UInt_t& DataWord, TDC_HEADER& TdcHeader){
 	return (kTRUE);
 }
 
-Bool_t THldSubEvent::DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
-
+Bool_t THldSubEvent::DecodeTdcWord(const UInt_t* DataWord, UInt_t& nUserTdcAddress, TDC_HEADER& TdcHeader) { // decode TDC data word
 	// first check if word is EPOCH or DEBUG
-	UInt_t FirstThreeBits =  (DataWord>>29) & 0x7;
-
+	UInt_t FirstThreeBits =  (*DataWord>>29) & 0x7;
 	// put the EPOCH number into the SubEvent's member
 	if(FirstThreeBits == TDC_EPOCH_MARKER) {
 		if(bVerboseMode)
-			cout << "Found EPOCH word:  " << hex << DataWord << ", " << nUserTdcAddress
+			cout << "Found EPOCH word:  " << hex << *DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		// lowest 28bits represent epoch counter
-		nTdcEpochCounter = DataWord & 0xFFFFFFF;
+		nTdcEpochCounter = *DataWord & 0xFFFFFFF;
 		// this indicates that we found an EPOCH counter 
 		nTdcLastChannelNo = -2;
 		return kFALSE;
@@ -102,38 +80,37 @@ Bool_t THldSubEvent::DecodeTdcWord(UInt_t& DataWord, UInt_t& nUserTdcAddress, TD
 	// check for DEBUG, we don't use this info at the moment
 	if(FirstThreeBits == TDC_DEBUG_MARKER) {
 		if(bVerboseMode)
-			cout << "Found DEBUG word:  " << hex << DataWord << ", " << nUserTdcAddress
+			cout << "Found DEBUG word:  " << hex << *DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		return kFALSE;
 	}
 	
 	// now we expect a TIMEDATA word...if not, we don't know :)
-	if((DataWord>>31) != 1) { // check time data marker i.e. MSB==1
+	if((*DataWord>>31) != 1) { // check time data marker i.e. MSB==1
 		if(bVerboseMode)
-			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << DataWord << ", " << nUserTdcAddress
+			cout << "Found ??UNKNOWN?? word (maybe spurious header): " << hex << *DataWord << ", " << nUserTdcAddress
 			     <<	" , " << dec << nTdcHits << endl;
 		
 		return kFALSE;
 	}
 	
-	UInt_t nTdcChannelNo	= (DataWord>>22) & 0x7F; // TDC channel number is represented by 7 bits
+	UInt_t nTdcChannelNo	= (*DataWord>>22) & 0x7F; // TDC channel number is represented by 7 bits
 	// check here if we need to reset the EPOCH counter
 	if(nTdcLastChannelNo>=0 && (Int_t)nTdcChannelNo != nTdcLastChannelNo) {
 		if(bVerboseMode)
 			cout << "Epoch Counter reset since channel has changed" << endl;
 		nTdcEpochCounter = 0;
 	}
-
 	Bool_t bIsRefChannel	= (nTdcChannelNo==TrbSettings->nTdcRefChannel) ? kTRUE : kFALSE;
-	UInt_t nTdcFineTime		= (DataWord>>12) & 0x3FF; // TDC fine time is represented by 10 bits
-	UInt_t nTdcEdge			= (DataWord>>11) & 0x1; // TDC edge indicator: 1->rising edge, 0->falling edge
-	UInt_t nTdcCoarseTime	= DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
+	UInt_t nTdcFineTime		= (*DataWord>>12) & 0x3FF; // TDC fine time is represented by 10 bits
+	UInt_t nTdcEdge			= (*DataWord>>11) & 0x1; // TDC edge indicator: 1->rising edge, 0->falling edge
+	UInt_t nTdcCoarseTime	= *DataWord & 0x7FF; // TDC coarse time is represented by 11 bits
 	TTrbHit* CurrentHit = (TTrbHit*)Hits->ConstructedAt(nTdcHits); // create new TTrbHit in TclonesArray Hits
 	CurrentHit->SetVerboseMode(bVerboseMode);
 	CurrentHit->Set(nUserTdcAddress,nTdcChannelNo,TdcHeader.nRandomBits,TdcHeader.nErrorBits,
 	                nTdcEdge,nTdcEpochCounter,nTdcCoarseTime,nTdcFineTime,bIsRefChannel);
 	if(bVerboseMode)
-		cout << "Found TIMEDATA word:  " <<hex << DataWord << dec << ", channel " << nTdcChannelNo
+		cout << "Found TIMEDATA word:  " <<hex << *DataWord << dec << ", channel " << nTdcChannelNo
 		     << " Epoch:" << nTdcEpochCounter  << " last: " << nTdcLastChannelNo << endl;
 	nTdcLastChannelNo = (Int_t)nTdcChannelNo;
 	return kTRUE;
@@ -187,7 +164,6 @@ void THldSubEvent::PrintTrailer(){
 }
 
 void THldSubEvent::PrintTrbData() {
-	//std::vector<UInt_t>::iterator CurrentDataWord=nTrbData.begin();
 	cout << "+++ Trb Data +++";
 	for(size_t i=0;i<nTrbData.size();++i) {
 		if(i % 4 == 0)
@@ -199,50 +175,60 @@ void THldSubEvent::PrintTrbData() {
 }
 
 Bool_t THldSubEvent::ReadHeader(){ // read subevent header information
-	HldFile->read((char*)&SubEventHeader,sizeof(SUB_HEADER));
+	HldFile->read((char*)&SubEventHeader,sizeof(SUB_HEADER)); // read header data from input file
 	nSubEventSize += HldFile->gcount(); // add read header bytes to subevent size
-	if(HldFile->gcount() != sizeof(SUB_HEADER)){
+	if(HldFile->gcount() != sizeof(SUB_HEADER)){ // check if all of the header data was read from file
 		cerr << "Error reading subevent header from HLD file!" << endl;
-		bIsValid = kFALSE;
+		ErrorCode.set(HEADER_ERR); // set error bit
+		bIsValid = kFALSE; // mark data as invalid
 		return (kFALSE);
 	}
 	SwapHeaderWords(); // convert header words from big Endian to little Endian type
-	if(SubEventHeader.nEventId != TrbSettings->nSubEventId){ // check if subevent ID matches 
-		cerr << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching " << TrbSettings->nSubEventId << dec << endl;
-		bIsValid = kFALSE;
-		return (kFALSE);
-	}
-	nDataBytes = SubEventHeader.nSize - sizeof(SUB_HEADER);
-	nDataWords = nDataBytes/sizeof(UInt_t);
-	DecodeBaseEventSize();
+	nDataBytes = SubEventHeader.nSize - sizeof(SUB_HEADER); // compute number of bytes in this subevent
+	nDataWords = nDataBytes/sizeof(UInt_t); // compute number of data words to be read
+	DecodeBaseEventSize(); // decode base size of events (should be 4)
 	if(bVerboseMode){
 		PrintHeader();
 		cout << nDataBytes << ", " << nDataWords << ", " << nBaseEventSize << endl;
+	}
+	if(!CheckSubEvtId(SubEventHeader.nEventId)){ // check if subevent ID matches
+		if(bVerboseMode){
+			cout << "Subevent ID " << hex << SubEventHeader.nEventId << " not matching "  << dec << endl;
+			cout << "Skipping " << nDataBytes << " bytes of data" << endl;
+		}
+		bIsValid = kFALSE; // mark data as invalid
+		ErrorCode.set(SUBEVTID_ERR); // set error bit
+		HldFile->ignore(nDataBytes); // ignore rest of subevent
+		nSubEventSize += HldFile->gcount(); // add skipped bytes to event size counter
+		return (kFALSE); // need to ignore data words belonging to this subevent ID
 	}
 	return (kTRUE);
 }
 
 Bool_t THldSubEvent::ReadTrailer() { // read subevent trailer information
-	HldFile->read((char*)&SubEventTrailer,sizeof(SUB_TRAILER));
-	nSubEventSize += HldFile->gcount();
-	if(HldFile->gcount() != sizeof(SUB_TRAILER)) {
+	HldFile->read((char*)&SubEventTrailer,sizeof(SUB_TRAILER)); // read trailer information from input file
+	nSubEventSize += HldFile->gcount(); // add read trailer bytes to subevent size
+	if(HldFile->gcount() != sizeof(SUB_TRAILER)) { // check if all of the trailer information was read from file
+		ErrorCode.set(TRAIL_ERR); // set error bit
 		cerr << "Error reading subevent trailer from HLD file!" << endl;
 		return (kFALSE);
 	}
-	SwapTrailerWords();
+	SwapTrailerWords(); // convert header words from big Endian to little Endian type
 	if(bVerboseMode)
-		PrintTrailer();
-	if(SubEventTrailer.nSebError != SEB_ERROR_CODE){
+		PrintTrailer(); // print decoded trailer data to screen
+	if(SubEventTrailer.nSebError != SEB_ERROR_CODE){ // check subevent builder error code
+		ErrorCode.set(SEB_ERR); // set error bit
 		if(bVerboseMode)
 			cout << "Error in Subevent Builder detected!" << endl;
-		bIsValid = kFALSE;
+		bIsValid = kFALSE; // mark data as invalid
+		//bIsValid = kTRUE;
 	}
 	else
 		bIsValid = kTRUE;
 	return (kTRUE);
 }
 
-Bool_t THldSubEvent::ReadTrbData() {	
+Bool_t THldSubEvent::ReadTrbData() { // read and decode TRB TDC data words
 	size_t nTrbDataBytes = nDataBytes - sizeof(SUB_TRAILER); // compute number of TRB data bytes to read
 	size_t nTrbDataWords = nTrbDataBytes/sizeof(UInt_t); // compute number of TRB data words to read
 	if(bVerboseMode)
@@ -251,13 +237,12 @@ Bool_t THldSubEvent::ReadTrbData() {
 	HldFile->read((char*)&nTrbData[0],nTrbDataBytes); // read TRB data from HLD file
 	nSubEventSize += HldFile->gcount(); // increase number of bytes read from HLD file
 	if((size_t)HldFile->gcount() != nTrbDataBytes){ // check amount of bytes actually read from HLD file
+		ErrorCode.set(DATA_BLOCK_ERR); // set error bit
 		cerr << "Error reading subevent TRB data from HLD file!" << endl;
 		return kFALSE;
 	}
-	// swap bytes of all TRB data words
+	// swap bytes of all TRB data words from big Endian to little Endian type
 	transform(nTrbData.begin(),nTrbData.end(),nTrbData.begin(),SwapBigEndian); 
-	
-
 	// state machine for TDC data decoding needed
 	UInt_t nTrbAddress	= 0;
 	size_t nTrbWords	= 0;
@@ -267,16 +252,15 @@ Bool_t THldSubEvent::ReadTrbData() {
 	
 	TDC_HEADER TdcHeader;
 	
-	unsigned i=0;
+	UInt_t i;
 	for(i=0;i<nTrbData.size();i++){ // loop over all TRB data and decode TDC hits
-		
-		UInt_t CurrentDataWord = nTrbData[i]; 
+	const UInt_t* CurrentDataWord = &nTrbData.at(i); 
 		if(bVerboseMode)
-			cout << "i=" << i <<" Data: " << setfill('0') << setw(8) << hex << CurrentDataWord << dec << endl;
-		if(nTdcWords==0) {			
+			cout << "i = " << i <<" Data: " << setfill('0') << setw(8) << hex << *CurrentDataWord << dec << endl;
+		if(nTdcWords==0){ // this is the first TDC word, must be an address and number of words connected to this address
 			// look for DataWord with matching TrbAddress
-			nTrbAddress = CurrentDataWord & 0xFFFF;
-			nTrbWords	= CurrentDataWord>>16;
+			nTrbAddress = *CurrentDataWord & 0xFFFF; // extract node address
+			nTrbWords	= *CurrentDataWord>>16; // extract number of words belonging to this node
 		
 			if(CheckHubAddress(nTrbAddress)) {
 				// we found a interesting hub, we simply do nothing but
@@ -294,7 +278,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 				nTdcWords	= nTrbWords;
 				nTdcAddress = nTrbAddress;
 				if(bVerboseMode)
-					cout << "TDC Endpoint found at 0x" << setfill('0') << setw(4)
+					cout << "TDC Endpoint found at " << setfill('0') << setw(4)
 					     << hex << nTdcAddress << dec << ", Payload " << nTdcWords << endl;
 			}
 			else if(nTrbAddress==TrbSettings->nCtsAddress) {
@@ -327,7 +311,7 @@ Bool_t THldSubEvent::ReadTrbData() {
 				continue;
 			}
 			// successfully parsed Tdc Header
-			nTdcWords--;
+			nTdcWords--; //
 		}
 		else {
 			if(DecodeTdcWord(CurrentDataWord, nTdcAddress, TdcHeader)) {
@@ -351,8 +335,10 @@ Bool_t THldSubEvent::ReadTrbData() {
 	}
 
 	if(!bFoundCtsPacket) {
-		cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
-		ErrorCode.set(6);
+		ErrorCode.set(CTS_MISS_ERR);
+		//if(TrbSettings->nSubEvtIds.size()==1){
+			//cerr << "ERROR in Subevent " << hex << SubEventHeader.nTrigger <<": No CTS packet found " << endl;
+		//}
 	}
 	
 	return ErrorCode.any() ? kFALSE : kTRUE;
