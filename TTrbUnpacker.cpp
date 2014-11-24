@@ -4,11 +4,12 @@ ClassImp(TTrbUnpacker);
 
 TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt_t cUserCtsAddress,
                            string cUserHubAddressesFile, string cUserTdcAddressesFile,
-                           UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
+                           UInt_t nUserTdcRefChannel, Bool_t bUserPadding, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents) : TObject(){ // standard constructor
 	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
 		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
 		exit (-1);
 	}
+	bApplyPadding	= bUserPadding; // set Padding method
 	bVerboseMode	= bUserVerboseMode; // set verbose mode flag
 	bSkipSubEvents	= bUserSkipSubEvents; // set skip subevents flag
 	Init(); // initialise variables
@@ -41,11 +42,12 @@ TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, UInt_t cUserSubEventId, UInt
 	IndexEvents(); // get positions of events within HLD file
 }
 
-TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventIdFile, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents): TObject(){
+TTrbUnpacker::TTrbUnpacker(string cUserHldFilename, string cUserSubEventIdFile, UInt_t cUserCtsAddress, string cUserHubAddressesFile, string cUserTdcAddressesFile, UInt_t nUserTdcRefChannel, Bool_t bUserPadding, Bool_t bUserVerboseMode, Bool_t bUserSkipSubEvents): TObject(){
 	if(sizeof(UInt_t) != SIZE_OF_DATAWORD){ // check size of UInt_t (should be 4 bytes)
 		cerr << "Size of UInt_t and HLD data word do NOT match!" << endl;
 		exit (-1);
 	}
+	bApplyPadding	= bUserPadding; // set Padding method
 	bVerboseMode	= bUserVerboseMode; // set verbose mode flag
 	bSkipSubEvents	= bUserSkipSubEvents; // set skip subevents flag
 	Init(); // initialise variables
@@ -164,10 +166,13 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 	TTrbEventData *CurrentEventData = new TTrbEventData(Hits);
 	OutputTree->Branch("event","TTrbEventData",&CurrentEventData);
 	THldEvent ThisEvent(&InputHldFile,&TrbSettings,&Hits,bVerboseMode,bSkipSubEvents);
+	// measure time needed for unpacking
+	time_t StartTime; 
+	time(&StartTime); // get time before entering analysis loop
 	for(UInt_t i=0; i<nUserEvents; i++){
 		//cout << i << endl;
 		Hits.Clear("C"); // clear TRB hits array
-		if(!ThisEvent.ReadIt()){
+		if(!ThisEvent.ReadIt(bApplyPadding)){
 			// realign data stream to next event
 			if(!InputHldFile.good()) // error reading from file
 				break; // do I need to break here? I could just not fill this event and realign to next position?
@@ -179,15 +184,21 @@ UInt_t TTrbUnpacker::Decode(UInt_t nUserEvents, UInt_t nUserOffset) { // decode 
 		nDecodedEvents++;
 		OutputTree->Fill(); // fill output tree
 	}
+	time_t StopTime;
+	time(&StopTime); // time when unpacking is finished
+	Double_t fRunTime = difftime(StopTime,StartTime);
 	// write information to log file
 	LogFile << "First event:\t" << nUserOffset << endl;
 	LogFile << "No of decoded events:\t" << nUserEvents << endl;
+	LogFile << "Unpacking duration " << fRunTime << " seconds" << endl;
+	cout << "Unpacking took " << fRunTime << " seconds to complete" << endl;
+	cout << "Avg time for unpacking an event " << fRunTime/(Double_t)nDecodedEvents << "s" << endl;
 	// write out put to disk
 	cout << "Writing Tree to disk..." << endl;
 	OutputRootFile = OutputTree->GetCurrentFile();
 	OutputRootFile->Write();
 	cout << "Cleaning up after decoding..." << endl;
-	cout << "Deleting Tree..." << hex << OutputTree << dec << endl;
+	cout << "Deleting Tree..." << std::hex << std::showbase << OutputTree << std::noshowbase << dec << endl;
 	delete OutputTree;
 	OutputTree = NULL;
 	cout << "Deleting RooT file..." << endl;
@@ -206,7 +217,7 @@ void TTrbUnpacker::IndexEvents(){
 	THldEvent DummyEvent(&InputHldFile,&TrbSettings,NULL,kFALSE,kTRUE); // skip subevent decoding part
 	while(InputHldFile.good()){ // begin of loop over HLD file
 		Int_t nTempEvtIndex = InputHldFile.tellg();
-		if(!DummyEvent.ReadIt()){
+		if(!DummyEvent.ReadIt(bApplyPadding)){
 			break;
 		}
 		nEvtIndex.push_back(nTempEvtIndex); // put file get pointer position into vector, index is event number
@@ -450,9 +461,12 @@ Int_t TTrbUnpacker::SetTdcAddresses(string cUserTdcAddressesFile){
 void TTrbUnpacker::WriteSettingsToLog(){
 	if(!LogFile.is_open()) // log file is not open
 		return;
+	time_t CurrentTime;
+	time(&CurrentTime);
 	LogFile << "+++++++++++++++++++++++++++++++" << endl;
 	LogFile << "+++ TRBv3 Unpacker Settings +++" << endl;
 	LogFile << "+++++++++++++++++++++++++++++++" << endl;
+	LogFile << "\t" << ctime(&CurrentTime) << endl;
 	// redirect cout buffer to logfile
 	std::streambuf *psbuf, *backup;
 	backup	= std::cout.rdbuf();
@@ -460,11 +474,6 @@ void TTrbUnpacker::WriteSettingsToLog(){
 	std::cout.rdbuf(psbuf);         // assign streambuf to cout
 	// print status information to logfile
 	PrintUnpackerSettings();
-	//LogFile << "Reference Channel ID: " << TrbSettings.nTdcRefChannel << endl;
-	//LogFile << "TRB board addresses:" <<  endl;
-//	for(std::vector<UInt_t>::const_iterator CurrentTrbUInt=TrbSettings.nTdcAddress.begin(); CurrentTrbUInt!=TrbSettings.nTdcAddress.end(); CurrentTrbUInt++){
-//		clog << hex << *CurrentTrbUInt << dec << endl;
-//	}
 	LogFile << "+++++++++++++++++++++++++++++++" << endl;
 	// reset cout buffer to terminal
 	std::cout.rdbuf(backup);        // restore cout's original streambuf

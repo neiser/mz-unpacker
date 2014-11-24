@@ -75,7 +75,7 @@ void THldEvent::PrintHeader(){
 	cout << "++++++++++++++++++++++++" << endl;
 }
 
-Bool_t THldEvent::ReadIt(){
+Bool_t THldEvent::ReadIt(Bool_t bApplyPadding){
 	if(SubEventData!=NULL){ // clear pointer to subevent object
 		delete SubEventData;
 		SubEventData = NULL;
@@ -119,7 +119,8 @@ Bool_t THldEvent::ReadIt(){
 				cout << nDataBytes << ": " << nBytesRead << ", " << nBytesSkipped << endl;
 		}while((nBytesRead+nBytesSkipped) != nDataBytes);
 	}
-	SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts
+	if(bApplyPadding)
+		SkipPaddingBytes(EventHeader.nSize); // if event length is not a multiple of 8 empty bytes will be added before next event starts
 	return (kTRUE);
 }
 
