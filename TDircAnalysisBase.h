@@ -37,6 +37,9 @@ struct PixelHitModel{
 
 		PixelHitModel() {};
 		//bool operator < (const PixelHitModel &b) const { return fSyncLETime < b.fSyncLETime; };
+		const bool operator==(const PixelHitModel& other) const {
+			return (nChannelA==other.nChannelA);
+		};
 		friend ostream& operator << (ostream &s, const PixelHitModel &a) {
 			s << a.nChannelA << "\t" << a.nChannelB << "\t" << a.fSyncLETime << "\t" << a.fTimeOverThreshold << "\t" << a.nSyncIndex;
 			return s;
@@ -46,6 +49,9 @@ struct PixelHitModel{
 		Double_t GetToT() const { return fTimeOverThreshold; };
 		UInt_t GetTrailEdgeChan() const { return nChannelB; };
 	};
+
+//#pragma link C++ class std::list<PixelHitModel>+;
+
 
 // MISSING ITEMS
 // - reference channel, e.g. trigger signal
@@ -80,7 +86,7 @@ public:
 	TDircAnalysisBase(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // constructor
 	~TDircAnalysisBase();
 	//virtual void Analyse(string cUserAnalysisFilename); // user analysis code goes here...
-	virtual void Analyse(string cUserAnalysisFilename) = 0;
+	//virtual void Analyse(string cUserAnalysisFilename) = 0;
 	void ClearTimingWindow() { TimingWindow=std::make_pair(0,0); bApplyTimingCut=kFALSE; }; // clear timing value limits
 	void ClearTriggerChannel() { nTriggerSeqId=-1; TriggerChannelAddress=std::make_pair(0,0); bTrigChanIsSet=kFALSE; }; // clear trigger channel address
 	void ClearTriggerWindow() { TriggerWindow=std::make_pair(0,0); bApplyTrigCut=kFALSE; }; // clear trigger timing window
