@@ -38,13 +38,43 @@ Bool_t TFlashAnalysis::AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB){
 	return (ret.second);
 }
 
+UInt_t TFlashAnalysis::AddPixelPairs(string cUserPairList){
+	UInt_t nAddedPixelPairs = 0;
+	if(cUserPairList.empty()){ // check if user pair list name string is empty
+//		if(bVerboseMode)
+			cout << "TDC address string is empty!" << endl;
+		return (0);
+	}
+	ifstream UserInputFile(cUserPairList.c_str(),ifstream::in); // open text file containing pixel pair combinations
+	if(!UserInputFile.is_open()){ // check if opening text file was successful
+		cerr << "Could not open TDC addresses file " << cUserPairList << endl;
+		return (0);
+	}
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ');
+		switch (tokens.size()) {
+			case 2: // pair definition should contain only two values
+				if(AddPixelPair((UInt_t)strtoul(tokens.at(0).c_str(),NULL,10),(UInt_t)strtoul(tokens.at(1).c_str(),NULL,10))) // try to add this pixel pair combination
+					nAddedPixelPairs++; // in case of success, increment counter
+				break;
+			default:
+				continue; // do nothing
+		}
+	}// end of loop over input file
+	return (nAddedPixelPairs);
+}
+
 void TFlashAnalysis::Analyse(Long64_t nEntryIndex){
 	Clear(); // reset all variables needed in analysis of one event
 	Int_t nEntrySize = GetEntry(nEntryIndex);
 	if(nEntrySize<1){// if entry is smaller than 1, something went wrong
 		return;
 	}
-	nNumberOfHitPixels = (UInt_t)EvtReconHits.size(); // number of reconstructed hits is just the size of thi smap object
+	nNumberOfHitPixels = (UInt_t)EvtReconHits.size(); // number of reconstructed hits is just the size of this map object
 	if(!PixelPairs.empty()){
 		for (std::set< std::pair<UInt_t,UInt_t> >::iterator it=PixelPairs.begin(); it!=PixelPairs.end(); ++it){
 			Bool_t bIsValid;
@@ -118,7 +148,24 @@ void TFlashAnalysis::FillTimingHistogram(UInt_t nUserChan, TH1D& hTimingHist){
 	} // end of loop over all channels
 }
 
-void TFlashAnalysis::FillTimingHistogram(TH2D& hTimingHist){
+void TFlashAnalysis::FillTimingHistogram(TH2D& hTimingHist, UInt_t nSeqIdLow, UInt_t nSeqIdHigh) const {
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator it;
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel	= EvtReconHits.begin();
+		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChannel	= EvtReconHits.end();
+	for(it=FirstChannel; it!=LastChannel; ++it){ // begin loop over all channels
+		if(it->first < nSeqIdLow || it->first > nSeqIdHigh)
+			continue;
+		std::list<PixelHitModel>::const_iterator hit;
+		std::list<PixelHitModel>::const_iterator FirstHit	= it->second.begin();
+			std::list<PixelHitModel>::const_iterator LastHit	= it->second.end();
+		for(hit=FirstHit; hit!=LastHit; ++hit){ // begin loop over all hits in channel
+			hTimingHist.Fill((Double_t)hit->GetLeadEdgeChan(),hit->GetLeadEdgeTime());
+		} // end of loop over all hits in channel
+	} // end of loop over all channels
+
+}
+
+void TFlashAnalysis::FillToTHistogram(TH2D& hToTHist) const{
 	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator it;
 	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel	= EvtReconHits.begin();
 		std::map< UInt_t,std::list<PixelHitModel> >::const_iterator LastChannel	= EvtReconHits.end();
@@ -127,7 +174,7 @@ void TFlashAnalysis::FillTimingHistogram(TH2D& hTimingHist){
 		std::list<PixelHitModel>::const_iterator FirstHit	= it->second.begin();
 			std::list<PixelHitModel>::const_iterator LastHit	= it->second.end();
 		for(hit=FirstHit; hit!=LastHit; ++hit){ // begin loop over all hits in channel
-			hTimingHist.Fill((Double_t)hit->GetLeadEdgeChan(),hit->GetLeadEdgeTime());
+			hToTHist.Fill((Double_t)hit->GetLeadEdgeChan(),hit->GetToT());
 		} // end of loop over all hits in channel
 	} // end of loop over all channels
 }

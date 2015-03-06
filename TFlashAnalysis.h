@@ -71,14 +71,18 @@ public:
 	virtual ~TFlashAnalysis(); // standard destructor
 	Bool_t AddDetector(TFlashDetector& NewDetectorUnit);
 	Bool_t AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB); // register a new pixel correlation pair
+	UInt_t AddPixelPairs(string cUserPairList); // register new pixel pairs
 	void Analyse(Long64_t nEntryIndex); // analysis routine goes here, this method is needed!
 	void AnalyseTrigger(string cUserAnalysisFilename); // analysis of trigger signal only
 	void ClearPixelTimeOffset(UInt_t nUserSeqId); // clear pixel time offset from map
 	void ClearPixelPairs() { PixelPairs.clear(); }; 
 	void FillTimingHistogram(TH1D& hTimingHist); // plot all timestamps into one histogram
 	void FillTimingHistogram(UInt_t nUserChan, TH1D& hTimingHist); // plot timestamps of one channel into histogram
-	void FillTimingHistogram(TH2D& hTimingHist); // plot timestamps as a function of the seq channel ID
+	void FillTimingHistogram(TH2D& hTimingHist) const { FillTimingHistogram(hTimingHist,0,GetSizeOfMapTable()-1); }; // plot timestamps as a function of the seq channel ID
+	void FillTimingHistogram(TH2D& hTimingHist, UInt_t nSeqIdLow, UInt_t nSeqIdHigh) const; // plot timestamps as a function of the seq channel ID
+	void FillToTHistogram(TH2D& hTimingHist) const; 
 	UInt_t GetNumberOfHitPixels() const { return (nNumberOfHitPixels); }; // return number of hit pixels in this event
+	UInt_t GetNumberOfCorrelations() const { return((UInt_t)PixelCorrelations.size()); }; // return size of correlation map
 	Bool_t GetPixelCorrelation(UInt_t nUserChanA, UInt_t nUserChanB, Double_t& fDelta) const { return(GetPixelCorrelation(std::make_pair(nUserChanA,nUserChanB),fDelta)); };
 	Bool_t GetPixelCorrelation(std::pair<UInt_t,UInt_t> UserPair, Double_t& fDelta) const;
 	TH2D* MakePixelCorrelationMap(); // create 2D histogram showing pixel correlations
