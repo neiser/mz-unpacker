@@ -20,10 +20,15 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 		a.FillTimingHistogram(56,hTimingChan12);
 		a.FillTimingHistogram(hTimingAllPixels);
 		Double_t fDelta;
-		if(a.GetPixelCorrelation(56,120,fDelta))
+		// channel 56 between 16.0 and 17.5
+		// channel 120 between 16.2 and 17.6
+		if(a.GetPixelCorrelation(56,120,fDelta)){
 			hTimeDelta.Fill(fDelta);
-		if(a.GetPixelCorrelation(56,198,fDelta))
-			hTimeDeltanew.Fill(fDelta);
+			if(a.GetPixelCorrelation(56,16.5,16.8,120,16.7,17.0,fDelta))
+				hTimeDeltanew.Fill(fDelta);
+		}
+		//if(a.GetPixelCorrelation(56,198,fDelta))
+		//	hTimeDeltanew.Fill(fDelta);
 	}
 	//std::list<PixelHitModel> m = a.GetPixelHits();
 	//hPixelMultiplicity.DrawCopy();
