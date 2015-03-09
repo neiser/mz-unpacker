@@ -65,7 +65,8 @@ void FlashAnalysisOverview(string cUserDataFile, string cUserTdcList, Double_t f
 	TH1D hTiming("hTiming","Hit Timestamps; time (ns); freq",5000,-1000.0,1000.0);
 	TH2D hTimingAllPixels("hTimingAllPixels","Channel Hit Timestamps; channel seq ID; time (ns); freq",Overview.GetSizeOfMapTable()+1,-0.5,Overview.GetSizeOfMapTable()+0.5,5000,fTimeLow,fTimeHigh);
 	TH2D hToTAllPixels("hToTAllPixels","Time-over-Threshold; channel seq ID; Time-over-Threshold (ns); freq",Overview.GetSizeOfMapTable()+1,-0.5,Overview.GetSizeOfMapTable()+0.5,3200,-10.0,150.0);
-	for(Int_t i=0; i<(Int_t)Overview.GetNEvents(); i++){ // begin of loop over all events
+	for(Int_t i=0; i<(Int_t)Overview.GetNEvents(); i+=10){ // begin of loop over all events
+
 		Overview.Analyse(i); // get entry
 		hHitMultiplicity.Fill((Double_t)Overview.GetNumberOfHitPixels()); // get number of hit channels per event
 		Overview.FillTimingHistogram(hTiming); // fill timing histogram with all leading edge timestamps
