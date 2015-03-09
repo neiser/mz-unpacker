@@ -21,16 +21,6 @@ TFlashAnalysis::~TFlashAnalysis(){
 
 }
 
-Bool_t TFlashAnalysis::AddDetector(TFlashDetector& NewDetectorUnit){
-	std::list< TFlashDetector >::iterator it;
-	it = find(DetectorUnits.begin(),DetectorUnits.end(),NewDetectorUnit);
-	if(it!=DetectorUnits.end()){
-		return (kFALSE);	
-	}
-	DetectorUnits.push_back(NewDetectorUnit);
-	return (kTRUE);
-}
-
 Bool_t TFlashAnalysis::AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB){
 	std::pair<std::set< std::pair<UInt_t,UInt_t> >::iterator,bool> ret;
 	ret = PixelPairs.insert(std::make_pair(nUserChanA,nUserChanB));
@@ -119,6 +109,24 @@ Double_t TFlashAnalysis::ComputeChannelCorrelation(UInt_t nChanA, UInt_t nChanB,
 	return (0.0);
 }
 
+Double_t TFlashAnalysis::ComputeChannelCorrelation(UInt_t nChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Bool_t &IsValid){
+	IsValid = kFALSE;
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itA;
+	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itB;
+	itA = EvtReconHits.find(nChanA); // find channel A
+	itB = EvtReconHits.find(nChanB); // find channel B
+	if(itA!=EvtReconHits.end() && itB!=EvtReconHits.end()){ // check if both channels were found
+		Double_t fToTChanA = itA->second.begin()->GetToT();
+		Double_t fToTChanB = itB->second.begin()->GetToT();
+		if(fToTChanA>fChanATotLow && fToTChanA<fChanATotHigh && fToTChanB>fChanBTotLow && fToTChanB<fChanBTotHigh){
+			IsValid = kTRUE;
+			Double_t fDelta = itA->second.begin()->GetLeadEdgeTime() - itB->second.begin()->GetLeadEdgeTime();
+			return (fDelta);
+		}
+	}
+	return (0.0);
+}
+
 void TFlashAnalysis::FillTimingHistogram(TH1D& hTimingHist){
 	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator it;
 	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator FirstChannel	= EvtReconHits.begin();
@@ -190,17 +198,15 @@ Bool_t TFlashAnalysis::GetPixelCorrelation(std::pair<UInt_t,UInt_t> UserPair, Do
 	return (kFALSE);
 }
 
-//const std::list<PixelHitModel> & TFlashAnalysis::GetPixelHits(UInt_t nUserSeqId) const{
-//	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator it;
-//	it = EvtReconHits.find(nUserSeqId);
-//	return (it->second);
-//}
-
+Bool_t TFlashAnalysis::GetPixelCorrelation(UInt_t nChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Double_t& fDelta){
+	Bool_t bIsValid = kFALSE;
+	fDelta = ComputeChannelCorrelation(nChanA,fChanATotLow,fChanATotHigh,nChanB,fChanBTotLow,fChanBTotHigh,bIsValid);
+	return (bIsValid);
+}
 
 void TFlashAnalysis::Init(){
 	nNumberOfHitPixels = 0;
 	PixelTimeOffsets.clear();
-	DetectorUnits.clear();
 	PixelPairs.clear();
 	PixelCorrelations.clear();
 }

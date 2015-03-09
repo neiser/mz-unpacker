@@ -28,33 +28,21 @@
 
 //#pragma link C++ class std::map< UInt_t,std::list<PixelHitModel> >+;
 
-struct TFlashDetector{ // description fields for a single FLASH detector unit
-	UInt_t nFlashId; // unique FLASH unit ID
-	std::set<UInt_t> FlashChannelIDs; // list for storing channel IDs belonging to this FLASH unit
-	Bool_t bIsValid;
-	Double_t fBestTimestamp; // earliest timestamp of all pixels
-	Double_t fAvgTimestamp; // average timestamp computed from all pixels
-	Double_t fMedTimestamp; // median of all timestamps
-	Double_t fTimestampRMS; // RMS of all timestamps
-	void AddChannel(UInt_t nUserChannel) { FlashChannelIDs.insert(nUserChannel); };
-	UInt_t GetNumberOfChannels() { return((UInt_t)FlashChannelIDs.size()); };
-	Bool_t IsValid() const { return(bIsValid); };
-	const bool operator==(const TFlashDetector& other) const {
-			return (nFlashId==other.nFlashId);
-		};
-	const bool operator<(const TFlashDetector& other) const {
-			return (nFlashId<other.nFlashId);
-		};
-	};
-
+struct PixelCuts{ // store cuts for each pixel here
+	UInt_t nChanId;
+	Double_t fLeadingEdgeLow; // lower value for leading edge timestamp
+	Double_t fLeadingEdgeHigh; // upper value for leading edge timestamp
+	Double_t fToTLow;
+	Double_t fToTHigh;
+};
 
 // +++ class definition +++
 class TFlashAnalysis : public TDircAnalysisBase {
 private:
+	enum TriggerChannels {TRIGGER_1=256, TRIGGER_2=258, TRIGGER_3=260, TRIGGER_4=262, COIN=264};
 	UInt_t nNumberOfHitPixels; // number of pixels hit in one event
 	// need some object to store cuts and time offsets
 	std::map< UInt_t, Double_t > PixelTimeOffsets; // map for storing pixel time offset constants
-	std::list< TFlashDetector > DetectorUnits;
 	std::set< std::pair<UInt_t,UInt_t> > PixelPairs; // store combination of pixels the user wants to compare
 	std::map< std::pair<UInt_t,UInt_t>,Double_t > PixelCorrelations;
 	std::ofstream LogFileBuffer; // output stream handle connecting to log file
@@ -63,13 +51,13 @@ private:
 	void Init(); // initialise FLASH analysis class values
 protected:
 	Double_t ComputeChannelCorrelation(UInt_t nChanA, UInt_t nChanB, Bool_t &IsValid);
+	Double_t ComputeChannelCorrelation(UInt_t nChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Bool_t &IsValid);
 	void WriteLogfileHeader(); // write status information to log file
 public:
 	//TFlashAnalysis(TChain &UserChain);
 	TFlashAnalysis(string cUserDataFilename, string UserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // standard constructor
 	TFlashAnalysis(string cUserDataFilename, string UserTdcAddressFile); // constructor, all TDC defintions in text file
 	virtual ~TFlashAnalysis(); // standard destructor
-	Bool_t AddDetector(TFlashDetector& NewDetectorUnit);
 	Bool_t AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB); // register a new pixel correlation pair
 	UInt_t AddPixelPairs(string cUserPairList); // register new pixel pairs
 	void Analyse(Long64_t nEntryIndex); // analysis routine goes here, this method is needed!
@@ -85,6 +73,7 @@ public:
 	UInt_t GetNumberOfCorrelations() const { return((UInt_t)PixelCorrelations.size()); }; // return size of correlation map
 	Bool_t GetPixelCorrelation(UInt_t nUserChanA, UInt_t nUserChanB, Double_t& fDelta) const { return(GetPixelCorrelation(std::make_pair(nUserChanA,nUserChanB),fDelta)); };
 	Bool_t GetPixelCorrelation(std::pair<UInt_t,UInt_t> UserPair, Double_t& fDelta) const;
+	Bool_t GetPixelCorrelation(UInt_t nChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Double_t& fDelta);
 	TH2D* MakePixelCorrelationMap(); // create 2D histogram showing pixel correlations
 	Bool_t SetPixelTimeOffset(UInt_t nUserSeqId, Double_t fUserOffset=0.0); // set timing offset for single pixel
 	//const std::map< UInt_t,std::list<PixelHitModel> > & GetReconHits() const { return EvtReconHits; };

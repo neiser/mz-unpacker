@@ -68,7 +68,7 @@ public:
 	//string cUserTdcAddressesFile
 	virtual ~TTrbAnalysisBase(); // destructor
 	//void Analyse(string cUserAnalysisFilename); // analysis routine
-	virtual void Analyse(string cUserAnalysisFilename) = 0; // pure virtual analysis function, needs to be implemented in derived class
+//	virtual void Analyse(string cUserAnalysisFilename) = 0; // pure virtual analysis function, needs to be implemented in derived class
 	virtual Bool_t CheckRandomBits(); // check if hits' random bits are the same in an event
 	virtual Bool_t CheckDecodingStatus(UInt_t nUserStatus=0) const;
 	void DisableHitMatching() { bDoHitMatching = kFALSE; }; // switch off hit matching
