@@ -21,10 +21,30 @@ TFlashAnalysis::~TFlashAnalysis(){
 
 }
 
+Bool_t TFlashAnalysis::AddPixelLECut(UInt_t nUserChan, Double_t fLow, Double_t fHigh){ // add pixel cut definitions
+	std::pair<Double_t, Double_t> TempCut (fLow, fHigh);
+	std::pair<std::map< UInt_t, std::pair<Double_t, Double_t> >::iterator,bool> ret;
+	ret = PixelLECuts.insert(std::make_pair(nUserChan,TempCut));
+	return (ret.second);
+}
+
+Bool_t TFlashAnalysis::AddPixelToTCut(UInt_t nUserChan, Double_t fLow, Double_t fHigh){ // add pixel cut definitions
+	std::pair<Double_t, Double_t> TempCut (fLow, fHigh);
+	std::pair<std::map< UInt_t, std::pair<Double_t, Double_t> >::iterator,bool> ret;
+	ret = PixelTotCuts.insert(std::make_pair(nUserChan,TempCut));
+	return (ret.second);
+}
+
 Bool_t TFlashAnalysis::AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB){
 	std::pair<std::set< std::pair<UInt_t,UInt_t> >::iterator,bool> ret;
 	ret = PixelPairs.insert(std::make_pair(nUserChanA,nUserChanB));
 	//cout << PixelPairs.size() << endl;
+	bIsSortedListOfPairs = kFALSE;
+	if(ret.second){ // adding new pair was successful
+		PairResults temp;
+		temp.Init();
+		PairHistograms.insert(std::make_pair(std::make_pair(nUserChanA,nUserChanB),temp));
+	}
 	return (ret.second);
 }
 
@@ -58,22 +78,38 @@ UInt_t TFlashAnalysis::AddPixelPairs(string cUserPairList){
 	return (nAddedPixelPairs);
 }
 
+Bool_t TFlashAnalysis::AddTriggerChannel(UInt_t nUserChannel){
+	std::pair<std::set<UInt_t>::iterator,bool> ret;
+	ret = TriggerChannels.insert(nUserChannel);
+	return (ret.second);
+}
+
 void TFlashAnalysis::Analyse(Long64_t nEntryIndex){
 	Clear(); // reset all variables needed in analysis of one event
+	if(!bIsSortedListOfPairs){
+		//std::sort(PixelPairs.begin(),PixelPairs.end());
+		bIsSortedListOfPairs = kTRUE;
+	}
 	Int_t nEntrySize = GetEntry(nEntryIndex);
 	if(nEntrySize<1){// if entry is smaller than 1, something went wrong
 		return;
 	}
 	nNumberOfHitPixels = (UInt_t)EvtReconHits.size(); // number of reconstructed hits is just the size of this map object
+	ApplyPixelCuts();
 	if(!PixelPairs.empty()){
-		for (std::set< std::pair<UInt_t,UInt_t> >::iterator it=PixelPairs.begin(); it!=PixelPairs.end(); ++it){
-			Bool_t bIsValid;
-			Double_t fDelta = ComputeChannelCorrelation(it->first,it->second,bIsValid);
-			if(bIsValid){
-				PixelCorrelations.insert(std::make_pair(*it,fDelta));
-				//cout << it->first << " - " << it->second << ": " << fDelta << endl;
+		for (std::set< std::pair<UInt_t,UInt_t> >::const_iterator it=PixelPairs.begin(); it!=PixelPairs.end(); ++it){ // loop over all user-defined pixel pairs
+			std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itA;
+			std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itB;
+			itA = EvtReconHits.find(it->first); // find first pixel
+			itB = EvtReconHits.find(it->second); // find second pixel
+			if(itA!=EvtReconHits.end() && itB!=EvtReconHits.end()){
+				std::list<PixelHitModel>::const_iterator FirstHit = itA->second.begin();
+				std::list<PixelHitModel>::const_iterator LastHit = itB->second.begin();
+				std::pair<PIXELPAIR::const_iterator,bool> ret;
+				ret = DetectedPixelPairs.insert(std::make_pair(*it,std::make_pair(FirstHit,LastHit)));
+				FillHistograms(ret.first);
 			}
-		}
+		} // end of loop over all user-defined pixel pairs
 	}
 }
 
@@ -81,9 +117,35 @@ void TFlashAnalysis::AnalyseTrigger(string cUserAnalysisFilename){
 
 }
 
-void TFlashAnalysis::Clear(){
-	nNumberOfHitPixels = 0;
-	PixelCorrelations.clear();
+void TFlashAnalysis::ApplyPixelCuts(){
+	std::map< UInt_t,std::list<PixelHitModel> >::iterator first = EvtReconHits.begin();
+	std::map< UInt_t,std::list<PixelHitModel> >::iterator last = EvtReconHits.end();
+	std::map< UInt_t,std::list<PixelHitModel> >::iterator it = first;
+	while(it != last){ // begin loop over all reconstructed hits
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator LECut = PixelLECuts.find(it->first); // find leading edge cut for this pixel
+		if(LECut!=PixelLECuts.end()){ // found cut and apply now
+			Double_t fLETemp = it->second.begin()->GetLeadEdgeTime();
+			if(fLETemp<LECut->second.first || fLETemp>LECut->second.second){ // hit not passing leading edge cut
+				EvtReconHits.erase(it++); // increment iterator and delete element
+				continue; // skip rest of loop
+			}
+		}
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator ToTCut = PixelTotCuts.find(it->first); // find ToT cut for this pixel
+		if(ToTCut != PixelTotCuts.end()){ // found cut and apply now
+			Double_t fTotTemp = it->second.begin()->GetToT();
+			if(fTotTemp<ToTCut->second.first || fTotTemp>ToTCut->second.second){
+				EvtReconHits.erase(it++); // increment iterator and delete element
+				continue; // skip rest of loop
+			}
+		}
+		++it;
+	}// end of loop over all reconstructed hits
+}
+
+void TFlashAnalysis::Clear(){ // clear results of event analysis
+	nNumberOfHitPixels		= 0;
+	nNumberOfFiredTriggers	= 0;
+	DetectedPixelPairs.clear();
 }
 
 void TFlashAnalysis::ClearPixelTimeOffset(UInt_t nUserSeqId){
@@ -95,37 +157,28 @@ void TFlashAnalysis::ClearPixelTimeOffset(UInt_t nUserSeqId){
 	cout << PixelTimeOffsets.size() << endl;
 }
 
-Double_t TFlashAnalysis::ComputeChannelCorrelation(UInt_t nChanA, UInt_t nChanB, Bool_t &IsValid){
-	IsValid = kFALSE;
-	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itA;
-	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itB;
-	itA = EvtReconHits.find(nChanA);
-	itB = EvtReconHits.find(nChanB);
-	if(itA!=EvtReconHits.end() && itB!=EvtReconHits.end()){
-		IsValid = kTRUE;
-		Double_t fDelta = itA->second.begin()->GetLeadEdgeTime() - itB->second.begin()->GetLeadEdgeTime();
-		return (fDelta);
-	}
-	return (0.0);
+
+Double_t TFlashAnalysis::ComputePixelTimeDiff(PIXELPAIR::const_iterator UserPair) const {
+	Double_t fTimeDiff = 0.0;
+	Double_t fTimePixelA = (bApplyOffset)? UserPair->second.first->GetLeadEdgeTime() - GetPixelOffset(UserPair->first.first) : UserPair->second.first->GetLeadEdgeTime(); // compute corrected leading edge time of first pixel
+	Double_t fTimePixelB = (bApplyOffset)? UserPair->second.second->GetLeadEdgeTime() - GetPixelOffset(UserPair->first.second) : UserPair->second.second->GetLeadEdgeTime(); // compute corrected leading edge time of first pixel
+	fTimeDiff = fTimePixelA - fTimePixelB;
+	return (fTimeDiff);
 }
 
-Double_t TFlashAnalysis::ComputeChannelCorrelation(UInt_t nChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Bool_t &IsValid){
-	IsValid = kFALSE;
-	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itA;
-	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itB;
-	itA = EvtReconHits.find(nChanA); // find channel A
-	itB = EvtReconHits.find(nChanB); // find channel B
-	if(itA!=EvtReconHits.end() && itB!=EvtReconHits.end()){ // check if both channels were found
-		Double_t fToTChanA = itA->second.begin()->GetToT();
-		Double_t fToTChanB = itB->second.begin()->GetToT();
-		if(fToTChanA>fChanATotLow && fToTChanA<fChanATotHigh && fToTChanB>fChanBTotLow && fToTChanB<fChanBTotHigh){
-			IsValid = kTRUE;
-			Double_t fDelta = itA->second.begin()->GetLeadEdgeTime() - itB->second.begin()->GetLeadEdgeTime();
-			return (fDelta);
+void TFlashAnalysis::FillHistograms(PIXELPAIR::const_iterator it){
+	std::map< std::pair<UInt_t,UInt_t>, PairResults >::iterator itResults;
+	itResults = PairHistograms.find(std::make_pair(it->first.first,it->first.second));
+	if(itResults!=PairHistograms.end()){
+		if(itResults->second.RegisteredHistograms.test(0)){
+			itResults->second.hTimeDifference->Fill(ComputePixelTimeDiff(it));
+		}
+		if(itResults->second.RegisteredHistograms.test(1)){
+			itResults->second.hToTCorrelation->Fill(it->second.first->GetToT(),it->second.second->GetToT());
 		}
 	}
-	return (0.0);
 }
+
 
 void TFlashAnalysis::FillTimingHistogram(TH1D& hTimingHist){
 	std::map< UInt_t,std::list<PixelHitModel> >::const_iterator it;
@@ -164,13 +217,22 @@ void TFlashAnalysis::FillTimingHistogram(TH2D& hTimingHist, UInt_t nSeqIdLow, UI
 		if(it->first < nSeqIdLow || it->first > nSeqIdHigh)
 			continue;
 		std::list<PixelHitModel>::const_iterator hit;
-		std::list<PixelHitModel>::const_iterator FirstHit	= it->second.begin();
-			std::list<PixelHitModel>::const_iterator LastHit	= it->second.end();
+		std::list<PixelHitModel>::const_iterator FirstHit = it->second.begin();
+			std::list<PixelHitModel>::const_iterator LastHit = it->second.end();
 		for(hit=FirstHit; hit!=LastHit; ++hit){ // begin loop over all hits in channel
 			hTimingHist.Fill((Double_t)hit->GetLeadEdgeChan(),hit->GetLeadEdgeTime());
 		} // end of loop over all hits in channel
 	} // end of loop over all channels
 
+}
+
+void TFlashAnalysis::FillToTCorrelation(UInt_t nChanA, UInt_t nChanB, TH2D& hUserHist) const {
+	PIXELPAIR::const_iterator it;
+	std::pair<UInt_t,UInt_t> UserPair (nChanA,nChanB);
+	it = DetectedPixelPairs.find(UserPair);
+	if(it!=DetectedPixelPairs.end()){
+		hUserHist.Fill(it->second.first->GetToT(),it->second.second->GetToT());
+	}
 }
 
 void TFlashAnalysis::FillToTHistogram(TH2D& hToTHist) const{
@@ -187,28 +249,68 @@ void TFlashAnalysis::FillToTHistogram(TH2D& hToTHist) const{
 	} // end of loop over all channels
 }
 
+void TFlashAnalysis::FillWalkHistogram(UInt_t nRefChan, Double_t fToTLow, Double_t fTotHigh, UInt_t nUserChan, TH2D& hUserHist) const {
+	PIXELPAIR::const_iterator it;
+	std::pair<UInt_t,UInt_t> UserPair (nRefChan,nUserChan);
+	it = DetectedPixelPairs.find(UserPair);
+	if(it!=DetectedPixelPairs.end()){
+		if(it->second.first->GetToT()>fToTLow && it->second.first->GetToT()<fTotHigh)
+			hUserHist.Fill(it->second.second->GetToT(),ComputePixelTimeDiff(it));
+	}
+}
 
-Bool_t TFlashAnalysis::GetPixelCorrelation(std::pair<UInt_t,UInt_t> UserPair, Double_t& fDelta) const{
-	std::map< std::pair<UInt_t,UInt_t>,Double_t >::const_iterator it;
-	it = PixelCorrelations.find(UserPair);
-	if(it!=PixelCorrelations.end()){
-		fDelta = it->second;
+const std::set< std::pair<UInt_t,UInt_t> >* TFlashAnalysis::GetListOfPixelPairs() {
+	if(!bIsSortedListOfPairs){ // check if set of pixel pair combinations is sorted
+		//std::sort(PixelPairs.begin(),PixelPairs.end()); // if not, sort it
+		bIsSortedListOfPairs = kTRUE;
+	}
+	return &PixelPairs; // return pointer to set
+}
+
+Bool_t TFlashAnalysis::GetPairTimeDiff(std::pair<UInt_t,UInt_t> UserPair, Double_t& fDelta) const { // get leading edge time difference between two pixels
+	PIXELPAIR::const_iterator it;
+	it = DetectedPixelPairs.find(UserPair);
+	if(it!=DetectedPixelPairs.end()){
+		fDelta = ComputePixelTimeDiff(it);
 		return (kTRUE);
 	}
 	return (kFALSE);
 }
 
-Bool_t TFlashAnalysis::GetPixelCorrelation(UInt_t nChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Double_t& fDelta){
-	Bool_t bIsValid = kFALSE;
-	fDelta = ComputeChannelCorrelation(nChanA,fChanATotLow,fChanATotHigh,nChanB,fChanBTotLow,fChanBTotHigh,bIsValid);
-	return (bIsValid);
+Bool_t TFlashAnalysis::GetPairTimeDiff(UInt_t nUserChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nUserChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Double_t& fDelta) const { // get leading edge time difference between two pixels wit ToT cuts 
+	PIXELPAIR::const_iterator it;
+	it = DetectedPixelPairs.find(std::make_pair(nUserChanA,nUserChanB));
+	if(it!=DetectedPixelPairs.end()){
+		Double_t fToTChanA = it->second.first->GetToT();
+		Double_t fToTChanB = it->second.second->GetToT();
+		if(fToTChanA>fChanATotLow && fToTChanA<fChanATotHigh && fToTChanB>fChanBTotLow && fToTChanB<fChanBTotHigh){
+			fDelta = ComputePixelTimeDiff(it);
+			return (kTRUE);
+		}
+	}
+	return (kFALSE);
+}
+
+
+Double_t TFlashAnalysis::GetPixelOffset(UInt_t nSeqId) const{
+	std::map< UInt_t, Double_t >::const_iterator ThisOffset = PixelTimeOffsets.find(nSeqId);
+	if(ThisOffset!=PixelTimeOffsets.end()) // pixel has offset
+		return (ThisOffset->second);
+	else // pixel has no offset
+		return (0.0);
 }
 
 void TFlashAnalysis::Init(){
+	bApplyOffset = kTRUE;
+	bIsSortedListOfPairs = kFALSE; // list of pixels is not sorted
 	nNumberOfHitPixels = 0;
 	PixelTimeOffsets.clear();
 	PixelPairs.clear();
-	PixelCorrelations.clear();
+	PixelLECuts.clear();
+	PixelTotCuts.clear();
+	PairHistograms.clear();
+	DetectedPixelPairs.clear();
+	TriggerChannels.clear();
 }
 
 TH2D* TFlashAnalysis::MakePixelCorrelationMap(){
@@ -230,14 +332,60 @@ TH2D* TFlashAnalysis::MakePixelCorrelationMap(){
 	return (hPixelCorMap);
 }
 
+
+void TFlashAnalysis::PrintListOfPixelPairs() const {
+	if(PixelPairs.empty()){
+		cout << "ERROR: No pixel pairs declared!" << endl;
+		return;
+	}
+	std::set< std::pair<UInt_t,UInt_t> >::const_iterator start = PixelPairs.begin();
+	std::set< std::pair<UInt_t,UInt_t> >::const_iterator stop = PixelPairs.end();
+	std::set< std::pair<UInt_t,UInt_t> >::const_iterator it;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++ User Declared Pixel Pairs  +++" << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl; 
+	for(it=start; it!=stop; ++it){
+		cout << it->first << "\t" << it->second << endl;
+	}
+}
+
+Bool_t TFlashAnalysis::RegisterTimeDiffHist(UInt_t nChanA, UInt_t nChanB, TH1D* hUserHist){
+	if(hUserHist==NULL) // histogram pointer does not exist
+		return kFALSE;
+	std::map< std::pair<UInt_t,UInt_t>, PairResults >::iterator it;
+	it = PairHistograms.find(std::make_pair(nChanA,nChanB));
+	if(it!=PairHistograms.end()){ // found pixel pair
+		it->second.hTimeDifference		= hUserHist;
+		it->second.RegisteredHistograms.set(0);
+		return (kTRUE);
+	}
+	return (kFALSE);
+}
+
+Bool_t TFlashAnalysis::RegisterTotCorrHist(UInt_t nChanA, UInt_t nChanB, TH2D* hUserHist){
+	if(hUserHist==NULL) // histogram pointer does not exist
+		return kFALSE;
+	std::map< std::pair<UInt_t,UInt_t>, PairResults >::iterator it;
+	it = PairHistograms.find(std::make_pair(nChanA,nChanB));
+	if(it!=PairHistograms.end()){ // found pixel pair
+		it->second.hToTCorrelation		= hUserHist;
+		it->second.RegisteredHistograms.set(1);
+		return (kTRUE);
+	}
+	return (kFALSE);
+}
+
 Bool_t TFlashAnalysis::SetPixelTimeOffset(UInt_t nUserSeqId, Double_t fUserOffset){
 	std::pair<std::map<UInt_t,Double_t>::iterator,bool> ret;
 	ret = PixelTimeOffsets.insert(std::make_pair(nUserSeqId,fUserOffset)); // try to insert pixel time offset into map
-	if(!ret.second){
+	if(!ret.second){ // initial insertion failed because a value already existed
 		if(ret.first!=PixelTimeOffsets.end()){
-			PixelTimeOffsets.erase(ret.first);
-			ret = PixelTimeOffsets.insert(std::make_pair(nUserSeqId,fUserOffset));
+			PixelTimeOffsets.erase(ret.first); // erase exisiting entry
+			ret = PixelTimeOffsets.insert(std::make_pair(nUserSeqId,fUserOffset)); // insert again
 		}
+	}
+	if(ret.second){
+		ApplyOffsets();
 	}
 	return (ret.second);
 }
