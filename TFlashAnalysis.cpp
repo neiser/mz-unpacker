@@ -28,11 +28,71 @@ Bool_t TFlashAnalysis::AddPixelLECut(UInt_t nUserChan, Double_t fLow, Double_t f
 	return (ret.second);
 }
 
+UInt_t TFlashAnalysis::AddPixelLECuts(string cUserFileName){
+	UInt_t nAddedLECuts = 0;
+	if(cUserFileName.empty()){ // check if user pair list name string is empty
+//		if(bVerboseMode)
+			cout << "Filename string is empty!" << endl;
+		return (0);
+	}
+	ifstream UserInputFile(cUserFileName.c_str(),ifstream::in); // open text file containing pixel pair combinations
+	if(!UserInputFile.is_open()){ // check if opening text file was successful
+		cerr << "Could not open Leading Edge cuts file " << cUserFileName << endl;
+		return (0);
+	}
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ');
+		switch (tokens.size()) {
+			case 3: // leading edge cut definition must contain three values
+				if(AddPixelLECut((UInt_t)strtoul(tokens.at(0).c_str(),NULL,10),(Double_t)strtod(tokens.at(1).c_str(),NULL),(Double_t)strtod(tokens.at(2).c_str(),NULL))) // try to add this pixel pair combination
+					nAddedLECuts++; // in case of success, increment counter
+				break;
+			default:
+				continue; // do nothing
+		}
+	}// end of loop over input file
+	return (nAddedLECuts);
+}
+
 Bool_t TFlashAnalysis::AddPixelToTCut(UInt_t nUserChan, Double_t fLow, Double_t fHigh){ // add pixel cut definitions
 	std::pair<Double_t, Double_t> TempCut (fLow, fHigh);
 	std::pair<std::map< UInt_t, std::pair<Double_t, Double_t> >::iterator,bool> ret;
 	ret = PixelTotCuts.insert(std::make_pair(nUserChan,TempCut));
 	return (ret.second);
+}
+
+UInt_t TFlashAnalysis::AddPixelToTCuts(string cUserFileName){
+	UInt_t nAddedTotCuts = 0;
+	if(cUserFileName.empty()){ // check if user pair list name string is empty
+//		if(bVerboseMode)
+			cout << "Filename string is empty!" << endl;
+		return (0);
+	}
+	ifstream UserInputFile(cUserFileName.c_str(),ifstream::in); // open text file containing pixel pair combinations
+	if(!UserInputFile.is_open()){ // check if opening text file was successful
+		cerr << "Could not open Leading Edge cuts file " << cUserFileName << endl;
+		return (0);
+	}
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ');
+		switch (tokens.size()) {
+			case 3: // time-over-threshold cut definition must contain three values
+				if(AddPixelToTCut((UInt_t)strtoul(tokens.at(0).c_str(),NULL,10),(Double_t)strtod(tokens.at(1).c_str(),NULL),(Double_t)strtod(tokens.at(2).c_str(),NULL))) // try to add this pixel pair combination
+					nAddedTotCuts++; // in case of success, increment counter
+				break;
+			default:
+				continue; // do nothing
+		}
+	}// end of loop over input file
+	return (nAddedTotCuts);
 }
 
 Bool_t TFlashAnalysis::AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB){
@@ -45,6 +105,7 @@ Bool_t TFlashAnalysis::AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB){
 		temp.Init();
 		PairHistograms.insert(std::make_pair(std::make_pair(nUserChanA,nUserChanB),temp));
 	}
+	bSettingsHaveChanged = kTRUE;
 	return (ret.second);
 }
 
@@ -84,16 +145,21 @@ Bool_t TFlashAnalysis::AddTriggerChannel(UInt_t nUserChannel){
 	return (ret.second);
 }
 
-void TFlashAnalysis::Analyse(Long64_t nEntryIndex){
+void TFlashAnalysis::Analyse(){
+	if(bSettingsHaveChanged && pLogFile!=NULL){ // print status to log file if changes have happened
+		PrintExcludedChannels(1);
+		PrintListOfPixelPairs(1);
+		bSettingsHaveChanged = kFALSE; // reset flag
+	}
 	Clear(); // reset all variables needed in analysis of one event
 	if(!bIsSortedListOfPairs){
 		//std::sort(PixelPairs.begin(),PixelPairs.end());
 		bIsSortedListOfPairs = kTRUE;
 	}
-	Int_t nEntrySize = GetEntry(nEntryIndex);
-	if(nEntrySize<1){// if entry is smaller than 1, something went wrong
-		return;
-	}
+	//Int_t nEntrySize = GetEntry(nEntryIndex);
+	//if(nEntrySize<1){// if entry is smaller than 1, something went wrong
+	//	return;
+	//}
 	nNumberOfHitPixels = (UInt_t)EvtReconHits.size(); // number of reconstructed hits is just the size of this map object
 	ApplyPixelCuts();
 	if(!PixelPairs.empty()){
@@ -122,20 +188,24 @@ void TFlashAnalysis::ApplyPixelCuts(){
 	std::map< UInt_t,std::list<PixelHitModel> >::iterator last = EvtReconHits.end();
 	std::map< UInt_t,std::list<PixelHitModel> >::iterator it = first;
 	while(it != last){ // begin loop over all reconstructed hits
-		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator LECut = PixelLECuts.find(it->first); // find leading edge cut for this pixel
-		if(LECut!=PixelLECuts.end()){ // found cut and apply now
-			Double_t fLETemp = it->second.begin()->GetLeadEdgeTime();
-			if(fLETemp<LECut->second.first || fLETemp>LECut->second.second){ // hit not passing leading edge cut
-				EvtReconHits.erase(it++); // increment iterator and delete element
-				continue; // skip rest of loop
+		if(bApplyLECuts){
+			std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator LECut = PixelLECuts.find(it->first); // find leading edge cut for this pixel
+			if(LECut!=PixelLECuts.end()){ // found cut and apply now
+				Double_t fLETemp = it->second.begin()->GetLeadEdgeTime();
+				if(fLETemp<LECut->second.first || fLETemp>LECut->second.second){ // hit not passing leading edge cut
+					EvtReconHits.erase(it++); // increment iterator and delete element
+					continue; // skip rest of loop
+				}
 			}
 		}
-		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator ToTCut = PixelTotCuts.find(it->first); // find ToT cut for this pixel
-		if(ToTCut != PixelTotCuts.end()){ // found cut and apply now
-			Double_t fTotTemp = it->second.begin()->GetToT();
-			if(fTotTemp<ToTCut->second.first || fTotTemp>ToTCut->second.second){
-				EvtReconHits.erase(it++); // increment iterator and delete element
-				continue; // skip rest of loop
+		if(bApplyTotCuts){
+			std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator ToTCut = PixelTotCuts.find(it->first); // find ToT cut for this pixel
+			if(ToTCut != PixelTotCuts.end()){ // found cut and apply now
+				Double_t fTotTemp = it->second.begin()->GetToT();
+				if(fTotTemp<ToTCut->second.first || fTotTemp>ToTCut->second.second){
+					EvtReconHits.erase(it++); // increment iterator and delete element
+					continue; // skip rest of loop
+				}
 			}
 		}
 		++it;
@@ -170,11 +240,14 @@ void TFlashAnalysis::FillHistograms(PIXELPAIR::const_iterator it){
 	std::map< std::pair<UInt_t,UInt_t>, PairResults >::iterator itResults;
 	itResults = PairHistograms.find(std::make_pair(it->first.first,it->first.second));
 	if(itResults!=PairHistograms.end()){
-		if(itResults->second.RegisteredHistograms.test(0)){
+		if(itResults->second.RegisteredHistograms.test(HTIME)){
 			itResults->second.hTimeDifference->Fill(ComputePixelTimeDiff(it));
 		}
-		if(itResults->second.RegisteredHistograms.test(1)){
+		if(itResults->second.RegisteredHistograms.test(HTOTCORR)){
 			itResults->second.hToTCorrelation->Fill(it->second.first->GetToT(),it->second.second->GetToT());
+		}
+		if(itResults->second.RegisteredHistograms.test(HWALK)){
+			itResults->second.hTimeWalk->Fill(it->second.second->GetToT(),ComputePixelTimeDiff(it));
 		}
 	}
 }
@@ -277,21 +350,6 @@ Bool_t TFlashAnalysis::GetPairTimeDiff(std::pair<UInt_t,UInt_t> UserPair, Double
 	return (kFALSE);
 }
 
-Bool_t TFlashAnalysis::GetPairTimeDiff(UInt_t nUserChanA, Double_t fChanATotLow, Double_t fChanATotHigh, UInt_t nUserChanB, Double_t fChanBTotLow, Double_t fChanBTotHigh, Double_t& fDelta) const { // get leading edge time difference between two pixels wit ToT cuts 
-	PIXELPAIR::const_iterator it;
-	it = DetectedPixelPairs.find(std::make_pair(nUserChanA,nUserChanB));
-	if(it!=DetectedPixelPairs.end()){
-		Double_t fToTChanA = it->second.first->GetToT();
-		Double_t fToTChanB = it->second.second->GetToT();
-		if(fToTChanA>fChanATotLow && fToTChanA<fChanATotHigh && fToTChanB>fChanBTotLow && fToTChanB<fChanBTotHigh){
-			fDelta = ComputePixelTimeDiff(it);
-			return (kTRUE);
-		}
-	}
-	return (kFALSE);
-}
-
-
 Double_t TFlashAnalysis::GetPixelOffset(UInt_t nSeqId) const{
 	std::map< UInt_t, Double_t >::const_iterator ThisOffset = PixelTimeOffsets.find(nSeqId);
 	if(ThisOffset!=PixelTimeOffsets.end()) // pixel has offset
@@ -301,8 +359,11 @@ Double_t TFlashAnalysis::GetPixelOffset(UInt_t nSeqId) const{
 }
 
 void TFlashAnalysis::Init(){
-	bApplyOffset = kTRUE;
+	bApplyLECuts	= kTRUE;
+	bApplyOffset	= kTRUE;
+	bApplyTotCuts	= kTRUE;
 	bIsSortedListOfPairs = kFALSE; // list of pixels is not sorted
+	bSettingsHaveChanged = kFALSE; // indicate if analysis settings have changed
 	nNumberOfHitPixels = 0;
 	PixelTimeOffsets.clear();
 	PixelPairs.clear();
@@ -311,6 +372,8 @@ void TFlashAnalysis::Init(){
 	PairHistograms.clear();
 	DetectedPixelPairs.clear();
 	TriggerChannels.clear();
+	pLogFile = NULL;
+	//buf = std::cout.rdbuf();
 }
 
 TH2D* TFlashAnalysis::MakePixelCorrelationMap(){
@@ -332,11 +395,36 @@ TH2D* TFlashAnalysis::MakePixelCorrelationMap(){
 	return (hPixelCorMap);
 }
 
+void TFlashAnalysis::PrintExcludedChannels(Bool_t bWriteToLog) const {
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup = std::cout.rdbuf();
+	if(bWriteToLog && pLogFile!=NULL){
+		if(!pLogFile->is_open()) // no file is associated with LogFileBuffer
+			return;
+		psbuf = pLogFile->rdbuf();
+		std::cout.rdbuf(psbuf);         // assign streambuf to cout
+	}
+	TTrbAnalysisBase::PrintExcludedChannels();
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
+}
 
-void TFlashAnalysis::PrintListOfPixelPairs() const {
+void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
 	if(PixelPairs.empty()){
 		cout << "ERROR: No pixel pairs declared!" << endl;
 		return;
+	}
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup = std::cout.rdbuf();
+	if(bWriteToLog && pLogFile!=NULL){
+		if(!pLogFile->is_open()) // no file is associated with LogFileBuffer
+			return;
+		psbuf = pLogFile->rdbuf();
+		std::cout.rdbuf(psbuf);         // assign streambuf to cout
 	}
 	std::set< std::pair<UInt_t,UInt_t> >::const_iterator start = PixelPairs.begin();
 	std::set< std::pair<UInt_t,UInt_t> >::const_iterator stop = PixelPairs.end();
@@ -347,6 +435,10 @@ void TFlashAnalysis::PrintListOfPixelPairs() const {
 	for(it=start; it!=stop; ++it){
 		cout << it->first << "\t" << it->second << endl;
 	}
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
 }
 
 Bool_t TFlashAnalysis::RegisterTimeDiffHist(UInt_t nChanA, UInt_t nChanB, TH1D* hUserHist){
@@ -356,7 +448,20 @@ Bool_t TFlashAnalysis::RegisterTimeDiffHist(UInt_t nChanA, UInt_t nChanB, TH1D* 
 	it = PairHistograms.find(std::make_pair(nChanA,nChanB));
 	if(it!=PairHistograms.end()){ // found pixel pair
 		it->second.hTimeDifference		= hUserHist;
-		it->second.RegisteredHistograms.set(0);
+		it->second.RegisteredHistograms.set(HTIME);
+		return (kTRUE);
+	}
+	return (kFALSE);
+}
+
+Bool_t TFlashAnalysis::RegisterTimeWalkHist(UInt_t nChanA, UInt_t nChanB, TH2D* hUserHist){
+	if(hUserHist==NULL) // histogram pointer does not exist
+		return kFALSE;
+	std::map< std::pair<UInt_t,UInt_t>, PairResults >::iterator it;
+	it = PairHistograms.find(std::make_pair(nChanA,nChanB));
+	if(it!=PairHistograms.end()){ // found pixel pair
+		it->second.hTimeWalk		= hUserHist;
+		it->second.RegisteredHistograms.set(HWALK);
 		return (kTRUE);
 	}
 	return (kFALSE);
@@ -369,7 +474,7 @@ Bool_t TFlashAnalysis::RegisterTotCorrHist(UInt_t nChanA, UInt_t nChanB, TH2D* h
 	it = PairHistograms.find(std::make_pair(nChanA,nChanB));
 	if(it!=PairHistograms.end()){ // found pixel pair
 		it->second.hToTCorrelation		= hUserHist;
-		it->second.RegisteredHistograms.set(1);
+		it->second.RegisteredHistograms.set(HTOTCORR);
 		return (kTRUE);
 	}
 	return (kFALSE);
@@ -390,44 +495,80 @@ Bool_t TFlashAnalysis::SetPixelTimeOffset(UInt_t nUserSeqId, Double_t fUserOffse
 	return (ret.second);
 }
 
+UInt_t TFlashAnalysis::SetPixelTimeOffsets(string cUserFileName){
+	UInt_t nAddedPixelOffsets = 0;
+	if(cUserFileName.empty()){ // check if user pair list name string is empty
+//		if(bVerboseMode)
+			cout << "File name string is empty!" << endl;
+		return (0);
+	}
+	ifstream UserInputFile(cUserFileName.c_str(),ifstream::in); // open text file containing pixel pair combinations
+	if(!UserInputFile.is_open()){ // check if opening text file was successful
+		cerr << "Could not open pixel offset file " << cUserFileName << endl;
+		return (0);
+	}
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ');
+		switch (tokens.size()) {
+			case 2: // pixel offset should contain only two values
+				if(SetPixelTimeOffset((UInt_t)strtoul(tokens.at(0).c_str(),NULL,10),(Double_t)strtod(tokens.at(1).c_str(),NULL))) // try to set this pixel offset
+					nAddedPixelOffsets++; // in case of success, increment counter
+				break;
+			default:
+				continue; // do nothing
+		}
+	}// end of loop over input file
+	return (nAddedPixelOffsets);
+}
+
 void TFlashAnalysis::WriteLogfileHeader(){
-	if(!LogFileBuffer.is_open()) // no file is associated with LogFileBuffer
+	if(pLogFile!=NULL && !pLogFile->is_open()) // no file is associated with LogFileBuffer
 		return;
 	time(&RawTime);
 	std::streambuf *psbuf, *backup;
-	LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	LogFileBuffer << "+      FLASH Analysis Logfile       +" << endl;
-	LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	LogFileBuffer << "+    Analysis Setup Information     +" << endl;
-	LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	LogFileBuffer << "\t" << ctime(&RawTime) << endl;
-	LogFileBuffer << endl;
+	*pLogFile << "+++++++++++++++++++++++++++++++++++++" << endl;
+	*pLogFile << "+      FLASH Analysis Logfile       +" << endl;
+	*pLogFile << "+++++++++++++++++++++++++++++++++++++" << endl;
+	*pLogFile << "+    Analysis Setup Information     +" << endl;
+	*pLogFile << "+++++++++++++++++++++++++++++++++++++" << endl;
+	*pLogFile << "\t" << ctime(&RawTime) << endl;
+	*pLogFile << endl;
 	// redirect cout buffer to logfile
-	backup = std::clog.rdbuf();
-	psbuf = LogFileBuffer.rdbuf();
-	std::clog.rdbuf(psbuf);         // assign streambuf to cout
+	backup = std::cout.rdbuf();
+	psbuf = pLogFile->rdbuf();
+	std::cout.rdbuf(psbuf);         // assign streambuf to cout
 	// print status information to logfile
 	PrintStatus(); // print general status information of analysis setup
-	LogFileBuffer << endl; // add empty line
-	PrintTdcAddresses(); // print list of TDC addresses
-	LogFileBuffer << endl; // add empty line
-	PrintSwapList(); // print list of TDC where leading & trailing edges need to be swapped
-	LogFileBuffer << endl; // add empty line
-	PrintExcludedChannels(); // print list of excluded channels
-	LogFileBuffer << endl; // add empty line
-	PrintTimingWindow(); // print limits of timing window
-	LogFileBuffer << endl; // add empty line
-	PrintTriggerAddress();	 // print address of trigger channel
-	LogFileBuffer << endl; // add empty line
-	PrintTriggerWindow(); // print limits of trigger time window
-	LogFileBuffer << endl; // add empty line
-	LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	LogFileBuffer << "+ End of Analysis Setup Information +" << endl;
-	LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	LogFileBuffer << endl; // add empty line
+	*pLogFile << endl; // add empty line
+	//PrintTdcAddresses(); // print list of TDC addresses
+	//LogFileBuffer << endl; // add empty line
+	//PrintSwapList(); // print list of TDC where leading & trailing edges need to be swapped
+	//LogFileBuffer << endl; // add empty line
+	//PrintExcludedChannels(); // print list of excluded channels
+	//LogFileBuffer << endl; // add empty line
+	//PrintTimingWindow(); // print limits of timing window
+	//LogFileBuffer << endl; // add empty line
+	//PrintTriggerAddress();	 // print address of trigger channel
+	//LogFileBuffer << endl; // add empty line
+	//PrintTriggerWindow(); // print limits of trigger time window
+	//LogFileBuffer << endl; // add empty line
+	//LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
+	//LogFileBuffer << "+ End of Analysis Setup Information +" << endl;
+	//LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
+	//LogFileBuffer << endl; // add empty line
 	// reset cout buffer to terminal
-	std::clog.rdbuf(backup);        // restore cout's original streambuf
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
 	psbuf = NULL;
 	backup = NULL;
 
+}
+
+void TFlashAnalysis::WriteMessageToLog(string cUserMessage){
+	if(pLogFile==NULL) // log file does not exist
+		return;
+	*pLogFile << ctime(&RawTime) << "\t" << cUserMessage << endl;
 }
