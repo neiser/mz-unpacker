@@ -156,6 +156,9 @@ void TFlashAnalysis::Analyse(){
 		//std::sort(PixelPairs.begin(),PixelPairs.end());
 		bIsSortedListOfPairs = kTRUE;
 	}
+	if(bSkipEntry)
+		return;
+	bSkipEntry = kTRUE; // require to run GetEntry first before analysing events again
 	//Int_t nEntrySize = GetEntry(nEntryIndex);
 	//if(nEntrySize<1){// if entry is smaller than 1, something went wrong
 	//	return;
@@ -332,6 +335,20 @@ void TFlashAnalysis::FillWalkHistogram(UInt_t nRefChan, Double_t fToTLow, Double
 	}
 }
 
+Int_t TFlashAnalysis::GetEntry(Long64_t nEntryIndex){
+	bSkipEntry = kFALSE;
+	Int_t nSize = TTrbAnalysisBase::GetEntry(nEntryIndex);
+	if(nSize<1){ // size of returned entry is too small, skip this event
+		bSkipEntry = kTRUE;
+		return (nSize);
+	}
+	if(GetNSyncTimestamps()!=GetNTdcs()){ // number of sync timestamps does not match TDC list, skip this event
+		bSkipEntry = kTRUE;
+		nSize = -1;
+	}
+	return (nSize);
+}
+
 const std::set< std::pair<UInt_t,UInt_t> >* TFlashAnalysis::GetListOfPixelPairs() {
 	if(!bIsSortedListOfPairs){ // check if set of pixel pair combinations is sorted
 		//std::sort(PixelPairs.begin(),PixelPairs.end()); // if not, sort it
@@ -364,6 +381,7 @@ void TFlashAnalysis::Init(){
 	bApplyTotCuts	= kTRUE;
 	bIsSortedListOfPairs = kFALSE; // list of pixels is not sorted
 	bSettingsHaveChanged = kFALSE; // indicate if analysis settings have changed
+	bSkipEntry = kFALSE; // flag indicating to skip current event in analysis function
 	nNumberOfHitPixels = 0;
 	PixelTimeOffsets.clear();
 	PixelPairs.clear();

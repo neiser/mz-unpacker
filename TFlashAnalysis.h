@@ -53,6 +53,7 @@ private:
 	Bool_t bApplyTotCuts; // flag indicating use of Time-over-Threshold cuts
 	Bool_t bIsSortedListOfPairs; // flag indicating list of pixel pairs is sorted
 	Bool_t bSettingsHaveChanged; // flag indicating changes to analysis settings
+	Bool_t bSkipEntry; // flag indicating to skip this event in the analysis
 	UInt_t nNumberOfHitPixels; // number of pixels hit in one event
 	UInt_t nNumberOfFiredTriggers; // number of trigger channels that have fired
 	// need some object to store cuts and time offsets
@@ -100,6 +101,7 @@ public:
 	void FillToTHistogram(TH2D& hTimingHist) const; 
 	void FillToTCorrelation(UInt_t nChanA, UInt_t nChanB, TH2D& hUserHist) const;
 	void FillWalkHistogram(UInt_t nRefChan, Double_t fToTLow, Double_t fTotHigh, UInt_t nUserChan, TH2D& hUserHist) const;
+	Int_t GetEntry(Long64_t nEntryIndex);
 	UInt_t GetNumberOfHitPixels() const { return (nNumberOfHitPixels); }; // return number of hit pixels in this event
 	UInt_t GetNumberOfCorrelations() const { return((UInt_t)DetectedPixelPairs.size()); }; // return size of correlation map
 	Bool_t GetPairTimeDiff(UInt_t nUserChanA, UInt_t nUserChanB, Double_t& fDelta) const { return (GetPairTimeDiff(std::make_pair(nUserChanA,nUserChanB),fDelta)); } ; // get leading edge time difference between two pixels

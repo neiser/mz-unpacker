@@ -6,13 +6,14 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	//filestr.open ("test.log");
 	//a.SetLogFile(filestr);
 	// set analysis parameters
-	a.KeepMultiHits();
-	a.SetTimingWindow(-400.0,100.0);
-	a.SetTriggerChannel(0xc00b,9);
-	a.SetTriggerWindow(-240.0,-228.0);
+	a.KeepMultiHits(); // keep channels with multiple hits in time window
+	a.SetTimingWindow(-400.0,100.0); // set time window
+	a.SetTriggerChannel(0xc00b,9); // select trigger channel
+	a.SetTriggerWindow(-240.0,-228.0); // set trigger time window
 	//a.IgnoreOffsets();
 	// a.AddPixelPair(56,120); // original pair, but on different MCPs
 	// setting channel 38 as reference
+	a.AddPixelPair(36,40);
 	a.AddPixelPair(38,22);
 	a.AddPixelPair(38,24);
 	a.AddPixelPair(38,36);
@@ -22,10 +23,11 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	a.AddPixelPair(38,216);
 	a.AddPixelPair(38,230);
 	// set pixel timing offsets
-	a.SetPixelTimeOffset(56,-5.094);
-	a.SetPixelTimeOffset(198,-0.6237);
-	a.SetPixelTimeOffset(216,-1.709);
-	a.SetPixelTimeOffset(230,0.6106);
+	a.SetPixelTimeOffsets("FLASH_PixelOffsets.txt");
+	//a.SetPixelTimeOffset(56,-5.094);
+	//a.SetPixelTimeOffset(198,-0.6237);
+	//a.SetPixelTimeOffset(216,-1.709);
+	//a.SetPixelTimeOffset(230,0.6106);
 	// define histograms
 	TH1D hPixelMultiplicity("hPixelMultiplicity","Pixel multiplicity; # of hit pixels per event; freq.",100,-0.5,99.5);
 	//TH1D hTiming("hTiming","hit time; time (ns); freq",5000,-1000.0,1000.0);
@@ -38,6 +40,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	TH1D hTimeAvg_Mcp1("hTimeAvg_Mcp1","Avg Time for MCP 1; avg time (ns); freq",1000,-5.0,5.0);
 	TH2D hTimeAvgMult("hTimeAvgMult","hTimeAvgMult",100,-0.5,99.5,500,-5.0,5.0);
 //	TH2D hTimingAllPixels("hTimingAllPixels","channel vs hit time; channel seq ID; time (ns); freq",a.GetSizeOfMapTable()+1,-0.5,a.GetSizeOfMapTable()+0.5,5000,-1000.0,1000.0);
+	TH2D hToTCorr_36_40("hToTCorr_36_40","ToT Correlation; ToT_{36} (ns); ToT_{40} (ns); freq",1000,0.0,50.0,1000,0.0,50.0);
 	TH2D hToTCorr_38_56("hToTCorr_38_56","ToT Correlation; ToT_{38} (ns); ToT_{56} (ns); freq",1000,0.0,50.0,1000,0.0,50.0);
 	TH2D hToTCorr_38_40("hToTCorr_38_40","ToT Correlation; ToT_{38} (ns); ToT_{40} (ns); freq",1000,0.0,50.0,1000,0.0,50.0);
 	TH2D hToTCorr_38_36("hToTCorr_38_36","ToT Correlation; ToT_{38} (ns); ToT_{36} (ns); freq",1000,0.0,50.0,1000,0.0,50.0);
@@ -57,6 +60,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	a.RegisterTimeDiffHist(38,198,&hTimeDeltaTight_38_198);
 	a.RegisterTimeDiffHist(38,216,&hTimeDeltaTight_38_216);
 	a.RegisterTimeDiffHist(38,230,&hTimeDeltaTight_38_230);
+	a.RegisterTotCorrHist(36,40,&hToTCorr_36_40);
 	a.RegisterTotCorrHist(38,22,&hToTCorr_38_22);
 	a.RegisterTotCorrHist(38,24,&hToTCorr_38_24);
 	a.RegisterTotCorrHist(38,36,&hToTCorr_38_36);
@@ -72,7 +76,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	for(Int_t i=0; i<(Int_t)a.GetNEvents(); i+=10){
 		if(a.GetEntry(i)<1){
 			cout << "DATA ERROR: Skipping event \t" << i << endl;
-			nSkippedEvts++;
+			//nSkippedEvts++;
 			continue;
 		}
 		if(a.GetNSyncTimestamps()!=5){ // there is a problem with the TDC synchronisation
@@ -84,7 +88,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 			cout << "Wrong Trigger Multiplicity\t" << nTriggerMult << endl;
 			continue;
 		}
-		a.Analyse();
+		a.Analyse(); // analyse current entry
 		hPixelMultiplicity.Fill((Double_t)a.GetNumberOfHitPixels());
 		//cout << a.GetNumberOfHitPixels() << endl;
 //		a.FillTimingHistogram(hTiming);
@@ -166,7 +170,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	hToTCorr_38_230.DrawCopy("COLZ");
 
 	TCanvas *can_ToToff = new TCanvas("can_ToToff","FLASH - ToT Correlations (off Beam)");
-	can_ToToff->Divide(2,2);
+	can_ToToff->Divide(2,3);
 	can_ToToff->cd(1);
 	hToTCorr_38_40.DrawCopy("COLZ");
 	can_ToToff->cd(2);
@@ -175,6 +179,8 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	hToTCorr_38_24.DrawCopy("COLZ");
 	can_ToToff->cd(4);
 	hToTCorr_38_22.DrawCopy("COLZ");
+	can_ToToff->cd(5);
+	hToTCorr_36_40.DrawCopy("COLZ");
 
 	TCanvas *can_dT = new TCanvas("can_dT","FLASH - #Delta T");
 	can_dT->Divide(2,2);
@@ -281,8 +287,8 @@ void FlashTimingAnalysis(string cUserDataFile, string cUserTdcList, UInt_t nIncr
 			fAvgTime += fDelta;
 			nHitPixels++;
 		}
-		if(nHitPixels==4){
-			fAvgTime /= 4.0;
+		if(nHitPixels>1){
+			fAvgTime /= (Double_t)nHitPixels;
 			hTimeAvg_Mcp1.Fill(fAvgTime);
 			hTimeAvgMult.Fill((Double_t)a.GetNumberOfHitPixels(),fAvgTime);
 		}
