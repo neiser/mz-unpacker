@@ -38,4 +38,11 @@ void BuildFlashAnalysis(){
 		cout << "Building FLASH Analysis Analysis..." << endl;
 		gROOT->ProcessLine(".L TFlashAnalysis.cpp+");
 	//}
+	// generating dictionaries
+	gInterpreter->GenerateDictionary("std::pair<UInt_t,UInt_t>","utility");
+	gInterpreter->GenerateDictionary("std::set< std::pair<UInt_t,UInt_t> >","utility;set");
+//	gInterpreter->GenerateDictionary("std::map< std::pair<UInt_t,UInt_t>,Double_t >","utility;map");
+	//gInterpreter->GenerateDictionary("PixelHitModel","TDircAnalysisBase.h");
+	//gInterpreter->GenerateDictionary("std::list<PixelHitModel>","TDircAnalysisBase.h;list");
+
 }
