@@ -62,11 +62,13 @@ private:
 	std::map< UInt_t, Double_t > PixelTimeOffsets; // map for storing pixel time offset constants
 	std::map< std::pair<UInt_t,UInt_t>, PairResults > PairHistograms;
 	std::set< std::pair<UInt_t,UInt_t> > PixelPairs; // store combination of pixels the user wants to compare
+	std::set<UInt_t> RequiredPixels; // store channels that must be present in an event to continue with the analysis
 	std::set<UInt_t> TriggerChannels; // store channel belonging to trigger system that need to be present
 	PIXELPAIR DetectedPixelPairs;
 	std::ofstream* pLogFile;
 	time_t RawTime; // time structure
 	void ApplyPixelCuts(); // apply pixel cuts, any hits not passing the cuts will be removed
+	Bool_t CheckRequiredPixels() const; // check if all required pixels are present in an event
 	void Clear(); // clear results of event analysis
 	void FillHistograms(PIXELPAIR::const_iterator it); // fill standard analysis histograms
 	void Init(); // initialise FLASH analysis class values
@@ -86,6 +88,7 @@ public:
 	UInt_t AddPixelToTCuts(string cUserFileName); // add time-over-threshold cuts from file
 	Bool_t AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB); // register a new pixel correlation pair
 	UInt_t AddPixelPairs(string cUserPairList); // register new pixel pairs
+	Bool_t AddRequiredPixel(UInt_t nUserChannel); // add channel to required pixel list
 	Bool_t AddTriggerChannel(UInt_t nUserChannel);
 	void Analyse(); // analysis routine goes here, this method is needed!
 	void AnalyseTrigger(string cUserAnalysisFilename); // analysis of trigger signal only
@@ -111,6 +114,7 @@ public:
 	void IgnoreOffsets() { bApplyOffset=kFALSE; };
 	TH2D* MakePixelCorrelationMap(); // create 2D histogram showing pixel correlations
 	void PrintListOfPixelPairs(Bool_t bWriteToLog=kFALSE) const;
+	void PrintRequiredPixels(Bool_t bWriteToLog=kFALSE) const;
 	Bool_t RegisterTimeDiffHist(UInt_t nChanA, UInt_t nChanB, TH1D* hUserHist); // register time difference histogram
 	Bool_t RegisterTimeWalkHist(UInt_t nChanA, UInt_t nChanB, TH2D* hUserHist); // register time walk histogram
 	Bool_t RegisterTotCorrHist(UInt_t nChanA, UInt_t nChanB, TH2D* hUserHist); // register time difference histogram

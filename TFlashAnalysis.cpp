@@ -139,6 +139,12 @@ UInt_t TFlashAnalysis::AddPixelPairs(string cUserPairList){
 	return (nAddedPixelPairs);
 }
 
+Bool_t TFlashAnalysis::AddRequiredPixel(UInt_t nUserChannel){
+	std::pair<std::set<UInt_t>::iterator,bool> ret;
+	ret = RequiredPixels.insert(nUserChannel);
+	return (ret.second);
+}
+
 Bool_t TFlashAnalysis::AddTriggerChannel(UInt_t nUserChannel){
 	std::pair<std::set<UInt_t>::iterator,bool> ret;
 	ret = TriggerChannels.insert(nUserChannel);
@@ -149,6 +155,7 @@ void TFlashAnalysis::Analyse(){
 	if(bSettingsHaveChanged && pLogFile!=NULL){ // print status to log file if changes have happened
 		PrintExcludedChannels(1);
 		PrintListOfPixelPairs(1);
+		PrintRequiredPixels(1);
 		bSettingsHaveChanged = kFALSE; // reset flag
 	}
 	Clear(); // reset all variables needed in analysis of one event
@@ -164,7 +171,6 @@ void TFlashAnalysis::Analyse(){
 	//	return;
 	//}
 	nNumberOfHitPixels = (UInt_t)EvtReconHits.size(); // number of reconstructed hits is just the size of this map object
-	ApplyPixelCuts();
 	if(!PixelPairs.empty()){
 		for (std::set< std::pair<UInt_t,UInt_t> >::const_iterator it=PixelPairs.begin(); it!=PixelPairs.end(); ++it){ // loop over all user-defined pixel pairs
 			std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itA;
@@ -213,6 +219,19 @@ void TFlashAnalysis::ApplyPixelCuts(){
 		}
 		++it;
 	}// end of loop over all reconstructed hits
+}
+
+Bool_t TFlashAnalysis::CheckRequiredPixels() const {
+	if(RequiredPixels.empty())
+		return (kTRUE);
+	std::set<UInt_t>::const_iterator first = RequiredPixels.begin();
+	std::set<UInt_t>::const_iterator last  = RequiredPixels.end();
+	std::set<UInt_t>::const_iterator it;
+	for(it=first; it!=last; ++it){ // begin of loop over all required pixels
+		if(EvtReconHits.find(*it)==EvtReconHits.end())
+			return (kFALSE);
+	} // end of loop over all required pixels
+	return (kTRUE);
 }
 
 void TFlashAnalysis::Clear(){ // clear results of event analysis
@@ -346,6 +365,11 @@ Int_t TFlashAnalysis::GetEntry(Long64_t nEntryIndex){
 		bSkipEntry = kTRUE;
 		nSize = -1;
 	}
+	ApplyPixelCuts(); // apply LE and ToT cuts
+	if(!CheckRequiredPixels()){ // not all required pixels are present in event
+		bSkipEntry = kTRUE;
+		nSize = -1;
+	}
 	return (nSize);
 }
 
@@ -389,9 +413,9 @@ void TFlashAnalysis::Init(){
 	PixelTotCuts.clear();
 	PairHistograms.clear();
 	DetectedPixelPairs.clear();
+	RequiredPixels.clear();
 	TriggerChannels.clear();
 	pLogFile = NULL;
-	//buf = std::cout.rdbuf();
 }
 
 TH2D* TFlashAnalysis::MakePixelCorrelationMap(){
@@ -452,6 +476,35 @@ void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
 	cout << "++++++++++++++++++++++++++++++++++" << endl; 
 	for(it=start; it!=stop; ++it){
 		cout << it->first << "\t" << it->second << endl;
+	}
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
+}
+
+void TFlashAnalysis::PrintRequiredPixels(Bool_t bWriteToLog) const {
+	if(RequiredPixels.empty()){
+		cout << "ERROR: No required pixels declared!" << endl;
+		return;
+	}
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup = std::cout.rdbuf();
+	if(bWriteToLog && pLogFile!=NULL){
+		if(!pLogFile->is_open()) // no file is associated with LogFileBuffer
+			return;
+		psbuf = pLogFile->rdbuf();
+		std::cout.rdbuf(psbuf);         // assign streambuf to cout
+	}
+	std::set<UInt_t>::const_iterator start = RequiredPixels.begin();
+	std::set<UInt_t>::const_iterator stop = RequiredPixels.end();
+	std::set<UInt_t>::const_iterator it;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++    User Required Pixels    +++" << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl; 
+	for(it=start; it!=stop; ++it){
+		cout << *it << endl;
 	}
 	// reset cout buffer to terminal
 	std::cout.rdbuf(backup);        // restore cout's original streambuf
