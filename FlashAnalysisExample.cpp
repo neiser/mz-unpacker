@@ -1,3 +1,5 @@
+class TFlashAnalysis; // forward declaration of FLASH analysis class (needed on Linux systems)
+
 TList* RunBasicAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 	enum AnalysisStats {ALL=0, PIXEL_CUTS=1, TRIGGER_CUTS=2};
 	// set analysis parameters
@@ -9,12 +11,14 @@ TList* RunBasicAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 	TList* ListOfAnalysisHistograms = new TList(); // this list stores the pointers to basic analysis histograms needed for the general analysis
 	TH1D* hAnalysisStats = new TH1D("hAnalysisStats","Analysis Statistics; event type; freq",10,-1.5,8.5);
 	TH1D* hPixelMultiplicity = new TH1D("hPixelMultiplicity","Pixel multiplicity; # of hit pixels per event; freq.",100,-0.5,99.5);
+	TH1D* hPixelPairs = new TH1D("hPixelPairs","Number of found Pixel Pairs per Event; N_{PP}; freq",DataSet.GetNumberOfPixelPairs()+2,-0.5,DataSet.GetNumberOfPixelPairs()+1.5);
 	TH1D* hTriggerTime = new TH1D("hTriggerTime","Trigger Channel Time; T_{LE} (ns); freq",1000,-300.0,-200.0);
 	TH1D* hTriggerMult = new TH1D("hTriggerMult","Trigger Multiplicity; trigger multiplicity; freq",10,-1.5,8.5);
 	ListOfAnalysisHistograms->Add(hAnalysisStats);
 	ListOfAnalysisHistograms->Add(hPixelMultiplicity);
 	ListOfAnalysisHistograms->Add(hTriggerTime);
 	ListOfAnalysisHistograms->Add(hTriggerMult);
+	ListOfAnalysisHistograms->Add(hPixelPairs);
 	// define analysis loop
 	for(Int_t i=0; i<(Int_t)DataSet.GetNEvents(); i+=nIncrement){ // begin of loop over all events
 		hAnalysisStats->Fill((Double_t)ALL);
@@ -40,6 +44,7 @@ TList* RunBasicAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 			hTriggerTime->Fill(fTrigTime);
 		DataSet.Analyse(); // analyse current entry
 		hPixelMultiplicity->Fill((Double_t)DataSet.GetNumberOfHitPixels());
+		hPixelPairs->Fill((Double_t)DataSet.GetNumberOfCorrelations());
 	} // end of loop over all events
 	return (ListOfAnalysisHistograms);
 }
@@ -93,7 +98,7 @@ void FlashBasicAnalysis(string cUserDataFile, string cUserTdcList, string cUserP
 	// everything related to the trigger system
 	string cCanvasTitle = "FLASH Analysis Statistics - " + cBasicOutputName;
 	TCanvas *can_Statistics = new TCanvas("can_Statistics",cCanvasTitle.c_str());
-	can_Statistics->Divide(2,2);
+	can_Statistics->Divide(3,2);
 	can_Statistics->cd(1);
 	((TH1D*)ListOfStandardHistograms->At(0))->DrawCopy();
 	can_Statistics->cd(2);
@@ -102,12 +107,16 @@ void FlashBasicAnalysis(string cUserDataFile, string cUserTdcList, string cUserP
 	((TH1D*)ListOfStandardHistograms->At(2))->DrawCopy();
 	can_Statistics->cd(4);
 	((TH1D*)ListOfStandardHistograms->At(3))->DrawCopy();
+	can_Statistics->cd(5);
+	((TH1D*)ListOfStandardHistograms->At(4))->DrawCopy();
 	// everything on Time Differences
 	//cCanvasTitle.clear();
 	cCanvasTitle = "FLASH Analysis Time Differences - " + cBasicOutputName;
 	TCanvas *can_Timing = new TCanvas("can_Timing",cCanvasTitle.c_str());
-	Int_t nCanvasColumns = (ListOfTimingHistograms->GetSize()+1)/2;
-	can_Timing->Divide(2,nCanvasColumns);
+	Double_t fSqrt = sqrt(ListOfTimingHistograms->GetSize());
+	Int_t nCanvasColumns = ceil(fSqrt);
+	Int_t nCanvasRows = (ListOfTimingHistograms->GetSize()+1)/nCanvasColumns;
+	can_Timing->Divide(nCanvasColumns,nCanvasRows);
 	for(Int_t n=0; n<ListOfTimingHistograms->GetSize();n++){
 		can_Timing->cd(n+1);
 		((TH1D*)ListOfTimingHistograms->At(n))->DrawCopy();
@@ -115,8 +124,10 @@ void FlashBasicAnalysis(string cUserDataFile, string cUserTdcList, string cUserP
 	// everything on ToT correlations
 	cCanvasTitle = "FLASH Analysis ToT Correlations - " + cBasicOutputName;
 	TCanvas *can_Tot = new TCanvas("can_Tot",cCanvasTitle.c_str());
-	nCanvasColumns = (ListOfCorrelationHistograms->GetSize()+1)/2;
-	can_Tot->Divide(2,nCanvasColumns);
+	fSqrt = sqrt(ListOfCorrelationHistograms->GetSize());
+	nCanvasColumns = ceil(fSqrt);
+	nCanvasRows = (ListOfCorrelationHistograms->GetSize()+1)/nCanvasColumns;
+	can_Tot->Divide(nCanvasColumns,nCanvasRows);
 	for(Int_t n=0; n<ListOfCorrelationHistograms->GetSize();n++){
 		can_Tot->cd(n+1);
 		((TH2D*)ListOfCorrelationHistograms->At(n))->DrawCopy("COLZ");
@@ -147,14 +158,15 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	a.AddRequiredPixel(38);
 	a.AddRequiredPixel(102);
 	a.AddRequiredPixel(166);
-	a.AddPixelToTCut(166,14.75,15.25);
+	//a.AddPixelToTCut(166,14.75,15.25);
+	a.AddPixelToTCut(166,21.5,22.5); // for high gain, threshold 1.3 data set
 	a.AddRequiredPixel(230);
 	// add ToT cuts
-	a.AddPixelToTCut(38,13.96,15.16);
-	a.AddPixelToTCut(56,16.12,17.32);
-	a.AddPixelToTCut(198,15.77,16.97);
-	a.AddPixelToTCut(216,16.16,17.36);
-	a.AddPixelToTCut(230,13.95,15.15);
+	//a.AddPixelToTCut(38,13.96,15.16);
+	//a.AddPixelToTCut(56,16.12,17.32);
+	//a.AddPixelToTCut(198,15.77,16.97);
+	//a.AddPixelToTCut(216,16.16,17.36);
+	//a.AddPixelToTCut(230,13.95,15.15);
 	//a.IgnoreOffsets();
 	// setting channel 38 as reference
 	a.AddPixelPair(36,40);
@@ -168,7 +180,8 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 	a.AddPixelPair(38,230);
 	a.AddPixelPair(230,248);
 	// set pixel timing offsets
-	a.SetPixelTimeOffsets("FLASH_PixelOffsets.txt");
+	//a.SetPixelTimeOffsets("FLASH_PixelOffsets.txt");
+	a.SetPixelTimeOffsets("FLASH_PixelOffsets_Best.txt");
 	//a.SetPixelTimeOffset(56,-5.085);
 	//a.SetPixelTimeOffset(198,-0.6237);
 	//a.SetPixelTimeOffset(216,-1.709);
@@ -261,7 +274,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 		if(a.GetPairTimeDiff(38,56,fDelta)){
 			//hTimeDelta.Fill(fDelta);
 			//a.FillToTCorrelation(38,56,hToTCorr_38_56);
-			a.FillWalkHistogram(38,14.55,14.65,56,hWalk_56);
+			//a.FillWalkHistogram(38,14.55,14.65,56,hWalk_56);
 			//if(a.GetPairTimeDiff(38,14.5,14.7,56,16.5,16.9,fDelta)){
 			fAvgTime += fDelta;
 			if(fabs(fDelta)<fabs(fBestDelta))
@@ -272,7 +285,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 		if(a.GetPairTimeDiff(38,198,fDelta)){
 			//hTimeDelta.Fill(fDelta);
 			//a.FillToTCorrelation(38,198,hToTCorr_38_198);
-			a.FillWalkHistogram(38,14.55,14.65,198,hWalk_198);
+			//a.FillWalkHistogram(38,14.55,14.65,198,hWalk_198);
 			//if(a.GetPairTimeDiff(38,14.4,14.8,198,16.1,16.5,fDelta)){
 			//	hTimeDeltaTight_38_198.Fill(fDelta);
 			fAvgTime += fDelta;
@@ -284,7 +297,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 		if(a.GetPairTimeDiff(38,216,fDelta)){
 			//hTimeDelta.Fill(fDelta);
 			//a.FillToTCorrelation(38,216,hToTCorr_38_216);
-			a.FillWalkHistogram(38,14.55,14.65,216,hWalk_216);
+			//a.FillWalkHistogram(38,14.55,14.65,216,hWalk_216);
 			//if(a.GetPairTimeDiff(38,14.4,14.8,216,16.5,16.9,fDelta)){
 			//	hTimeDeltaTight_38_216.Fill(fDelta);
 			fAvgTime += fDelta;
@@ -296,7 +309,7 @@ void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
 		if(a.GetPairTimeDiff(38,230,fDelta)){
 			//hTimeDelta.Fill(fDelta);
 			//a.FillToTCorrelation(38,230,hToTCorr_38_230);
-			a.FillWalkHistogram(38,14.55,14.65,230,hWalk_230);
+			//a.FillWalkHistogram(38,14.55,14.65,230,hWalk_230);
 			//if(a.GetPairTimeDiff(38,14.4,14.8,230,14.4,14.8,fDelta)){
 			//	hTimeDeltaTight_38_230.Fill(fDelta);
 			fAvgTime += fDelta;

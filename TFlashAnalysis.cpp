@@ -145,6 +145,36 @@ Bool_t TFlashAnalysis::AddRequiredPixel(UInt_t nUserChannel){
 	return (ret.second);
 }
 
+UInt_t TFlashAnalysis::AddRequiredPixels(string cUserPixelList){ // add channel to required pixel list
+	UInt_t nAddedPixels = 0;
+	if(cUserPixelList.empty()){ // check if user pair list name string is empty
+//		if(bVerboseMode)
+			cout << "Pixel list string is empty!" << endl;
+		return (0);
+	}
+	ifstream UserInputFile(cUserPixelList.c_str(),ifstream::in); // open text file containing pixel pair combinations
+	if(!UserInputFile.is_open()){ // check if opening text file was successful
+		cerr << "Could not open Pixel list file " << cUserPixelList << endl;
+		return (0);
+	}
+	while(UserInputFile.good()){ // start loop over input file
+		string cCurrentLine;
+		getline(UserInputFile,cCurrentLine); // get line from input file
+		if(cCurrentLine.empty()) // skip empty lines
+			continue;
+		vector<string> tokens = LineParser(cCurrentLine,' ');
+		switch (tokens.size()) {
+			case 1: // required pixel definition should contain only one value per line
+				if(AddRequiredPixel((UInt_t)strtoul(tokens.at(0).c_str(),NULL,10))) // try to add this pixel pair combination
+					nAddedPixels++; // in case of success, increment counter
+				break;
+			default:
+				continue; // do nothing
+		}
+	}// end of loop over input file
+	return (nAddedPixels);
+}
+
 Bool_t TFlashAnalysis::AddTriggerChannel(UInt_t nUserChannel){
 	std::pair<std::set<UInt_t>::iterator,bool> ret;
 	ret = TriggerChannels.insert(nUserChannel);
@@ -483,11 +513,12 @@ void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
 	backup = NULL;
 }
 
+void TFlashAnalysis::PrintPixelCuts(Bool_t bWriteToLog) const {
+
+
+}
+
 void TFlashAnalysis::PrintRequiredPixels(Bool_t bWriteToLog) const {
-	if(RequiredPixels.empty()){
-		cout << "ERROR: No required pixels declared!" << endl;
-		return;
-	}
 	// redirect cout buffer to logfile
 	std::streambuf *psbuf, *backup;
 	backup = std::cout.rdbuf();
@@ -497,14 +528,19 @@ void TFlashAnalysis::PrintRequiredPixels(Bool_t bWriteToLog) const {
 		psbuf = pLogFile->rdbuf();
 		std::cout.rdbuf(psbuf);         // assign streambuf to cout
 	}
-	std::set<UInt_t>::const_iterator start = RequiredPixels.begin();
-	std::set<UInt_t>::const_iterator stop = RequiredPixels.end();
-	std::set<UInt_t>::const_iterator it;
 	cout << "++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+++    User Required Pixels    +++" << endl;
-	cout << "++++++++++++++++++++++++++++++++++" << endl; 
-	for(it=start; it!=stop; ++it){
-		cout << *it << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	if(RequiredPixels.empty()){
+		cout << "Required Pixels List is empty" << endl;
+	}
+	else{ // required pixels are registered
+		std::set<UInt_t>::const_iterator start = RequiredPixels.begin();
+		std::set<UInt_t>::const_iterator stop = RequiredPixels.end();
+		std::set<UInt_t>::const_iterator it;
+		for(it=start; it!=stop; ++it){ // begin loop over all registered pixels
+			cout << *it << endl;
+		} // end of loop over all registered pixels
 	}
 	// reset cout buffer to terminal
 	std::cout.rdbuf(backup);        // restore cout's original streambuf

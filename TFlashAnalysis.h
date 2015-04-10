@@ -89,6 +89,7 @@ public:
 	Bool_t AddPixelPair(UInt_t nUserChanA, UInt_t nUserChanB); // register a new pixel correlation pair
 	UInt_t AddPixelPairs(string cUserPairList); // register new pixel pairs
 	Bool_t AddRequiredPixel(UInt_t nUserChannel); // add channel to required pixel list
+	UInt_t AddRequiredPixels(string cUserPixelList); // add channel to required pixel list from text file
 	Bool_t AddTriggerChannel(UInt_t nUserChannel);
 	void Analyse(); // analysis routine goes here, this method is needed!
 	void AnalyseTrigger(string cUserAnalysisFilename); // analysis of trigger signal only
@@ -107,6 +108,7 @@ public:
 	Int_t GetEntry(Long64_t nEntryIndex);
 	UInt_t GetNumberOfHitPixels() const { return (nNumberOfHitPixels); }; // return number of hit pixels in this event
 	UInt_t GetNumberOfCorrelations() const { return((UInt_t)DetectedPixelPairs.size()); }; // return size of correlation map
+	UInt_t GetNumberOfPixelPairs() const { return((UInt_t)PixelPairs.size()); }; // return the number of declared pixel pairs
 	Bool_t GetPairTimeDiff(UInt_t nUserChanA, UInt_t nUserChanB, Double_t& fDelta) const { return (GetPairTimeDiff(std::make_pair(nUserChanA,nUserChanB),fDelta)); } ; // get leading edge time difference between two pixels
 	Bool_t GetPairTimeDiff(std::pair<UInt_t,UInt_t> UserPair, Double_t& fDelta) const; // get leading edge time difference between two pixels
 	Double_t GetPixelOffset(UInt_t nSeqId) const;
@@ -114,6 +116,7 @@ public:
 	void IgnoreOffsets() { bApplyOffset=kFALSE; };
 	TH2D* MakePixelCorrelationMap(); // create 2D histogram showing pixel correlations
 	void PrintListOfPixelPairs(Bool_t bWriteToLog=kFALSE) const;
+	void PrintPixelCuts(Bool_t bWriteToLog=kFALSE) const;
 	void PrintRequiredPixels(Bool_t bWriteToLog=kFALSE) const;
 	Bool_t RegisterTimeDiffHist(UInt_t nChanA, UInt_t nChanB, TH1D* hUserHist); // register time difference histogram
 	Bool_t RegisterTimeWalkHist(UInt_t nChanA, UInt_t nChanB, TH2D* hUserHist); // register time walk histogram
