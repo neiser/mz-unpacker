@@ -1,5 +1,28 @@
 class TFlashAnalysis; // forward declaration of FLASH analysis class (needed on Linux systems)
 
+struct SetupFiles {
+	string cUserTdcList;
+	string cUserTotCutFile;
+	string cUserLECutFile;
+	string cUserPixelPairFile;
+	string cUserRequiredPixelFile;
+	string cUserPixelOffsetFile;
+	SetupFiles() {
+		cUserTdcList = "";
+		cUserTotCutFile = "";
+		cUserLECutFile = "";
+		cUserPixelPairFile = "";
+		cUserRequiredPixelFile = "";
+		cUserPixelOffsetFile = "";
+	};
+} FlashAnalysisSetup;
+
+SetupFiles TestCaseTight(){
+	SetupFiles TestCase;
+	TestCase.cUserTdcList = "TDC_FLASH.txt";
+}
+
+
 
 TF1* AsymTiming(){
 	TF1* temp = new TF1("asyt","[0]*TMath::Gaus(x,[1],[2])*pow(0.5*TMath::Erfc(x-[1]),[3])",-5.0,5.0);
@@ -60,24 +83,117 @@ TList* RunBasicAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 	return (ListOfAnalysisHistograms);
 }
 
+TList* RunTimingAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
+	enum AnalysisStats {ALL=0, PIXEL_CUTS=1, TRIGGER_CUTS=2};
+	// set analysis parameters
+	// this can be put in a different function to ba available for all kinds of analyses
+	SetTriggerConditions(DataSet); // set trigger and analysis parameters
+	// create histograms and add to TList for displaying by analysis macro
+	TH1D* hAnalysisStats = new TH1D("hAnalysisStats","Analysis Statistics; event type; freq",10,-1.5,8.5);
+	TH1D* hPixelMultiplicity = new TH1D("hPixelMultiplicity","Pixel multiplicity; # of hit pixels per event; freq.",100,-0.5,99.5);
+	TH1D* hPixelPairs = new TH1D("hPixelPairs","Number of found Pixel Pairs per Event; N_{PP}; freq",DataSet.GetNumberOfPixelPairs()+2,-0.5,DataSet.GetNumberOfPixelPairs()+1.5);
+	TH1D* hTriggerTime = new TH1D("hTriggerTime","Trigger Channel Time; T_{LE} (ns); freq",1000,-300.0,-200.0);
+	TH1D* hTriggerMult = new TH1D("hTriggerMult","Trigger Multiplicity; trigger multiplicity; freq",10,-1.5,8.5);
+	TH1D* hTimeAvg = new TH1D("hTimeAvg","Averaged Time; avg time (ns); freq",1000,-5.0,5.0);
+	TH2D* hTimeAvgvsMult = new TH2D("hTimeAvgvsMult","Averaged Time as function of multiplicity; pixel pair multiplicity; avg time (ns); freq",30,-0.5,29.5,1000,-5.0,5.0);
+	TH1D* hTimeRMS = new TH1D("hTimeRMS","Avg Event Time RMS;RMS_{avg time} (ns); freq",1000,-5.0,5.0);
+	TH2D* hTimeRMSvsMult = new TH2D("hTimeRMSvsMult","Avg Event Time as function of Multiplicity; pixel pair multiplicity; RMS_{avg time} (ns); freq",30,-0.5,29.5,400,-1.0,1.0);
+	//TH1D* hTimeBest = new TH1D("hTimeBest","Best Time; best time (ns); freq",1000,-5.0,5.0);
+//	TH2D hTimeAvgMult("hTimeAvgMult","Average Time; # hit pixels; avg time (ns); freq ",(0.5*DataSet.GetSizeOfMapTable())+1,-0.5,(0.5*DataSet.GetSizeOfMapTable())+0.5,500,-5.0,5.0);
+	TList* ListOfAnalysisHistograms = new TList(); // this list stores the pointers to basic analysis histograms needed for the general analysis
+	//ListOfAnalysisHistograms->Add(hAnalysisStats);
+	//ListOfAnalysisHistograms->Add(hPixelMultiplicity);
+	//ListOfAnalysisHistograms->Add(hTriggerTime);
+	//ListOfAnalysisHistograms->Add(hTriggerMult);
+	//ListOfAnalysisHistograms->Add(hPixelPairs);
+	ListOfAnalysisHistograms->Add(hTimeAvg);
+	ListOfAnalysisHistograms->Add(hTimeAvgvsMult);
+	ListOfAnalysisHistograms->Add(hTimeRMS);
+	ListOfAnalysisHistograms->Add(hTimeRMSvsMult);
+	//ListOfAnalysisHistograms->Add(hTimeBest);
+//	ListOfAnalysisHistograms->Add(hTimeAvgMult);
+	// define analysis loop
+	std::vector<Double_t> fPixelTimes;
+	for(Int_t i=0; i<(Int_t)DataSet.GetNEvents(); i+=nIncrement){ // begin of loop over all events
+		hAnalysisStats->Fill((Double_t)ALL);
+		if(DataSet.GetEntry(i)<1){
+			//cout << "DATA ERROR: Skipping event \t" << i << endl;
+			//nSkippedEvts++;
+			continue;
+		}
+		hAnalysisStats->Fill((Double_t)PIXEL_CUTS);
+		if(DataSet.GetNSyncTimestamps()!=5){ // there is a problem with the TDC synchronisation
+			cout << "SYNC ERROR: Skipping event \t" << i << endl;
+			continue;
+		}
+		Int_t nTriggerMult = DataSet.GetTriggerMultiplicity();
+		hTriggerMult->Fill((Double_t)nTriggerMult);
+		if(nTriggerMult!=1){
+			//cout << "Wrong Trigger Multiplicity\t" << nTriggerMult << endl;
+			continue;
+		}
+		hAnalysisStats->Fill((Double_t)TRIGGER_CUTS);
+		Double_t fTrigTime = 0.0;
+		if(DataSet.GetTriggerTime(fTrigTime))
+			hTriggerTime->Fill(fTrigTime);
+		DataSet.Analyse(); // analyse current entry
+		hPixelMultiplicity->Fill((Double_t)DataSet.GetNumberOfHitPixels());
+		hPixelPairs->Fill((Double_t)DataSet.GetNumberOfCorrelations());
+		// timing analysis
+		if(DataSet.GetNumberOfCorrelations()==0)
+			continue;
+		Double_t fDelta; // temporary time difference between two pixels
+		// loop over all pixel pairs
+		std::set< std::pair<UInt_t,UInt_t> >* PixelList = DataSet.GetListOfPixelPairs(); // get pointer to list of all declared pixel pairs
+		std::set< std::pair<UInt_t,UInt_t> >::const_iterator first = PixelList->begin();
+		std::set< std::pair<UInt_t,UInt_t> >::const_iterator last = PixelList->end();
+		std::set< std::pair<UInt_t,UInt_t> >::iterator itr;
+		for(itr=first; itr!=last; ++itr){ // begin loop over all pixel pairs
+			if(DataSet.GetPairTimeDiff(itr->first,itr->second,fDelta)){ // check if pixel pair combination was found in this event
+				fPixelTimes.push_back(fDelta); // enter pixel time differnce into vector
+			}
+		} // end of loop over all pixel pairs
+		if(fPixelTimes.size()>2){
+			Double_t fAvgTime		= TMath::Mean(fPixelTimes.size(),&fPixelTimes[0]); // compute average time difference
+			Double_t fAvgTimeRMS	= TMath::RMS(fPixelTimes.size(),&fPixelTimes[0]); // compute average RMS of time difference
+			hTimeAvg->Fill(fAvgTime);
+			hTimeAvgvsMult->Fill((Double_t)fPixelTimes.size(),fAvgTime);
+			hTimeRMS->Fill(fAvgTimeRMS);
+			hTimeRMSvsMult->Fill((Double_t)fPixelTimes.size(),fAvgTimeRMS);
+		}
+		fPixelTimes.clear();
+	} // end of loop over all events
+	return (ListOfAnalysisHistograms);
+}
+
+
 // need 20 pixel pairs maximum
-void FlashBasicAnalysis(string cUserDataFile, string cUserTdcList, string cUserPairList, UInt_t nUserFraction=10){
+void FlashBasicAnalysis(string cUserDataFile, SetupFiles& AnalysisSetup, UInt_t nUserFraction=10){
 	gROOT->ProcessLine(".x BuildFlashAnalysis.cpp");
-	TFlashAnalysis BasicAnalysis(cUserDataFile,cUserTdcList); // adjust these addresses according to your folder structure!
+	TTimeStamp RunDate; // get time and date of analysis execution
+	UInt_t nDate = RunDate.GetDate();
+	UInt_t nTime = RunDate.GetTime();
+	TFlashAnalysis BasicAnalysis(cUserDataFile,AnalysisSetup.cUserTdcList); // define FLASH analysis object
 	
-	string cBasicOutputName = cUserDataFile.substr(0,cUserDataFile.length()-5);
+	string cBasicOutputName = cUserDataFile.substr(0,cUserDataFile.length()-5); // extract basic output name from data file name
 	// create log file
-	string cLogName = cBasicOutputName + "-Flash_BasicAnalysis.log"; // name for log file
-	std::ofstream AnalysisLogFile;
-	AnalysisLogFile.open(cLogName.c_str());
-	BasicAnalysis.SetLogFile(AnalysisLogFile);
+	stringstream cLogName;
+	cLogName << cBasicOutputName << "-Flash_BasicAnalysis_" << nDate << "-" << nTime << ".log"; // name for log file
+	std::ofstream AnalysisLogFile; // create log file stream object
+	AnalysisLogFile.open(cLogName.str().c_str()); // open log file stream
+	BasicAnalysis.SetLogFile(AnalysisLogFile); // register log file with FLASH analysis
 	// create output file
-	string cRootOutputName = cBasicOutputName + "-Flash_BasicAnalysis.root"; // set file name for output file
-	TFile OverviewOutput(cRootOutputName.c_str(),"RECREATE"); // open output file
+	stringstream cRootOutputName; 
+	cRootOutputName << cBasicOutputName << "-Flash_BasicAnalysis_" << nDate << "-" << nTime << ".root"; // set file name for output file
+	TFile OverviewOutput(cRootOutputName.str().c_str(),"RECREATE"); // open output file
 	if(OverviewOutput.IsZombie()) // check if output file is opened properly
 		return;
 	// set analysis details
-	BasicAnalysis.AddPixelPairs(cUserPairList);
+	UInt_t nPairsAdded		= BasicAnalysis.AddPixelPairs(AnalysisSetup.cUserPixelPairFile);
+	UInt_t nOffsetsAdded	= BasicAnalysis.SetPixelTimeOffsets(AnalysisSetup.cUserPixelOffsetFile);
+	UInt_t nReqPixelsAdded	= BasicAnalysis.AddRequiredPixels(AnalysisSetup.cUserRequiredPixelFile);
+	UInt_t nTotCutsAdded	= BasicAnalysis.AddPixelToTCuts(AnalysisSetup.cUserTotCutFile);
+	UInt_t nLECutsAdded		= BasicAnalysis.AddPixelLECuts(AnalysisSetup.cUserLECutFile);
 	// define histograms
 	TList* ListOfTimingHistograms = new TList();
 	TList* ListOfCorrelationHistograms = new TList();
@@ -154,10 +270,10 @@ void FlashBasicAnalysis(string cUserDataFile, string cUserTdcList, string cUserP
 }
 
 
-void FlashWalkAnalysis(string cUserDataFile, string cUserTdcList, string cUserPairList, string cUserPixelOffsets, string cUserTotCuts, UInt_t nIncrement=10){
+void FlashWalkAnalysis(string cUserDataFile, SetupFiles& AnalysisSetup, UInt_t nIncrement=10){
 	// build FLASH analysis class and create analysis object
 	gROOT->ProcessLine(".x BuildFlashAnalysis.cpp");
-	TFlashAnalysis WalkAnalysis(cUserDataFile,cUserTdcList); // adjust these addresses according to your folder structure!
+	TFlashAnalysis WalkAnalysis(cUserDataFile,AnalysisSetup.cUserTdcList); // adjust these addresses according to your folder structure!
 	string cBasicOutputName = cUserDataFile.substr(0,cUserDataFile.length()-5);
 	// create log file
 	string cLogName = cBasicOutputName + "-Flash_TimeWalk_Analysis.log"; // name for log file
@@ -172,9 +288,12 @@ void FlashWalkAnalysis(string cUserDataFile, string cUserTdcList, string cUserPa
 	// set analysis details
 	// setting channel 38 as reference
 	//WalkAnalysis.AddPixelToTCut(38,14.58,14.63);
-	UInt_t nPairsAdded		= WalkAnalysis.AddPixelPairs(cUserPairList);
-	UInt_t nOffsetsAdded	= WalkAnalysis.SetPixelTimeOffsets(cUserPixelOffsets);
-	UInt_t nTotCutsAdded	= WalkAnalysis.AddPixelToTCuts(cUserTotCuts);
+	// set analysis details
+	UInt_t nPairsAdded		= WalkAnalysis.AddPixelPairs(AnalysisSetup.cUserPixelPairFile);
+	UInt_t nOffsetsAdded	= WalkAnalysis.SetPixelTimeOffsets(AnalysisSetup.cUserPixelOffsetFile);
+	UInt_t nReqPixelsAdded	= WalkAnalysis.AddRequiredPixels(AnalysisSetup.cUserRequiredPixelFile);
+	UInt_t nTotCutsAdded	= WalkAnalysis.AddPixelToTCuts(AnalysisSetup.cUserTotCutFile);
+	UInt_t nLECutsAdded		= WalkAnalysis.AddPixelLECuts(AnalysisSetup.cUserLECutFile);
 	// define histograms
 	TList* ListOfWalkHistograms = new TList();
 	std::set< std::pair<UInt_t,UInt_t> >* PixelList = WalkAnalysis.GetListOfPixelPairs();
@@ -212,6 +331,105 @@ void FlashWalkAnalysis(string cUserDataFile, string cUserTdcList, string cUserPa
 	// clean up
 	delete ListOfWalkHistograms;
 	AnalysisLogFile.close();
+}
+
+void FlashTimingAnalysis(string cUserDataFile, SetupFiles& AnalysisSetup, UInt_t nUserFraction=10){
+	gROOT->ProcessLine(".x BuildFlashAnalysis.cpp");
+	TTimeStamp RunDate; // get time and date of analysis execution
+	UInt_t nDate = RunDate.GetDate();
+	UInt_t nTime = RunDate.GetTime();
+	TFlashAnalysis TimingAnalysis(cUserDataFile,AnalysisSetup.cUserTdcList); // define FLASH analysis object
+	
+	string cBasicOutputName = cUserDataFile.substr(0,cUserDataFile.length()-5); // extract basic output name from data file name
+	// create log file
+	stringstream cLogName;
+	cLogName << cBasicOutputName << "-Flash_TimingAnalysis_" << nDate << "-" << nTime << ".log"; // name for log file
+	std::ofstream AnalysisLogFile; // create log file stream object
+	AnalysisLogFile.open(cLogName.str().c_str()); // open log file stream
+	TimingAnalysis.SetLogFile(AnalysisLogFile); // register log file with FLASH analysis
+	// create output file
+	stringstream cRootOutputName; 
+	cRootOutputName << cBasicOutputName << "-Flash_TimingAnalysis_" << nDate << "-" << nTime << ".root"; // set file name for output file
+	TFile OverviewOutput(cRootOutputName.str().c_str(),"RECREATE"); // open output file
+	if(OverviewOutput.IsZombie()) // check if output file is opened properly
+		return;
+	// set analysis details
+	UInt_t nPairsAdded		= TimingAnalysis.AddPixelPairs(AnalysisSetup.cUserPixelPairFile);
+	UInt_t nOffsetsAdded	= TimingAnalysis.SetPixelTimeOffsets(AnalysisSetup.cUserPixelOffsetFile);
+	UInt_t nReqPixelsAdded	= TimingAnalysis.AddRequiredPixels(AnalysisSetup.cUserRequiredPixelFile);
+	UInt_t nTotCutsAdded	= TimingAnalysis.AddPixelToTCuts(AnalysisSetup.cUserTotCutFile);
+	UInt_t nLECutsAdded		= TimingAnalysis.AddPixelLECuts(AnalysisSetup.cUserLECutFile);
+	// define histograms
+	TList* ListOfTimingHistograms = new TList();
+	TList* ListOfCorrelationHistograms = new TList();
+	std::set< std::pair<UInt_t,UInt_t> >* PixelList = TimingAnalysis.GetListOfPixelPairs();
+	
+	std::set< std::pair<UInt_t,UInt_t> >::const_iterator first = PixelList->begin();
+	std::set< std::pair<UInt_t,UInt_t> >::const_iterator last = PixelList->end();
+	std::set< std::pair<UInt_t,UInt_t> >::iterator itr;
+	for(itr=first; itr!=last; ++itr){
+		stringstream cHistName;
+		stringstream cHistTitle;
+		cHistName << "hTimeDelta_" << itr->first << "_" << itr->second;
+		cHistTitle << "Time difference Chan #" << itr->first << "/#" << itr->second << "; #Delta t_{" << itr->first << "-" << itr->second << "} (ns);freq";
+		TH1D* hTemp = new TH1D(cHistName.str().c_str(),cHistTitle.str().c_str(),1000,-10.0,10.0);
+		ListOfTimingHistograms->Add(hTemp);
+		TimingAnalysis.RegisterTimeDiffHist(itr->first,itr->second,hTemp);
+		cHistName.str("");
+		cHistTitle.str("");
+		cHistName << "hToTCorr_" << itr->first << "_" << itr->second;
+		cHistTitle << "ToT Correlation Chan #" << itr->first << "/#" << itr->second << "; ToT_{" << itr->first << "} (ns); ToT_{" << itr->second << "} (ns); freq";
+		TH2D* hTempCorr = new TH2D(cHistName.str().c_str(),cHistTitle.str().c_str(),600,0.0,30.0,600,0.0,30.0);
+		ListOfCorrelationHistograms->Add(hTempCorr);
+		TimingAnalysis.RegisterTotCorrHist(itr->first,itr->second,hTempCorr);
+	}
+	// loop over events
+	TList* ListOfStandardHistograms = NULL;
+	ListOfStandardHistograms = RunTimingAnalysis(TimingAnalysis,nUserFraction);
+	// show results
+	// everything related to the trigger system
+	string cCanvasTitle = "FLASH AnalysisTiming - " + cBasicOutputName;
+	TCanvas *can_Statistics = new TCanvas("can_Statistics",cCanvasTitle.c_str());
+	can_Statistics->Divide(2,2);
+	can_Statistics->cd(1);
+	((TH1D*)ListOfStandardHistograms->At(0))->DrawCopy();
+	can_Statistics->cd(2);
+	((TH2D*)ListOfStandardHistograms->At(1))->DrawCopy("COLZ");
+	can_Statistics->cd(3);
+	((TH1D*)ListOfStandardHistograms->At(2))->DrawCopy();
+	can_Statistics->cd(4);
+	((TH2D*)ListOfStandardHistograms->At(3))->DrawCopy("COLZ");
+	// everything on Time Differences
+	//cCanvasTitle.clear();
+	cCanvasTitle = "FLASH Analysis Time Differences - " + cBasicOutputName;
+	TCanvas *can_Timing = new TCanvas("can_Timing",cCanvasTitle.c_str());
+	Double_t fSqrt = sqrt(ListOfTimingHistograms->GetSize());
+	Int_t nCanvasColumns = ceil(fSqrt);
+	Int_t nCanvasRows = (ListOfTimingHistograms->GetSize()+1)/nCanvasColumns;
+	can_Timing->Divide(nCanvasColumns,nCanvasRows);
+	for(Int_t n=0; n<ListOfTimingHistograms->GetSize();n++){
+		can_Timing->cd(n+1);
+		((TH1D*)ListOfTimingHistograms->At(n))->DrawCopy();
+	}
+	// everything on ToT correlations
+	cCanvasTitle = "FLASH Analysis ToT Correlations - " + cBasicOutputName;
+	TCanvas *can_Tot = new TCanvas("can_Tot",cCanvasTitle.c_str());
+	fSqrt = sqrt(ListOfCorrelationHistograms->GetSize());
+	nCanvasColumns = ceil(fSqrt);
+	nCanvasRows = (ListOfCorrelationHistograms->GetSize()+1)/nCanvasColumns;
+	can_Tot->Divide(nCanvasColumns,nCanvasRows);
+	for(Int_t n=0; n<ListOfCorrelationHistograms->GetSize();n++){
+		can_Tot->cd(n+1);
+		((TH2D*)ListOfCorrelationHistograms->At(n))->DrawCopy("COLZ");
+	}
+	// write everything to disk
+	can_Statistics->Write();
+	can_Timing->Write();
+	can_Tot->Write();
+	OverviewOutput.Write();
+	delete ListOfStandardHistograms;
+	delete ListOfTimingHistograms;
+	delete ListOfCorrelationHistograms;
 }
 
 void FlashAnalysisExample(string cUserDataFile, string cUserTdcList){
