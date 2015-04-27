@@ -74,6 +74,8 @@ private:
 	void Init(); // initialise FLASH analysis class values
 	virtual void PrintExcludedChannels(Bool_t bWriteToLog=kFALSE) const;
 protected:
+	void PrintLECuts(Bool_t bWriteToLog) const;
+	void PrintTotCuts(Bool_t bWriteToLog) const;
 	Double_t ComputePixelTimeDiff(PIXELPAIR::const_iterator UserPair) const; // compute time difference between two pixels
 	void WriteLogfileHeader(); // write status information to log file
 	void WriteMessageToLog(string cUserMessage); // write a message to log file
