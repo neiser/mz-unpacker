@@ -55,6 +55,10 @@ UInt_t TFlashAnalysis::AddPixelLECuts(string cUserFileName){
 				continue; // do nothing
 		}
 	}// end of loop over input file
+	if(nAddedLECuts>0 && pLogFile!=NULL){ // write cuts definition file name to log
+		if(pLogFile->is_open()) // no file is associated with LogFileBuffer
+			*pLogFile << "Leading Edge Cuts file: " << cUserFileName << endl;
+	}
 	return (nAddedLECuts);
 }
 
@@ -92,6 +96,10 @@ UInt_t TFlashAnalysis::AddPixelToTCuts(string cUserFileName){
 				continue; // do nothing
 		}
 	}// end of loop over input file
+	if(nAddedTotCuts>0 && pLogFile!=NULL){ // write cuts definition file name to log
+		if(pLogFile->is_open()) // no file is associated with LogFileBuffer
+			*pLogFile << "ToT Cuts file: " << cUserFileName << endl;
+	}
 	return (nAddedTotCuts);
 }
 
@@ -136,6 +144,10 @@ UInt_t TFlashAnalysis::AddPixelPairs(string cUserPairList){
 				continue; // do nothing
 		}
 	}// end of loop over input file
+	if(nAddedPixelPairs>0 && pLogFile!=NULL){ // write cuts definition file name to log
+		if(pLogFile->is_open()) // no file is associated with LogFileBuffer
+			*pLogFile << "Pixel Pair file: " << cUserPairList << endl;
+	}
 	return (nAddedPixelPairs);
 }
 
@@ -172,6 +184,10 @@ UInt_t TFlashAnalysis::AddRequiredPixels(string cUserPixelList){ // add channel 
 				continue; // do nothing
 		}
 	}// end of loop over input file
+	if(nAddedPixels>0 && pLogFile!=NULL){ // write cuts definition file name to log
+		if(pLogFile->is_open()) // no file is associated with LogFileBuffer
+			*pLogFile << "Required Pixel file: " << cUserPixelList << endl;
+	}
 	return (nAddedPixels);
 }
 
@@ -186,6 +202,7 @@ void TFlashAnalysis::Analyse(){
 		PrintExcludedChannels(1);
 		PrintListOfPixelPairs(1);
 		PrintRequiredPixels(1);
+		PrintPixelCuts(1);
 		bSettingsHaveChanged = kFALSE; // reset flag
 	}
 	Clear(); // reset all variables needed in analysis of one event
@@ -484,11 +501,7 @@ void TFlashAnalysis::PrintExcludedChannels(Bool_t bWriteToLog) const {
 	backup = NULL;
 }
 
-void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
-	if(PixelPairs.empty()){
-		cout << "ERROR: No pixel pairs declared!" << endl;
-		return;
-	}
+void TFlashAnalysis::PrintLECuts(Bool_t bWriteToLog) const {
 	// redirect cout buffer to logfile
 	std::streambuf *psbuf, *backup;
 	backup = std::cout.rdbuf();
@@ -498,14 +511,49 @@ void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
 		psbuf = pLogFile->rdbuf();
 		std::cout.rdbuf(psbuf);         // assign streambuf to cout
 	}
-	std::set< std::pair<UInt_t,UInt_t> >::const_iterator start = PixelPairs.begin();
-	std::set< std::pair<UInt_t,UInt_t> >::const_iterator stop = PixelPairs.end();
-	std::set< std::pair<UInt_t,UInt_t> >::const_iterator it;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++  Pixel Leading Edge Cuts   +++" << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	if(PixelLECuts.empty()){
+		cout << "No pixel leading edge cuts declared!" << endl;
+	}
+	else{
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator start = PixelLECuts.begin();
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator stop = PixelLECuts.end();
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator it;
+		for(it=start; it!=stop; ++it){
+			cout << it->first << "\t" << it->second.first << " - " << it->second.second << endl;
+		}
+	}
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
+}
+
+void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup = std::cout.rdbuf();
+	if(bWriteToLog && pLogFile!=NULL){
+		if(!pLogFile->is_open()) // no file is associated with LogFileBuffer
+			return;
+		psbuf = pLogFile->rdbuf();
+		std::cout.rdbuf(psbuf);         // assign streambuf to cout
+	}
 	cout << "++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+++ User Declared Pixel Pairs  +++" << endl;
-	cout << "++++++++++++++++++++++++++++++++++" << endl; 
-	for(it=start; it!=stop; ++it){
-		cout << it->first << "\t" << it->second << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	if(PixelPairs.empty()){
+		cout << "No pixel pairs declared!" << endl;
+	}
+	else{
+		std::set< std::pair<UInt_t,UInt_t> >::const_iterator start = PixelPairs.begin();
+		std::set< std::pair<UInt_t,UInt_t> >::const_iterator stop = PixelPairs.end();
+		std::set< std::pair<UInt_t,UInt_t> >::const_iterator it;
+		for(it=start; it!=stop; ++it){
+			cout << it->first << "\t" << it->second << endl;
+		}
 	}
 	// reset cout buffer to terminal
 	std::cout.rdbuf(backup);        // restore cout's original streambuf
@@ -514,8 +562,8 @@ void TFlashAnalysis::PrintListOfPixelPairs(Bool_t bWriteToLog) const {
 }
 
 void TFlashAnalysis::PrintPixelCuts(Bool_t bWriteToLog) const {
-
-
+	PrintLECuts(bWriteToLog);
+	PrintTotCuts(bWriteToLog);
 }
 
 void TFlashAnalysis::PrintRequiredPixels(Bool_t bWriteToLog) const {
@@ -541,6 +589,36 @@ void TFlashAnalysis::PrintRequiredPixels(Bool_t bWriteToLog) const {
 		for(it=start; it!=stop; ++it){ // begin loop over all registered pixels
 			cout << *it << endl;
 		} // end of loop over all registered pixels
+	}
+	// reset cout buffer to terminal
+	std::cout.rdbuf(backup);        // restore cout's original streambuf
+	psbuf = NULL;
+	backup = NULL;
+}
+
+void TFlashAnalysis::PrintTotCuts(Bool_t bWriteToLog) const {
+	// redirect cout buffer to logfile
+	std::streambuf *psbuf, *backup;
+	backup = std::cout.rdbuf();
+	if(bWriteToLog && pLogFile!=NULL){
+		if(!pLogFile->is_open()) // no file is associated with LogFileBuffer
+			return;
+		psbuf = pLogFile->rdbuf();
+		std::cout.rdbuf(psbuf);         // assign streambuf to cout
+	}
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	cout << "+++       Pixel ToT Cuts       +++" << endl;
+	cout << "++++++++++++++++++++++++++++++++++" << endl;
+	if(PixelTotCuts.empty()){
+		cout << "No pixel ToT cuts declared!" << endl;
+	}
+	else{
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator start = PixelTotCuts.begin();
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator stop = PixelTotCuts.end();
+		std::map< UInt_t, std::pair<Double_t, Double_t> >::const_iterator it;
+		for(it=start; it!=stop; ++it){
+			cout << it->first << "\t" << it->second.first << " - " << it->second.second << endl;
+		}
 	}
 	// reset cout buffer to terminal
 	std::cout.rdbuf(backup);        // restore cout's original streambuf
@@ -606,7 +684,7 @@ UInt_t TFlashAnalysis::SetPixelTimeOffsets(string cUserFileName){
 	UInt_t nAddedPixelOffsets = 0;
 	if(cUserFileName.empty()){ // check if user pair list name string is empty
 //		if(bVerboseMode)
-			cout << "File name string is empty!" << endl;
+			cout << "Pixel Offset file name string is empty!" << endl;
 		return (0);
 	}
 	ifstream UserInputFile(cUserFileName.c_str(),ifstream::in); // open text file containing pixel pair combinations
@@ -629,6 +707,10 @@ UInt_t TFlashAnalysis::SetPixelTimeOffsets(string cUserFileName){
 				continue; // do nothing
 		}
 	}// end of loop over input file
+	if(nAddedPixelOffsets>0 && pLogFile!=NULL){ // write cuts definition file name to log
+		if(pLogFile->is_open()) // no file is associated with LogFileBuffer
+			*pLogFile << "Pixel Offset file: " << cUserFileName << endl;
+	}
 	return (nAddedPixelOffsets);
 }
 
@@ -636,7 +718,6 @@ void TFlashAnalysis::WriteLogfileHeader(){
 	if(pLogFile!=NULL && !pLogFile->is_open()) // no file is associated with LogFileBuffer
 		return;
 	time(&RawTime);
-	std::streambuf *psbuf, *backup;
 	*pLogFile << "+++++++++++++++++++++++++++++++++++++" << endl;
 	*pLogFile << "+      FLASH Analysis Logfile       +" << endl;
 	*pLogFile << "+++++++++++++++++++++++++++++++++++++" << endl;
@@ -644,34 +725,6 @@ void TFlashAnalysis::WriteLogfileHeader(){
 	*pLogFile << "+++++++++++++++++++++++++++++++++++++" << endl;
 	*pLogFile << "\t" << ctime(&RawTime) << endl;
 	*pLogFile << endl;
-	// redirect cout buffer to logfile
-	backup = std::cout.rdbuf();
-	psbuf = pLogFile->rdbuf();
-	std::cout.rdbuf(psbuf);         // assign streambuf to cout
-	// print status information to logfile
-	PrintStatus(); // print general status information of analysis setup
-	*pLogFile << endl; // add empty line
-	//PrintTdcAddresses(); // print list of TDC addresses
-	//LogFileBuffer << endl; // add empty line
-	//PrintSwapList(); // print list of TDC where leading & trailing edges need to be swapped
-	//LogFileBuffer << endl; // add empty line
-	//PrintExcludedChannels(); // print list of excluded channels
-	//LogFileBuffer << endl; // add empty line
-	//PrintTimingWindow(); // print limits of timing window
-	//LogFileBuffer << endl; // add empty line
-	//PrintTriggerAddress();	 // print address of trigger channel
-	//LogFileBuffer << endl; // add empty line
-	//PrintTriggerWindow(); // print limits of trigger time window
-	//LogFileBuffer << endl; // add empty line
-	//LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	//LogFileBuffer << "+ End of Analysis Setup Information +" << endl;
-	//LogFileBuffer << "+++++++++++++++++++++++++++++++++++++" << endl;
-	//LogFileBuffer << endl; // add empty line
-	// reset cout buffer to terminal
-	std::cout.rdbuf(backup);        // restore cout's original streambuf
-	psbuf = NULL;
-	backup = NULL;
-
 }
 
 void TFlashAnalysis::WriteMessageToLog(string cUserMessage){
