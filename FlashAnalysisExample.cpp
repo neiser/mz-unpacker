@@ -86,11 +86,12 @@ TList* RunBasicAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 TList* RunTimingAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 	enum AnalysisStats {ALL=0, PIXEL_CUTS=1, TRIGGER_CUTS=2};
 	// set analysis parameters
+	UInt_t nMinDetPairs = 3;
 	// this can be put in a different function to ba available for all kinds of analyses
 	SetTriggerConditions(DataSet); // set trigger and analysis parameters
 	// create histograms and add to TList for displaying by analysis macro
 	TH1D* hAnalysisStats = new TH1D("hAnalysisStats","Analysis Statistics; event type; freq",10,-1.5,8.5);
-	TH1D* hPixelMultiplicity = new TH1D("hPixelMultiplicity","Pixel multiplicity; # of hit pixels per event; freq.",100,-0.5,99.5);
+	TH1D* hPixelMultiplicity = new TH1D("hPixelMultiplicity","Pixel multiplicity; # of hit pixels per event; freq.",0.5*DataSet.GetSizeOfMapTable()+2,-0.5,0.5*DataSet.GetSizeOfMapTable()+1.5);
 	TH1D* hPixelPairs = new TH1D("hPixelPairs","Number of found Pixel Pairs per Event; N_{PP}; freq",DataSet.GetNumberOfPixelPairs()+2,-0.5,DataSet.GetNumberOfPixelPairs()+1.5);
 	TH1D* hTriggerTime = new TH1D("hTriggerTime","Trigger Channel Time; T_{LE} (ns); freq",1000,-300.0,-200.0);
 	TH1D* hTriggerMult = new TH1D("hTriggerMult","Trigger Multiplicity; trigger multiplicity; freq",10,-1.5,8.5);
@@ -113,8 +114,8 @@ TList* RunTimingAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 	//ListOfAnalysisHistograms->Add(hTimeBest);
 //	ListOfAnalysisHistograms->Add(hTimeAvgMult);
 	// define analysis loop
-	std::vector<Double_t> fPixelTimes;
 	for(Int_t i=0; i<(Int_t)DataSet.GetNEvents(); i+=nIncrement){ // begin of loop over all events
+		//cout << i << endl;
 		hAnalysisStats->Fill((Double_t)ALL);
 		if(DataSet.GetEntry(i)<1){
 			//cout << "DATA ERROR: Skipping event \t" << i << endl;
@@ -136,32 +137,20 @@ TList* RunTimingAnalysis(TFlashAnalysis& DataSet, UInt_t nIncrement=10){
 		Double_t fTrigTime = 0.0;
 		if(DataSet.GetTriggerTime(fTrigTime))
 			hTriggerTime->Fill(fTrigTime);
+		//cout << "Trying to analyse event..." << endl;
 		DataSet.Analyse(); // analyse current entry
 		hPixelMultiplicity->Fill((Double_t)DataSet.GetNumberOfHitPixels());
 		hPixelPairs->Fill((Double_t)DataSet.GetNumberOfCorrelations());
 		// timing analysis
-		if(DataSet.GetNumberOfCorrelations()==0)
-			continue;
-		Double_t fDelta; // temporary time difference between two pixels
-		// loop over all pixel pairs
-		std::set< std::pair<UInt_t,UInt_t> >* PixelList = DataSet.GetListOfPixelPairs(); // get pointer to list of all declared pixel pairs
-		std::set< std::pair<UInt_t,UInt_t> >::const_iterator first = PixelList->begin();
-		std::set< std::pair<UInt_t,UInt_t> >::const_iterator last = PixelList->end();
-		std::set< std::pair<UInt_t,UInt_t> >::iterator itr;
-		for(itr=first; itr!=last; ++itr){ // begin loop over all pixel pairs
-			if(DataSet.GetPairTimeDiff(itr->first,itr->second,fDelta)){ // check if pixel pair combination was found in this event
-				fPixelTimes.push_back(fDelta); // enter pixel time differnce into vector
-			}
-		} // end of loop over all pixel pairs
-		if(fPixelTimes.size()>2){
-			Double_t fAvgTime		= TMath::Mean(fPixelTimes.size(),&fPixelTimes[0]); // compute average time difference
-			Double_t fAvgTimeRMS	= TMath::RMS(fPixelTimes.size(),&fPixelTimes[0]); // compute average RMS of time difference
-			hTimeAvg->Fill(fAvgTime);
-			hTimeAvgvsMult->Fill((Double_t)fPixelTimes.size(),fAvgTime);
-			hTimeRMS->Fill(fAvgTimeRMS);
-			hTimeRMSvsMult->Fill((Double_t)fPixelTimes.size(),fAvgTimeRMS);
+		UInt_t nDetPixelPairs = DataSet.GetNumberOfCorrelations();
+		if(nDetPixelPairs<nMinDetPairs){ // not enough pixel pairs found
+			//cout << "Skipping event..." << endl;
+			continue; // skip rest of analysis loop
 		}
-		fPixelTimes.clear();
+		hTimeAvg->Fill(DataSet.GetAvgTOF());
+		hTimeAvgvsMult->Fill((Double_t)nDetPixelPairs,DataSet.GetAvgTOF());
+		hTimeRMS->Fill(DataSet.GetAvgTofRMS());
+		hTimeRMSvsMult->Fill((Double_t)nDetPixelPairs,DataSet.GetAvgTofRMS());
 	} // end of loop over all events
 	return (ListOfAnalysisHistograms);
 }

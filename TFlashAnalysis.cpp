@@ -218,21 +218,36 @@ void TFlashAnalysis::Analyse(){
 	//	return;
 	//}
 	nNumberOfHitPixels = (UInt_t)EvtReconHits.size(); // number of reconstructed hits is just the size of this map object
+	std::vector<Double_t> fTempTofValues;
 	if(!PixelPairs.empty()){
 		for (std::set< std::pair<UInt_t,UInt_t> >::const_iterator it=PixelPairs.begin(); it!=PixelPairs.end(); ++it){ // loop over all user-defined pixel pairs
 			std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itA;
 			std::map< UInt_t,std::list<PixelHitModel> >::const_iterator itB;
 			itA = EvtReconHits.find(it->first); // find first pixel
 			itB = EvtReconHits.find(it->second); // find second pixel
-			if(itA!=EvtReconHits.end() && itB!=EvtReconHits.end()){
+			if(itA!=EvtReconHits.end() && itB!=EvtReconHits.end()){ // match pixel pairs
 				std::list<PixelHitModel>::const_iterator FirstHit = itA->second.begin();
 				std::list<PixelHitModel>::const_iterator LastHit = itB->second.begin();
 				std::pair<PIXELPAIR::const_iterator,bool> ret;
 				ret = DetectedPixelPairs.insert(std::make_pair(*it,std::make_pair(FirstHit,LastHit)));
-				FillHistograms(ret.first);
+				if(ret.second){ // check if element was inserted into map
+					FillHistograms(ret.first); // fill registered histograms
+					fTempTofValues.push_back(ComputePixelTimeDiff(ret.first));
+				}
 			}
 		} // end of loop over all user-defined pixel pairs
+		// compute TOF mean and RMS
+		if(!DetectedPixelPairs.empty()){ // make sure pixel pairs have been detected
+			fAvgTofTime	= TMath::Mean(fTempTofValues.size(),&fTempTofValues[0]); // compute average time difference
+			fAvgTofRMS	= TMath::RMS(fTempTofValues.size(),&fTempTofValues[0]); // compute average RMS of time	
+			//if(DetectedPixelPairs.size()>2){
+			//	TruncateTofValues(fTempTofValues);
+			//	fAvgTofTime	= TMath::Mean(fTempTofValues.size(),&fTempTofValues[0]); // compute average time difference
+			//	fAvgTofRMS	= TMath::RMS(fTempTofValues.size(),&fTempTofValues[0]); // compute average RMS of time	
+			//}
+		}
 	}
+	fTempTofValues.clear();
 }
 
 void TFlashAnalysis::AnalyseTrigger(string cUserAnalysisFilename){
@@ -282,6 +297,8 @@ Bool_t TFlashAnalysis::CheckRequiredPixels() const {
 }
 
 void TFlashAnalysis::Clear(){ // clear results of event analysis
+	fAvgTofTime = 0.0;
+	fAvgTofRMS	= 0.0;
 	nNumberOfHitPixels		= 0;
 	nNumberOfFiredTriggers	= 0;
 	DetectedPixelPairs.clear();
@@ -447,13 +464,18 @@ Double_t TFlashAnalysis::GetPixelOffset(UInt_t nSeqId) const{
 }
 
 void TFlashAnalysis::Init(){
+	// switches impacting on behaviour of analysis
 	bApplyLECuts	= kTRUE;
 	bApplyOffset	= kTRUE;
 	bApplyTotCuts	= kTRUE;
+	bSkipEntry = kFALSE; // flag indicating to skip current event in analysis function
 	bIsSortedListOfPairs = kFALSE; // list of pixels is not sorted
 	bSettingsHaveChanged = kFALSE; // indicate if analysis settings have changed
-	bSkipEntry = kFALSE; // flag indicating to skip current event in analysis function
+	// results variables
+	fAvgTofTime = 0.0;
+	fAvgTofRMS	= 0.0;
 	nNumberOfHitPixels = 0;
+	// storage containers
 	PixelTimeOffsets.clear();
 	PixelPairs.clear();
 	PixelLECuts.clear();
@@ -462,6 +484,7 @@ void TFlashAnalysis::Init(){
 	DetectedPixelPairs.clear();
 	RequiredPixels.clear();
 	TriggerChannels.clear();
+	// log files
 	pLogFile = NULL;
 }
 
@@ -712,6 +735,22 @@ UInt_t TFlashAnalysis::SetPixelTimeOffsets(string cUserFileName){
 			*pLogFile << "Pixel Offset file: " << cUserFileName << endl;
 	}
 	return (nAddedPixelOffsets);
+}
+
+void TFlashAnalysis::TruncateTofValues(std::vector<Double_t>& fTofValues){
+	std::vector<Double_t>::iterator first = fTofValues.begin();
+	std::vector<Double_t>::iterator last = fTofValues.end();
+	std::vector<Double_t>::iterator itr;
+	std::vector<Double_t>::iterator remove_itr;
+	Double_t fMaxDistToMean = 0.0;
+	for(itr=first; itr!=last; ++itr){
+		Double_t fTempDistToMean = fabs(*itr-fAvgTofTime);
+		if(fTempDistToMean>fMaxDistToMean){
+			fMaxDistToMean = fTempDistToMean;
+			remove_itr = itr;
+		}
+	}
+	fTofValues.erase(remove_itr);
 }
 
 void TFlashAnalysis::WriteLogfileHeader(){

@@ -21,6 +21,7 @@
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TObject.h"
+#include "TMath.h"
 #include "TTree.h"
 
 #include "myUtilities.h"
@@ -54,6 +55,8 @@ private:
 	Bool_t bIsSortedListOfPairs; // flag indicating list of pixel pairs is sorted
 	Bool_t bSettingsHaveChanged; // flag indicating changes to analysis settings
 	Bool_t bSkipEntry; // flag indicating to skip this event in the analysis
+	Double_t fAvgTofTime; // average TOF computed from all pixel pairs registyered for analysis
+	Double_t fAvgTofRMS; // average TOF RMS computed from all pixel pairs registyered for analysis
 	UInt_t nNumberOfHitPixels; // number of pixels hit in one event
 	UInt_t nNumberOfFiredTriggers; // number of trigger channels that have fired
 	// need some object to store cuts and time offsets
@@ -73,6 +76,7 @@ private:
 	void FillHistograms(PIXELPAIR::const_iterator it); // fill standard analysis histograms
 	void Init(); // initialise FLASH analysis class values
 	virtual void PrintExcludedChannels(Bool_t bWriteToLog=kFALSE) const;
+	void TruncateTofValues(std::vector<Double_t>& fTofValues);
 protected:
 	void PrintLECuts(Bool_t bWriteToLog) const;
 	void PrintTotCuts(Bool_t bWriteToLog) const;
@@ -107,9 +111,11 @@ public:
 	void FillToTHistogram(TH2D& hTimingHist) const; 
 	void FillToTCorrelation(UInt_t nChanA, UInt_t nChanB, TH2D& hUserHist) const;
 	void FillWalkHistogram(UInt_t nRefChan, Double_t fToTLow, Double_t fTotHigh, UInt_t nUserChan, TH2D& hUserHist) const;
+	Double_t GetAvgTOF() const { return (fAvgTofTime); }; // return average TOF
+	Double_t GetAvgTofRMS() const { return (fAvgTofRMS); };
 	Int_t GetEntry(Long64_t nEntryIndex);
 	UInt_t GetNumberOfHitPixels() const { return (nNumberOfHitPixels); }; // return number of hit pixels in this event
-	UInt_t GetNumberOfCorrelations() const { return((UInt_t)DetectedPixelPairs.size()); }; // return size of correlation map
+	UInt_t GetNumberOfCorrelations() const { return((UInt_t)DetectedPixelPairs.size()); }; // return number of detected pixel pairs
 	UInt_t GetNumberOfPixelPairs() const { return((UInt_t)PixelPairs.size()); }; // return the number of declared pixel pairs
 	Bool_t GetPairTimeDiff(UInt_t nUserChanA, UInt_t nUserChanB, Double_t& fDelta) const { return (GetPairTimeDiff(std::make_pair(nUserChanA,nUserChanB),fDelta)); } ; // get leading edge time difference between two pixels
 	Bool_t GetPairTimeDiff(std::pair<UInt_t,UInt_t> UserPair, Double_t& fDelta) const; // get leading edge time difference between two pixels
