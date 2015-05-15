@@ -111,8 +111,10 @@ Bool_t THldEvent::ReadIt(Bool_t bApplyPadding){
 				HldFile->ignore(nDataBytes-nBytesRead); // ignore rest of event
 				break; // break from do-loop
 			}
-			if((nDataBytes-(nBytesRead+nBytesSkipped))<nBaseEventSize) // check if less than 8 Bytes need to be read (can only be padding)
+			if((nDataBytes-(nBytesRead+nBytesSkipped))<nBaseEventSize){ // check if less than 8 Bytes need to be read (can only be padding)
+				HldFile->ignore(nDataBytes-(nBytesRead+nBytesSkipped));
 				break;
+			}
 			nBytesSkipped += SkipPaddingBytes((nBytesRead-nBytesReadOld));
 			nBytesReadOld = nBytesRead;
 			if(bVerboseMode)
