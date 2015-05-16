@@ -68,7 +68,7 @@ public:
 	//string cUserTdcAddressesFile
 	virtual ~TTrbAnalysisBase(); // destructor
 	//void Analyse(string cUserAnalysisFilename); // analysis routine
-	virtual void Analyse(string cUserAnalysisFilename) = 0; // pure virtual analysis function, needs to be implemented in derived class
+//	virtual void Analyse(string cUserAnalysisFilename) = 0; // pure virtual analysis function, needs to be implemented in derived class
 	virtual Bool_t CheckRandomBits(); // check if hits' random bits are the same in an event
 	virtual Bool_t CheckDecodingStatus(UInt_t nUserStatus=0) const;
 	void DisableHitMatching() { bDoHitMatching = kFALSE; }; // switch off hit matching
@@ -92,7 +92,7 @@ public:
 	Double_t GetTdcSyncTimestamp(UInt_t nTdcAddress) const;
 	Double_t GetTime(UInt_t nArrayIndex) const; // get calibrated time of hit at index
 	string GetTreeName() const { return (cTreeName); }; // get name of tree
-	void PrintExcludedChannels() const; // print list of excluded channels to screen
+	virtual void PrintExcludedChannels() const; // print list of excluded channels to screen
 	void PrintSyncTimestamps() const; // print list of sync timestamps to screen
 	virtual void PrintTdcAddresses() const; // print list of TDC addresses to screen
 	void PrintTdcHits() const; // print list of TDC hits to screen

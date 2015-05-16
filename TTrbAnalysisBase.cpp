@@ -55,15 +55,17 @@ void TTrbAnalysisBase::ComputeMappingTable(){
 	UpdateStatus();
 	if(TdcAddresses.empty())
 		return;
+	UInt_t nOffset = 0;
 	// loop over all TDC addresses
 	std::map< UInt_t,TrbTdcSetupModel >::const_iterator FirstTdcAddress = TdcAddresses.begin();
 	std::map< UInt_t,TrbTdcSetupModel >::const_iterator LastTdcAddress = TdcAddresses.end();
 	for(std::map< UInt_t,TrbTdcSetupModel >::const_iterator CurrentTdc=FirstTdcAddress; CurrentTdc!=LastTdcAddress; ++CurrentTdc){ // begin loop over all TDC addresses
 		UInt_t nTdcIndex = (UInt_t)distance(FirstTdcAddress,CurrentTdc);
 		for(UInt_t i=0; i<CurrentTdc->second.nTdcSize; ++i){ // begin loop over all TDC channels
-			UInt_t nSeqId = nTdcIndex * CurrentTdc->second.nTdcSize + i;
+			UInt_t nSeqId = nOffset + i;
 			MappingTable.insert(make_pair(make_pair(CurrentTdc->first,i+CurrentTdc->second.nTdcOffset),nSeqId));
 		} // end of loop over all TDC channels
+		nOffset += CurrentTdc->second.nTdcSize;
 	} // end of loop over all TDC addresses
 	if(bVerboseMode){
 		PrintTdcMapping();
