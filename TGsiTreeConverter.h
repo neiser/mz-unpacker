@@ -28,10 +28,14 @@
 // +++ class definition +++
 struct GsiDataModel{
 	Double_t *fLeadingEdge; // leading edge timing information (D)
+	Double_t *fTrailingEdge; // leading edge timing information (D)
 	Double_t *fTot; // time over threshold information (D)
 	UInt_t *nTdcId; // TDC address (i)
 	UInt_t *nTdcChan; // TDC channel (i)
-	UInt_t *nMcpId; // MCP ID (user mapping required) (I)
+	UInt_t *nMult; // hit multiplicity in this channel
+	UInt_t *nSeqId; // Seq ID (user mapping required) (I)
+	UInt_t nEvtId; // event ID
+	UInt_t nHits; // number of hits in event
 	Bool_t *bIsValid; // indicates if there was a valid entry for this channel  (O)
 };
 

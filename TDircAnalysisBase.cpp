@@ -76,117 +76,74 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 	// always keep trigger channel hits???
 	bHitMatchingError = kFALSE; // initialise hit matching error flag
 	EvtHitMatchErrChan.clear(); // clear list of channels where hit matching failed
+	EvtTriggerHits.clear(); // clear map of reconstructed trigger hits
 	if(!GetStatus()) // TTrbAnalysisBase object not properly initialised, do not match hits
 		return;
 	Bool_t bIsTrigChan	= kFALSE;
 	Int_t nMultipleHits = 0;
 	nMultiHitChan		= 0;
 	EvtReconHits.clear(); // clear map used to store matched hits
-	EvtTriggerHits.clear(); // clear map of reconstructed trigger hits
 	if(EvtTdcHits.empty()) // no TDC hits available
 		return;
 	std::list< PixelHitModel > TempReconHits; // use this to store reconstructed hits
 	std::multimap< UInt_t,UInt_t >::const_iterator CurrentTdcHit = EvtTdcHits.begin();
-	while(CurrentTdcHit!=EvtTdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
-		bIsTrigChan = kFALSE;
-		TempReconHits.clear(); // clear temporary list of matched hits
-		PixelHitModel TempPixelHit;
-		TempPixelHit.bHasSyncTime = kFALSE;
-		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > LeadingEdges;
-		std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > TrailingEdges;
-		if(((CurrentTdcHit->first) % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
-			CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first);
-			continue; // skip rest of loop
-		}
-		LeadingEdges = EvtTdcHits.equal_range(CurrentTdcHit->first); // find range of entries for leading edges
-		if(LeadingEdges.second==EvtTdcHits.end()){
-			break;
-		}
-		TrailingEdges = EvtTdcHits.equal_range(CurrentTdcHit->first+1); // find range of entries for trailing edges, trailing edge channel is leading edge + 1
-		UInt_t nMultLeadEdge = (UInt_t) std::distance(LeadingEdges.first,LeadingEdges.second); // count hits for this channel
-		UInt_t nMultTrailEdge = (UInt_t) std::distance(TrailingEdges.first,TrailingEdges.second);
-		if(nMultLeadEdge!=nMultTrailEdge){ //mismatch of leading & trailing edge multiplicities
-			bHitMatchingError = kTRUE;
-			if(nMultLeadEdge>0)
-				EvtHitMatchErrChan.push_back(LeadingEdges.first->first);
-			if(nMultTrailEdge>0)
-				EvtHitMatchErrChan.push_back(TrailingEdges.first->first);
-			CurrentTdcHit = TrailingEdges.second; // skip these entries
-			if(bVerboseMode){ 
-				cout << "Mismatch of leading and trailing edge hits!" << endl;
-				cout << "Multiplicities: " << nMultLeadEdge << "\t" << nMultTrailEdge << endl;
+	if(bIsDoubleEdge){ // double edge design
+		if(bVerboseMode)
+			cout << "Using Double Edge Matching..." << endl;
+		while(CurrentTdcHit!=EvtTdcHits.end()){ // begin of loop over all TDC hits 
+			bIsTrigChan = kFALSE; // initialise flag indicating trigger channel 
+			TempReconHits.clear(); // clear temporary list of matched hits
+			PixelHitModel TempPixelHit; // create temporary hit model object
+			TempPixelHit.bHasSyncTime = kFALSE; // initialise flag indicating sync time presence
+			UInt_t nCurChanHits = (UInt_t)EvtTdcHits.count(CurrentTdcHit->first);
+			//cout << CurrentTdcHit->first << "\t" << nCurChanHits << endl;
+			std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > CurChanHits;
+			CurChanHits = EvtTdcHits.equal_range(CurrentTdcHit->first); // find range of entries for leading edges
+			//UInt_t nCurChanHits = (UInt_t) std::distance(CurChanHits.first,CurChanHits.second); // count hits for this channel
+			if((nCurChanHits%2)!=0){ // check if number of hits in this channel is NOT even (not the same number of leading and trailing edges)
+				bHitMatchingError = kTRUE;
+				EvtHitMatchErrChan.push_back(CurChanHits.first->first);
+				if(bVerboseMode){ 
+					cout << "Mismatch of leading and trailing edge hits!" << endl;
+					cout << "Multiplicities: " << nCurChanHits << "\t" << CurrentTdcHit->first << endl;
+				}
+				CurrentTdcHit = CurChanHits.second; // skip these entries
+				continue; // skip rest of loop
 			}
-			continue; // skip rest of loop
-		}
-		// check if we have to swap edges
-		Bool_t bSwapEdges = (SwapList.find(GetTdcAddress(LeadingEdges.first->second))!=SwapList.end()) ? kTRUE : kFALSE;
-		std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= (bSwapEdges) ? TrailingEdges.first : LeadingEdges.first;
-		std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = (bSwapEdges) ? LeadingEdges.first : TrailingEdges.first;
-		//std::pair<std::map<UInt_t,Int_t>::iterator,bool> ret;
-		// check if this is a trigger channel
-		bIsTrigChan = (CurLeadEdge->first==(UInt_t)nTriggerSeqId)? kTRUE : kFALSE;
-		switch(nMultLeadEdge){ // begin of switch block
-			case 1: // single hit
-				TempPixelHit.nChannelAIndex = CurLeadEdge->second;
+			do{ // begin loop over current channel hits
+				std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= CurrentTdcHit;
+				if(TrbData->Hits_nSignalEdge[CurLeadEdge->second]!=1){ // not leading edge
+					if(bVerboseMode){ 
+						cout << "Wrong edge detected: " << CurLeadEdge->first << "\t" << CurLeadEdge->second << "\t" << TrbData->Hits_nSignalEdge[CurLeadEdge->second] << endl;
+					}
+					CurrentTdcHit = CurChanHits.second; // go to next hit
+					continue; // skip rest
+				}
+				if((++CurrentTdcHit)==EvtTdcHits.end()) // go to next hit and check if we reached end of hit map
+					return;
+				std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = CurrentTdcHit;
+				// check if this is a trigger channel
+				bIsTrigChan = (CurChanHits.first->first==(UInt_t)nTriggerSeqId)? kTRUE : kFALSE;
+				PixelHitModel TempPixelHit; // temporary pixel hit object
+				TempPixelHit.nChannelAIndex = CurLeadEdge->second; // leading edge array index
 				TempPixelHit.nChannelBIndex = CurTrailEdge->second;
-				TempPixelHit.nChannelA = CurLeadEdge->first; // get unique channel ID of leading edge
-				TempPixelHit.nChannelB = CurTrailEdge->first; // get unique channel ID of trailing edge
+				TempPixelHit.nChannelA = CurLeadEdge->first; // leading edge seq ID
+				TempPixelHit.nChannelB = CurTrailEdge->first; // trailing edge seq ID
 				TempPixelHit.fTimeOverThreshold = GetTime(TempPixelHit.nChannelBIndex) - GetTime(TempPixelHit.nChannelAIndex); // compute time-over-threshold
-				TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex)); // get array index of corresponding synchronisation timestamp
+				TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex));
 				TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
 				if(!TempPixelHit.bHasSyncTime){ // no synchronisation time available
-					CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
-					break; // continue w/o entering this hit into the multimap
-				}
-				TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex)); // compute synchronided leading edge time
-				if(bIsTrigChan){ // this is a hit in the trigger channel
-					if(bApplyTrigCut){
-						if(TempPixelHit.fSyncLETime<TriggerWindow.first || TempPixelHit.fSyncLETime>TriggerWindow.second){
-							CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
-							break; // continue w/o entering this hit into the 
-						}
+					if(bVerboseMode){
+						cout << "Sync time is missing: " << TempPixelHit.nChannelA << "\t" << TrbData->Hits_nTrbAddress[CurLeadEdge->second] << endl;
 					}
-					EvtTriggerHits.push_back(TempPixelHit);
+					CurrentTdcHit = CurChanHits.second; 
+					continue; // continue w/o entering this hit into the multimap
 				}
-				else{ // this is a hit in a regular channel
-					if(bApplyTimingCut){ // check timing of leading edge
-						if(TempPixelHit.fSyncLETime<TimingWindow.first || TempPixelHit.fSyncLETime>TimingWindow.second){ // check if hit is outwith timing window
-							CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
-							break; // continue w/o entering this hit into the multimap
-						}
-					}
-					TempReconHits.push_back(TempPixelHit);
-					EvtReconHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits));
- // enter this combination into pixel hit map
-				}
-				CurrentTdcHit = TrailingEdges.second; // update position of iterator
-				break; // end of single hits only case
-			default: // multiple hits
-				++nMultiHitChan;
-				if(bSkipMultiHits){ // user decision to skip multiple hits
-					CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
-					continue; // skip rest of loop
-				}
-				// need to get iterators to leading and trailing edges
-				do{ // begin of loop over hits
-					TempPixelHit.nChannelAIndex = CurLeadEdge->second;
-					TempPixelHit.nChannelBIndex = CurTrailEdge->second;
-					TempPixelHit.nChannelA = CurLeadEdge->first;
-					TempPixelHit.nChannelB = CurTrailEdge->first;
-					TempPixelHit.fTimeOverThreshold = GetTime(TempPixelHit.nChannelBIndex) - GetTime(TempPixelHit.nChannelAIndex); // compute time-over-threshold
-					TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex));
-					TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
-					if(!TempPixelHit.bHasSyncTime){ // no synchronisation time available
-						++CurLeadEdge;
-						++CurTrailEdge;
-						continue; // continue w/o entering this hit into the multimap
-					}
-					TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex));
+				TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex));
 					if(bIsTrigChan){ // this is a hit in the trigger channel
 						if(bApplyTrigCut){
 							if(TempPixelHit.fSyncLETime<TriggerWindow.first || TempPixelHit.fSyncLETime>TriggerWindow.second){
-								++CurLeadEdge;
-								++CurTrailEdge;
+								++CurrentTdcHit;
 								continue; // continue w/o entering this hit into the multimap
 							}
 						}
@@ -195,26 +152,153 @@ void TDircAnalysisBase::HitMatching(){ // match leading and trailing edge timest
 					else{ // this is a hit in a regular channel
 						if(bApplyTimingCut){ // check timing of leading edge
 							if(TempPixelHit.fSyncLETime<TimingWindow.first || TempPixelHit.fSyncLETime>TimingWindow.second){
-								++CurLeadEdge;
-								++CurTrailEdge;
+								++CurrentTdcHit;
 								continue; // continue w/o entering this hit into the multimap
 							}
 						}
 						TempReconHits.push_back(TempPixelHit);
 					}
-					++CurLeadEdge;
-					++CurTrailEdge;
+				++CurrentTdcHit;
+			} while(CurrentTdcHit!=CurChanHits.second); // end of loop over current channel hits
+			if(!TempReconHits.empty()&&!bIsTrigChan){ // check if any hits were matched
+				EvtReconHits.insert(make_pair((TempReconHits.begin())->nChannelA,TempReconHits)); // enter this combination into pixel hit map
+			}
+			//++CurrentTdcHit;
+		} // end of loop over all TDC hits
+	} // end of double edge design hit matching
+	/*											*\
+		SINGLE EDGE DESIGN HIT MATCHING BELOW
+	\*											*/
+	else{ // single edge design
+		while(CurrentTdcHit!=EvtTdcHits.end()){ // begin of loop over all TDC hits (excluding reference channels & user exclude list)
+			bIsTrigChan = kFALSE;
+			TempReconHits.clear(); // clear temporary list of matched hits
+			PixelHitModel TempPixelHit;
+			TempPixelHit.bHasSyncTime = kFALSE;
+			std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > LeadingEdges;
+			std::pair< std::multimap< UInt_t,UInt_t >::const_iterator,std::multimap< UInt_t,UInt_t >::const_iterator > TrailingEdges;
+			if(((CurrentTdcHit->first) % 2)!=0){ // channel number not even, skip this entry (hit must start with an even-numbered channel
+				CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first);
+				continue; // skip rest of loop
+			}
+			LeadingEdges = EvtTdcHits.equal_range(CurrentTdcHit->first); // find range of entries for leading edges
+			if(LeadingEdges.second==EvtTdcHits.end()){
+				break;
+			}
+			TrailingEdges = EvtTdcHits.equal_range(CurrentTdcHit->first+1); // find range of entries for trailing edges, trailing edge channel is leading edge + 1
+			UInt_t nMultLeadEdge = (UInt_t) std::distance(LeadingEdges.first,LeadingEdges.second); // count hits for this channel
+			UInt_t nMultTrailEdge = (UInt_t) std::distance(TrailingEdges.first,TrailingEdges.second);
+			if(nMultLeadEdge!=nMultTrailEdge){ //mismatch of leading & trailing edge multiplicities
+				bHitMatchingError = kTRUE;
+				if(nMultLeadEdge>0)
+					EvtHitMatchErrChan.push_back(LeadingEdges.first->first);
+				if(nMultTrailEdge>0)
+					EvtHitMatchErrChan.push_back(TrailingEdges.first->first);
+				CurrentTdcHit = TrailingEdges.second; // skip these entries
+				if(bVerboseMode){ 
+					cout << "Mismatch of leading and trailing edge hits!" << endl;
+					cout << "Multiplicities: " << nMultLeadEdge << "\t" << nMultTrailEdge << endl;
+				}
+				continue; // skip rest of loop
+			}
+			// check if we have to swap edges
+			Bool_t bSwapEdges = (SwapList.find(GetTdcAddress(LeadingEdges.first->second))!=SwapList.end()) ? kTRUE : kFALSE;
+			std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= (bSwapEdges) ? TrailingEdges.first : LeadingEdges.first;
+			std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = (bSwapEdges) ? LeadingEdges.first : TrailingEdges.first;
+			//std::pair<std::map<UInt_t,Int_t>::iterator,bool> ret;
+			// check if this is a trigger channel
+			bIsTrigChan = (CurLeadEdge->first==(UInt_t)nTriggerSeqId)? kTRUE : kFALSE;
+			switch(nMultLeadEdge){ // begin of switch block
+				case 1: // single hit
+					TempPixelHit.nChannelAIndex = CurLeadEdge->second;
+					TempPixelHit.nChannelBIndex = CurTrailEdge->second;
+					TempPixelHit.nChannelA = CurLeadEdge->first; // get unique channel ID of leading edge
+					TempPixelHit.nChannelB = CurTrailEdge->first; // get unique channel ID of trailing edge
+					TempPixelHit.fTimeOverThreshold = GetTime(TempPixelHit.nChannelBIndex) - GetTime(TempPixelHit.nChannelAIndex); // compute time-over-threshold
+					TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex)); // get array index of corresponding synchronisation timestamp
+					TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
+					if(!TempPixelHit.bHasSyncTime){ // no synchronisation time available
+						CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
+						break; // continue w/o entering this hit into the multimap
+					}
+					TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex)); // compute synchronided leading edge time
+					if(bIsTrigChan){ // this is a hit in the trigger channel
+						if(bApplyTrigCut){
+							if(TempPixelHit.fSyncLETime<TriggerWindow.first || TempPixelHit.fSyncLETime>TriggerWindow.second){
+								CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
+								break; // continue w/o entering this hit into the 
+							}
+						}
+						EvtTriggerHits.push_back(TempPixelHit);
+					}
+					else{ // this is a hit in a regular channel
+						if(bApplyTimingCut){ // check timing of leading edge
+							if(TempPixelHit.fSyncLETime<TimingWindow.first || TempPixelHit.fSyncLETime>TimingWindow.second){ // check if hit is outwith timing window
+								CurrentTdcHit = TrailingEdges.second; // shift iterator to next possible hit
+								break; // continue w/o entering this hit into the multimap
+							}
+						}
+						TempReconHits.push_back(TempPixelHit);
+						EvtReconHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits));
+						// enter this combination into pixel hit map
+					}
+					CurrentTdcHit = TrailingEdges.second; // update position of iterator
+					break; // end of single hits only case
+				default: // multiple hits
+					++nMultiHitChan;
+					if(bSkipMultiHits){ // user decision to skip multiple hits
+						CurrentTdcHit = EvtTdcHits.upper_bound(CurrentTdcHit->first); // increment iterator to skip multiple hits
+						continue; // skip rest of loop
+					}
+					// need to get iterators to leading and trailing edges
+					do{ // begin of loop over hits
+						TempPixelHit.nChannelAIndex = CurLeadEdge->second;
+						TempPixelHit.nChannelBIndex = CurTrailEdge->second;
+						TempPixelHit.nChannelA = CurLeadEdge->first;
+						TempPixelHit.nChannelB = CurTrailEdge->first;
+						TempPixelHit.fTimeOverThreshold = GetTime(TempPixelHit.nChannelBIndex) - GetTime(TempPixelHit.nChannelAIndex); // compute time-over-threshold
+						TempPixelHit.nSyncIndex = GetTdcSyncIndex(GetTdcAddress(TempPixelHit.nChannelAIndex));
+						TempPixelHit.bHasSyncTime = (TempPixelHit.nSyncIndex<0)? kFALSE : kTRUE;
+						if(!TempPixelHit.bHasSyncTime){ // no synchronisation time available
+							++CurLeadEdge;
+							++CurTrailEdge;
+							continue; // continue w/o entering this hit into the multimap
+						}
+						TempPixelHit.fSyncLETime = GetTime(TempPixelHit.nChannelAIndex) - GetTdcSyncTimestamp(GetTdcAddress(TempPixelHit.nChannelAIndex));
+						if(bIsTrigChan){ // this is a hit in the trigger channel
+							if(bApplyTrigCut){
+								if(TempPixelHit.fSyncLETime<TriggerWindow.first || TempPixelHit.fSyncLETime>TriggerWindow.second){
+									++CurLeadEdge;
+									++CurTrailEdge;
+									continue; // continue w/o entering this hit into the multimap
+								}
+							}
+							EvtTriggerHits.push_back(TempPixelHit);
+						}
+						else{ // this is a hit in a regular channel
+							if(bApplyTimingCut){ // check timing of leading edge
+								if(TempPixelHit.fSyncLETime<TimingWindow.first || TempPixelHit.fSyncLETime>TimingWindow.second){
+									++CurLeadEdge;
+									++CurTrailEdge;
+									continue; // continue w/o entering this hit into the multimap
+								}
+							}
+							TempReconHits.push_back(TempPixelHit);
+						}
+						++CurLeadEdge;
+						++CurTrailEdge;
 				} while (CurLeadEdge!=((bSwapEdges)? TrailingEdges.second : LeadingEdges.second)); // end of loop over all hits
 				if(!TempReconHits.empty()){
 					if(!bIsTrigChan)
-					//	EvtTriggerHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits));
-					//else
+						//	EvtTriggerHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits));
+						//else
 						EvtReconHits.insert(make_pair(TempPixelHit.nChannelA,TempReconHits)); // enter this combination into pixel hit map
 				}
 				CurrentTdcHit = TrailingEdges.second;
 				break;
-		} // end of switch block
-	} // end of loop over all TDC hits (excluding reference channels & user exclude list)
+			} // end of switch block
+		} // end of loop over all TDC hits (excluding reference channels & user exclude list)
+	}
 	if(bVerboseMode){
 		cout << EvtReconHits.size() << endl;
 	}
@@ -227,6 +311,7 @@ void TDircAnalysisBase::Init(){
 	EvtTriggerHits.clear(); // clear map of reconstructed trigger hits
 	EvtHitMatchErrChan.clear();
 	bSkipMultiHits	= kTRUE;
+	bIsDoubleEdge	= kFALSE;
 	bApplyTimingCut = kFALSE;
 	bApplyTrigCut	= kFALSE;
 	bTrigChanIsSet	= kFALSE;

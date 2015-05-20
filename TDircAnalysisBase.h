@@ -38,7 +38,7 @@ struct PixelHitModel{
 		PixelHitModel() {};
 		//bool operator < (const PixelHitModel &b) const { return fSyncLETime < b.fSyncLETime; };
 		friend ostream& operator << (ostream &s, const PixelHitModel &a) {
-			s << a.nChannelA << "\t" << a.nChannelB << "\t" << a.fSyncLETime << "\t" << a.fTimeOverThreshold << "\t" << a.nSyncIndex;
+			s << a.nChannelAIndex << "\t" << a.nChannelBIndex << "\t" << a.fSyncLETime << "\t" << a.fTimeOverThreshold << "\t" << a.nSyncIndex;
 			return s;
 		};
 		UInt_t GetLeadEdgeChan() const { return nChannelA; };
@@ -68,6 +68,7 @@ private:
 	Bool_t IsChannel(const PixelHitModel &CurrentHit, UInt_t nSeqChanId) const;
 protected:
 	Bool_t bHitMatchingError; // indicate error at hit matching stage, i.e. number of leading and trailing edges do not match
+	Bool_t bIsDoubleEdge; // flag indicating that TDC does double edge detection in a channel, no hit matching needed!
 	std::set< UInt_t > SwapList; // list of TDC addresses where we need to swap leading and trailing edges
 	std::map< UInt_t,std::list<PixelHitModel> > EvtReconHits; // map storing reconstructed hits
 	std::list<PixelHitModel> EvtTriggerHits; // map storing reconstructed trigger hits
@@ -79,8 +80,8 @@ public:
 	TDircAnalysisBase(string cUserDataFilename, string cUserTdcAddressFile); // constructor
 	TDircAnalysisBase(string cUserDataFilename, string cUserTdcAddressFile, UInt_t nUserTdcOffset, UInt_t nUserTdcWidth); // constructor
 	~TDircAnalysisBase();
-	//virtual void Analyse(string cUserAnalysisFilename); // user analysis code goes here...
-	virtual void Analyse(string cUserAnalysisFilename) = 0;
+//	virtual void Analyse(string cUserAnalysisFilename); // user analysis code goes here...
+	//virtual void Analyse(string cUserAnalysisFilename) = 0;
 	void ClearTimingWindow() { TimingWindow=std::make_pair(0,0); bApplyTimingCut=kFALSE; }; // clear timing value limits
 	void ClearTriggerChannel() { nTriggerSeqId=-1; TriggerChannelAddress=std::make_pair(0,0); bTrigChanIsSet=kFALSE; }; // clear trigger channel address
 	void ClearTriggerWindow() { TriggerWindow=std::make_pair(0,0); bApplyTrigCut=kFALSE; }; // clear trigger timing window
@@ -103,6 +104,7 @@ public:
 	void PrintTriggerAddress() const; // print trigger channel address to terminal
 	void PrintTriggerWindow() const; // print trigger timing window to terminal
 	void ScanEvent() { TTrbAnalysisBase::ScanEvent(); HitMatching(); };
+	void SetIsDoubleEdge() { bIsDoubleEdge=kTRUE; };
 	void SetTimingWindow(Double_t fUserLow, Double_t fUserHigh) { TimingWindow = (fUserLow<fUserHigh)? std::make_pair(fUserLow,fUserHigh) : std::make_pair(fUserHigh,fUserLow); bApplyTimingCut=kTRUE; };
 	Bool_t SetTriggerChannel(UInt_t nUserTdcAddress, UInt_t nUserTdcChannel); // set trigger channel address
 	void SetTriggerWindow(Double_t fUserLow, Double_t fUserHigh) { TriggerWindow = (fUserLow<fUserHigh)? std::make_pair(fUserLow,fUserHigh) : std::make_pair(fUserHigh,fUserLow); bApplyTrigCut=kTRUE; };

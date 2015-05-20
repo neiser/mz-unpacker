@@ -153,13 +153,18 @@ Int_t TTrbEventDisplay::HitMatching(){
 			continue; // skip rest of loop
 		}
 		Double_t fSyncLETime = -1.0;
+		Double_t fCurTot = 0.0;
 		std::pair< Int_t,Int_t > TempHitIndices;
 		std::multimap< UInt_t,UInt_t >::const_iterator CurLeadEdge	= LeadingEdges.first;
 		std::multimap< UInt_t,UInt_t >::const_iterator CurTrailEdge = TrailingEdges.first;
 		switch(nMultLeadEdge){
 			case 1: // single hit 		
 				TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
-				//TempPixelHit.fTimeOverThreshold = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
+				fCurTot = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
+				if(fCurTot<fMinTot){
+					CurrentTdcHit = TrailingEdges.second;
+					continue;
+				}
 				//TempPixelHit.nSyncIndex = GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second]);
 				//}
 				fSyncLETime = TrbData->Hits_fTime[CurLeadEdge->second] - TrbData->Hits_fTime[GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second])];
@@ -185,7 +190,8 @@ Int_t TTrbEventDisplay::HitMatching(){
 				do{
 					TempHitIndices = make_pair(CurLeadEdge->second,CurTrailEdge->second);
 					fSyncLETime = TrbData->Hits_fTime[CurLeadEdge->second] - TrbData->Hits_fTime[GetTdcSyncIndex(TrbData->Hits_nTrbAddress[CurLeadEdge->second])];
-					if(fSyncLETime>TimingWindow.first && fSyncLETime<TimingWindow.second) // check that hit is within user-defined timing window
+					fCurTot = TrbData->Hits_fTime[CurTrailEdge->second] - TrbData->Hits_fTime[CurLeadEdge->second];
+					if(fSyncLETime>TimingWindow.first && fSyncLETime<TimingWindow.second && fCurTot>fMinTot) // check that hit is within user-defined timing window
 						LETimestamps.insert(make_pair(CurLeadEdge->first,fSyncLETime));
 					++CurLeadEdge;
 					++CurTrailEdge;
@@ -216,6 +222,8 @@ void TTrbEventDisplay::Init(){ // initialise event display class variables
 	nNumberOfEvents = 0;
 	nNumberOfPixels	= 0;
 	nNumberOfPmts	= 0;
+
+	fMinTot = 0.0;
 
 	cTreeName = "T";
 	cEventDisplayTitle.str("DIRC@Mainz Event Display");

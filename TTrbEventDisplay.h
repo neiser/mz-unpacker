@@ -44,7 +44,7 @@
 class TTrbEventDisplay : public TTrbAnalysisBase {
 private:
 	std::vector<TMapmt*> DetectorSetup; // vector containing MAPMT objects
-	void Analyse(string cUserAnalysisFilename) {}; // empty analysis routine
+	//void Analyse(string cUserAnalysisFilename) {}; // empty analysis routine
 	void DeleteSetup();
 	void Init(); // initialise parameters
 	void InitHistograms(); // initialise 2D histograms
@@ -68,6 +68,7 @@ protected:
 	stringstream cEventDisplayTitle;
 	string cTreeName;
 	std::pair< Double_t,Double_t > TimingWindow;
+	Double_t fMinTot; // minimal Time-Over-Threshold
 	
 	TMarker mSetupCentre;
 	// Canvas definitions for display
@@ -94,14 +95,15 @@ protected:
 	void SetCanvasStyle(TCanvas *canThisCanvas);
 public:
 	TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, string cUserDataFilename); // standard constructor
-	TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, TChain &UserChain); // standard constructor
+	//TTrbEventDisplay(string cUserSetupFilename, string cUserThresholdFilename, TChain &UserChain); // standard constructor
 	virtual ~TTrbEventDisplay(); // standard destructor
 	Int_t GetNPixels() const { return (nNumberOfPixels); }; // get number of pixels in setup
 	Int_t GetNPmts() const { return (nNumberOfPmts); }; // get number of MAPMTs in setup
 	void KeepMultiHits() { bSkipMultiHits=kFALSE; }; // keep multi-hit pixels, requires a timing window
 	void PrintLETimestamps() const; // print list of synchronised leading edge timestamps of hits to screen
 	void ResetTimingWindow() { TimingWindow.first=0.0; TimingWindow.second=0.0; bUseTimeWindow=kFALSE; }; // reset timing window
-	void SetTimingWindow( Double_t fUserLow, Double_t fUserUpper); // set timing window for event hit selection
+	void SetTimingWindow(Double_t fUserLow, Double_t fUserUpper); // set timing window for event hit selection
+	void SetTotCut(Double_t fUserMinTot) { fMinTot=fUserMinTot; };
 	void Show(Int_t nUserEventId=0); // show single event
 	void Show(UInt_t nUserStart, UInt_t nUserStop); // accumulate events and show hit pattern
 	void ShowPixelCentreMaps(); // show 2D histogram with pixel centre coordinates
