@@ -422,7 +422,7 @@ Int_t TMapmt::RemovePixels(const vector<Int_t>& nUserPixelIds){
 void TMapmt::SetName(string cUserName){ 
 	cMapmtName = cUserName;
 	cMapmtNameChecked = cMapmtName;
-	cMapmtNameChecked.erase(std::remove_if(cMapmtNameChecked.begin(), cMapmtNameChecked.end(), isspace), cMapmtNameChecked.end()); // remove blank characters
+//	cMapmtNameChecked.erase(std::remove_if(cMapmtNameChecked.begin(), cMapmtNameChecked.end(), isspace), cMapmtNameChecked.end()); // remove blank characters
 	string cHistName;
 	string cNewHistTitle;
 	cHistName = (cMapmtNameChecked.empty())? "hGainMap" : "hGainMap" + cMapmtNameChecked;
