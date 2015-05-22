@@ -30,6 +30,7 @@ struct GsiDataModel{
 	Double_t *fLeadingEdge; // leading edge timing information (D)
 	Double_t *fTrailingEdge; // leading edge timing information (D)
 	Double_t *fTot; // time over threshold information (D)
+	Double_t *fSync; // reference time of TDC (D)
 	UInt_t *nTdcId; // TDC address (i)
 	UInt_t *nTdcChan; // TDC channel (i)
 	UInt_t *nMult; // hit multiplicity in this channel

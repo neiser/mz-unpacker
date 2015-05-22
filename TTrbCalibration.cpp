@@ -373,7 +373,7 @@ void TTrbCalibration::PrintMissingChannels() const {
 	cout << "+++++++++++++++++++++++++++++++++++" << endl;
 	cout << "+ TRBv3 TDC Missing Channels List +" << endl;
 	cout << "+++++++++++++++++++++++++++++++++++" << endl;
-	std::list<std::pair<UInt_t,UInt_t>>::const_iterator ChannelIndex = MissingChannels.begin();
+	std::list<std::pair<UInt_t,UInt_t> >::const_iterator ChannelIndex = MissingChannels.begin();
 	for(ChannelIndex; ChannelIndex!=MissingChannels.end(); ++ChannelIndex){
 		cout << hex << ChannelIndex->first << dec << " " << ChannelIndex->second << endl;
 	}

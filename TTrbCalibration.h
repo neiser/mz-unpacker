@@ -70,7 +70,7 @@ private:
 	void WriteToFile(); // write calibrations histograms to file
 protected:
 	std::vector< pair< UInt_t,UInt_t > > ExcludedChannels; // list of channels excluded from calibration(needs to be provided by user)
-	std::list<std::pair<UInt_t,UInt_t>> MissingChannels; // list of channels missing in calibration map 
+	std::list<std::pair<UInt_t,UInt_t> > MissingChannels; // list of channels missing in calibration map 
 	Bool_t bVerboseMode; // flag controlling verbose mode
 	Double_t fBinThreshold; // threshold for bin entries in TDC fine time histogram
 	Long64_t nEventsMax; // maximum number of events in TTree

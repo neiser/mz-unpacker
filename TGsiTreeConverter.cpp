@@ -35,6 +35,10 @@ void TGsiTreeConverter::AddBranches(){
 	cLeafList.str(""); // clear leaf descriptor
 	cLeafList << "fTot[" << GetSizeOfMapTable() << "]/D";
 	OnlineTree->Branch("fTot",EventData.fTot,cLeafList.str().c_str());
+	// reference time data
+	cLeafList.str(""); // clear leaf descriptor
+	cLeafList << "fSync[" << GetSizeOfMapTable() << "]/D";
+	OnlineTree->Branch("fSync",EventData.fSync,cLeafList.str().c_str());
 	// TDC ID data
 	cLeafList.str(""); // clear leaf descriptor
 	cLeafList << "nTdcId[" << GetSizeOfMapTable() << "]/i";
@@ -160,6 +164,10 @@ void TGsiTreeConverter::CleanUp(){ // delete arrays holding data for tree conver
 		delete[] EventData.fTot;
 		EventData.fTot = NULL;
 	}
+	if(EventData.fSync!=NULL){
+		delete[] EventData.fSync;
+		EventData.fSync = NULL;
+	}
 	if(EventData.nTdcId!=NULL){
 		delete[] EventData.nTdcId;
 		EventData.nTdcId = NULL;
@@ -187,6 +195,7 @@ void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename, UInt_t nStartI
 	EventData.fLeadingEdge	= new Double_t[nArraySize];
 	EventData.fTrailingEdge	= new Double_t[nArraySize];
 	EventData.fTot			= new Double_t[nArraySize];
+	EventData.fSync			= new Double_t[nArraySize];
 	EventData.nTdcId		= new UInt_t[nArraySize];
 	EventData.nTdcChan		= new UInt_t[nArraySize];
 	EventData.nMult			= new UInt_t[nArraySize];
@@ -217,6 +226,7 @@ void TGsiTreeConverter::ConvertTree(string cUserAnalysisFilename, UInt_t nStartI
 			EventData.fLeadingEdge[CurChannel->first] = CurChannel->second.back().GetLeadEdgeTime(); // get leading edge time of last hit for this channel
 			EventData.fTrailingEdge[CurChannel->first] = GetTime(CurChannel->second.back().nChannelBIndex) - GetTdcSyncTimestamp(GetTdcAddress(CurChannel->second.back().nChannelBIndex));  // get trailing edge time of last hit for this channel
 			EventData.fTot[CurChannel->first] = CurChannel->second.back().GetToT();
+			EventData.fSync[CurChannel->first] = GetTdcSyncTimestamp(GetTdcAddress(CurChannel->second.back().nChannelBIndex));
 			Int_t nTempTdcId, nTempTdcChan;
 			GetChannelAddress(CurChannel->first,nTempTdcId,nTempTdcChan);
 			EventData.nTdcId[CurChannel->first] = (UInt_t)nTempTdcId;
@@ -244,6 +254,7 @@ void TGsiTreeConverter::Init(){
 	EventData.fLeadingEdge	= NULL;
 	EventData.fTrailingEdge	= NULL;
 	EventData.fTot			= NULL;
+	EventData.fSync			= NULL;
 	EventData.nTdcId		= NULL;
 	EventData.nTdcChan		= NULL;
 	EventData.nMult			= NULL;
@@ -261,6 +272,7 @@ void TGsiTreeConverter::InitArrays(){
 		EventData.fLeadingEdge[i]	= -9999.0;
 		EventData.fTrailingEdge[i]	= -9999.0;
 		EventData.fTot[i]			= -9999.0;
+		EventData.fSync[i]			= -9999.0;
 		EventData.nTdcId[i]			= -1;
 		EventData.nTdcChan[i]		= -1;
 		EventData.nMult[i]			= 0;
